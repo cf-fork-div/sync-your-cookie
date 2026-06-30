@@ -51,6 +51,19 @@ const normalizeAccountProfileState = (
   };
 };
 
+const setNormalized = async (
+  valueOrUpdate:
+    | AccountProfileState
+    | ((prev: AccountProfileState) => AccountProfileState | Promise<AccountProfileState>),
+): Promise<void> => {
+  await storage.set(async current => {
+    const normalized = normalizeAccountProfileState(current);
+    const next =
+      typeof valueOrUpdate === 'function' ? await valueOrUpdate(normalized) : valueOrUpdate;
+    return normalizeAccountProfileState(next);
+  });
+};
+
 const initStorage = (): BaseStorage<AccountProfileState> => {
   if (cacheStorageMap.has(PROFILE_STORAGE_KEY)) {
     return cacheStorageMap.get(PROFILE_STORAGE_KEY);
@@ -116,7 +129,7 @@ const ensureMigrated = async (): Promise<void> => {
           ? { domainMap: { ...legacyDomainConfig.domainMap } }
           : defaultDomainConfig(),
       });
-      await storage.set({
+      await setNormalized({
         accountProfileList: [profile],
         activeProfileId: profile.id,
         migrated: true,
@@ -125,7 +138,7 @@ const ensureMigrated = async (): Promise<void> => {
     }
 
     if (!state.migrated) {
-      await storage.set(current => ({ ...current, migrated: true }));
+      await setNormalized(current => ({ ...current, migrated: true }));
     }
 
     await migrateLegacyDomainConfig(normalizeAccountProfileState(await storage.get()));
@@ -155,7 +168,11 @@ export const getActiveProfileSettings = (state?: AccountProfileState | null): IS
 
 export const getActiveProfileDomainConfig = (state?: AccountProfileState | null): DomainConfig => {
   const profile = getActiveProfile(state);
-  return profile?.domainConfig ?? defaultDomainConfig();
+  const domainMap = profile?.domainConfig?.domainMap;
+  if (!domainMap || typeof domainMap !== 'object') {
+    return defaultDomainConfig();
+  }
+  return { domainMap: { ...domainMap } };
 };
 
 const hasAnyProfileDomainConfig = (state: AccountProfileState): boolean =>
@@ -176,7 +193,7 @@ const migrateLegacyDomainConfig = async (state: AccountProfileState): Promise<vo
   if (!active) {
     return;
   }
-  await storage.set(current => ({
+  await setNormalized(current => ({
     ...current,
     accountProfileList: current.accountProfileList.map(profile =>
       profile.id === active.id
@@ -220,7 +237,7 @@ export const accountProfileStorage: AccountProfileStorage = {
   },
   setActiveProfileId: async (id: string) => {
     await ensureMigrated();
-    await storage.set(current => {
+    await setNormalized(current => {
       const exists = current.accountProfileList.some(profile => profile.id === id);
       if (!exists || current.activeProfileId === id) {
         return current;
@@ -232,7 +249,7 @@ export const accountProfileStorage: AccountProfileStorage = {
     await ensureMigrated();
     const trimmedName = name.trim();
     const profile = createDefaultProfile(trimmedName ? { name: trimmedName } : {});
-    await storage.set(current => ({
+    await setNormalized(current => ({
       ...current,
       accountProfileList: [...current.accountProfileList, profile],
       activeProfileId: profile.id,
@@ -241,7 +258,7 @@ export const accountProfileStorage: AccountProfileStorage = {
   },
   updateProfile: async (id: string, update: Partial<AccountProfile>) => {
     await ensureMigrated();
-    await storage.set(current => ({
+    await setNormalized(current => ({
       ...current,
       accountProfileList: current.accountProfileList.map(profile =>
         profile.id === id ? { ...profile, ...update } : profile,
@@ -258,7 +275,7 @@ export const accountProfileStorage: AccountProfileStorage = {
   },
   deleteProfile: async (id: string) => {
     await ensureMigrated();
-    await storage.set(current => {
+    await setNormalized(current => {
       if (current.accountProfileList.length <= 1) {
         return current;
       }

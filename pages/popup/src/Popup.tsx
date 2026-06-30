@@ -12,7 +12,7 @@ import {
   withSuspense,
 } from '@sync-your-cookie/shared';
 
-import { accountProfileStorage } from '@sync-your-cookie/storage/lib/accountProfileStorage';
+import { accountProfileStorage, getActiveProfile } from '@sync-your-cookie/storage/lib/accountProfileStorage';
 import { Button, Image, Spinner, Toaster } from '@sync-your-cookie/ui';
 import { CloudDownload, CloudUpload, Copyright, PanelRightOpen, RotateCw, Settings } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -25,9 +25,7 @@ const Popup = () => {
   const { t } = useI18n();
   useDocumentTitle('pageTitlePopup');
   const profileState = useStorageSuspense(accountProfileStorage);
-  const activeProfile = profileState.accountProfileList.find(
-    profile => profile.id === profileState.activeProfileId,
-  );
+  const activeProfile = getActiveProfile(profileState);
   const [activeTabUrl, setActiveTabUrl] = useState('');
   const [favIconUrl, setFavIconUrl] = useState('');
 

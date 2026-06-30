@@ -11,7 +11,7 @@ import {
   withErrorBoundary,
   withSuspense,
 } from '@sync-your-cookie/shared';
-import { accountProfileStorage } from '@sync-your-cookie/storage/lib/accountProfileStorage';
+import { accountProfileStorage, getActiveProfile } from '@sync-your-cookie/storage/lib/accountProfileStorage';
 import { accountStorage } from '@sync-your-cookie/storage/lib/accountStorage';
 import {
   AccountProfileDropdown,
@@ -55,9 +55,7 @@ const Options = () => {
 
   const { setTheme } = useTheme();
 
-  const activeProfile = profileState.accountProfileList.find(
-    profile => profile.id === profileState.activeProfileId,
-  );
+  const activeProfile = getActiveProfile(profileState);
 
   useEffect(() => {
     setToken(accountInfo.token);
