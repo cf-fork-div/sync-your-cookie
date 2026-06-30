@@ -1,0 +1,19 @@
+---
+description: Auto commit and push documentation edits
+globs:
+  - "**/*.md"
+  - "README*"
+  - "CHANGELOG*"
+  - "STORE_PUBLISH*"
+  - "how-to-use*"
+  - "private-policy*"
+alwaysApply: false
+---
+
+# Documentation: commit and push
+
+When you change documentation in this repo (root `*.md`, `README*`, `CHANGELOG`, `how-to-use*`, `STORE_PUBLISH*`, `private-policy*`, and `*.md` under `deploy/` or `docs/`), finish by **committing and pushing to `origin`** on the current branch unless the user explicitly says not to commit or push.
+
+- Stage only doc-related files (not `dist/`, `node_modules/`, or unrelated code).
+- Use a clear `docs:` commit message describing the doc change.
+- Do not change git config; no force push or destructive git commands.
