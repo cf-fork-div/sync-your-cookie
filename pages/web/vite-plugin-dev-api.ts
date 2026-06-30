@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin } from 'vite';
-import { getWebAccessPassword, getWebBasePathPrefix } from '../../deploy/cloudflare/src/lib/env';
+import { getWebAccessPassword, getWebBasePathPrefix, getWebBasePathSegment } from '../../deploy/cloudflare/src/lib/env';
 import { createLogoutCookie, createSessionCookie, isValidSession } from '../../deploy/cloudflare/src/lib/session';
 
 type DevEnv = {
@@ -116,6 +116,20 @@ function getStorageKeyFromUrl(req: IncomingMessage): string {
   return params.get('storageKey')?.trim() || devDatasourceConfig.value?.storageKey || 'sync-your-cookie';
 }
 
+function normalizeDevApiPath(rawPath: string, devEnv: DevEnv): string | null {
+  const baseSegment = getWebBasePathSegment(devEnv);
+  if (baseSegment) {
+    const prefix = `/${baseSegment}`;
+    if (rawPath === `${prefix}/api` || rawPath.startsWith(`${prefix}/api/`)) {
+      return rawPath.slice(prefix.length);
+    }
+  }
+  if (rawPath === '/api' || rawPath.startsWith('/api/')) {
+    return rawPath;
+  }
+  return null;
+}
+
 export function devWebApiPlugin(mode: string, env: Record<string, string>): Plugin {
   const devEnv = getDevEnv(mode, env);
 
@@ -123,8 +137,9 @@ export function devWebApiPlugin(mode: string, env: Record<string, string>): Plug
     name: 'dev-web-api',
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
-        const url = req.url?.split('?')[0] ?? '';
-        if (!url.startsWith('/api/')) {
+        const rawUrl = req.url?.split('?')[0] ?? '';
+        const url = normalizeDevApiPath(rawUrl, devEnv);
+        if (!url) {
           next();
           return;
         }

@@ -1,3 +1,5 @@
+import { apiUrl, parseJsonResponse } from '@src/lib/api';
+
 export type DatasourceStatus = {
   ok: boolean;
   configured: boolean;
@@ -15,21 +17,28 @@ export type DatasourceConfigInput = {
 };
 
 export async function fetchDatasourceStatus(): Promise<DatasourceStatus> {
-  const res = await fetch('/api/admin/datasource', { credentials: 'same-origin' });
-  if (!res.ok) {
-    throw new Error('fetch_datasource_failed');
+  const res = await fetch(apiUrl('/api/admin/datasource').toString(), { credentials: 'same-origin' });
+  if (res.status === 401) {
+    throw new Error('unauthorized');
   }
-  return (await res.json()) as DatasourceStatus;
+  const data = await parseJsonResponse<DatasourceStatus & { error?: string }>(res);
+  if (!res.ok) {
+    throw new Error(data.error || 'fetch_datasource_failed');
+  }
+  return data;
 }
 
 export async function saveDatasourceConfig(config: DatasourceConfigInput): Promise<DatasourceStatus> {
-  const res = await fetch('/api/admin/datasource', {
+  const res = await fetch(apiUrl('/api/admin/datasource').toString(), {
     method: 'PUT',
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(config),
   });
-  const data = (await res.json()) as DatasourceStatus & { error?: string };
+  if (res.status === 401) {
+    throw new Error('unauthorized');
+  }
+  const data = await parseJsonResponse<DatasourceStatus & { error?: string }>(res);
   if (!res.ok) {
     throw new Error(data.error || 'save_datasource_failed');
   }
@@ -37,7 +46,7 @@ export async function saveDatasourceConfig(config: DatasourceConfigInput): Promi
 }
 
 export async function fetchKvViaServer(storageKey?: string): Promise<string> {
-  const url = new URL('/api/sync/kv', window.location.origin);
+  const url = apiUrl('/api/sync/kv');
   if (storageKey?.trim()) {
     url.searchParams.set('storageKey', storageKey.trim());
   }
@@ -45,8 +54,14 @@ export async function fetchKvViaServer(storageKey?: string): Promise<string> {
   if (res.status === 404) {
     return '';
   }
+  if (res.status === 401) {
+    throw new Error('unauthorized');
+  }
   if (!res.ok) {
     const text = await res.text();
+    if (text.trimStart().startsWith('<!')) {
+      throw new Error('api_html_response');
+    }
     throw new Error(text || `read_failed_${res.status}`);
   }
   return (await res.text()).trim();

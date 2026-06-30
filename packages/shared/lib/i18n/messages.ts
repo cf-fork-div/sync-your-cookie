@@ -202,6 +202,9 @@ const enMessages = {
   emptyCookieData: 'No cookie data yet. Push from the extension first.',
   loadSuccess: 'Loaded successfully',
   loadFailed: 'Load failed',
+  apiUnauthorized: 'Session expired or not signed in. Please log in again.',
+  apiHtmlResponse:
+    'API returned a web page instead of data. Open the app from its configured URL path, or redeploy if admin routes are missing.',
   readonlyBanner: 'Read-only connection. You can edit locally and',
   exportToClipboard: 'export to clipboard',
   readonlyBannerSuffix: ', then paste back to KV manually.',
@@ -481,6 +484,9 @@ const zhCNMessages: Record<MessageKey, string> = {
   emptyCookieData: '暂无 Cookie 数据，请先在扩展中 Push',
   loadSuccess: '加载成功',
   loadFailed: '加载失败',
+  apiUnauthorized: '登录已过期或未登录，请重新登录。',
+  apiHtmlResponse:
+    'API 返回了网页而非数据。请从配置的访问路径打开应用，或确认已部署包含 /api/admin 路由的 Worker。',
   readonlyBanner: '当前为只读连接。你可以本地编辑并',
   exportToClipboard: '导出到剪贴板',
   readonlyBannerSuffix: '，再手动粘贴回 KV。',

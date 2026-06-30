@@ -1,4 +1,5 @@
 import { fetchDatasourceStatus, fetchKvViaServer, saveDatasourceConfig } from '@src/lib/datasource';
+import { mapApiErrorCode } from '@src/lib/api';
 import { parseRawContent } from '@src/lib/cookies';
 import { detectFormat } from '@src/lib/mutations';
 import type { ViewerSession } from '@src/lib/types';
@@ -46,8 +47,9 @@ export function ConnectForm({ onLoaded }: ConnectFormProps) {
         setStorageKey(status.storageKey || 'sync-your-cookie');
         setTokenMasked(status.tokenMasked);
       })
-      .catch(() => {
-        toast.error(t('loadFailed'));
+      .catch(error => {
+        const message = error instanceof Error ? mapApiErrorCode(error.message, t) : t('loadFailed');
+        toast.error(message);
       })
       .finally(() => {
         if (!cancelled) {
@@ -117,7 +119,8 @@ export function ConnectForm({ onLoaded }: ConnectFormProps) {
       }
       toast.success(t('loadSuccess'));
     } catch (error) {
-      const message = error instanceof Error ? error.message : t('loadFailed');
+      const message =
+        error instanceof Error ? mapApiErrorCode(error.message, t) : t('loadFailed');
       toast.error(message);
     } finally {
       setLoading(false);

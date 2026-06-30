@@ -1,5 +1,6 @@
-import { detectFormat } from '@src/lib/mutations';
+import { apiUrl } from '@src/lib/api';
 import { fetchKvViaServer } from '@src/lib/datasource';
+import { detectFormat } from '@src/lib/mutations';
 
 import type { CloudflareSource, DataSourceConfig, FormatInfo, ViewerSession } from '@src/lib/types';
 
@@ -71,7 +72,7 @@ export async function serializeCookiesMap(map: ICookiesMap, format: FormatInfo):
 export async function fetchFromCloudflareKV(config: CloudflareSource): Promise<string> {
   const { accountId, namespaceId, token, storageKey, useProxy = true } = config;
 
-  const base = useProxy ? '/cf-api' : 'https://api.cloudflare.com';
+  const base = useProxy ? apiUrl('/cf-api').pathname.replace(/\/$/, '') : 'https://api.cloudflare.com';
 
   const url = `${base}/client/v4/accounts/${accountId}/storage/kv/namespaces/${namespaceId}/values/${encodeURIComponent(storageKey)}`;
 
@@ -102,7 +103,7 @@ export async function fetchFromCloudflareKV(config: CloudflareSource): Promise<s
 
 export async function writeToCloudflareKV(config: CloudflareSource, content: string): Promise<void> {
   if (config.serverManaged) {
-    const url = new URL('/api/sync/kv', window.location.origin);
+    const url = apiUrl('/api/sync/kv');
     url.searchParams.set('storageKey', config.storageKey);
     const response = await fetch(url.toString(), {
       method: 'PUT',
@@ -119,7 +120,7 @@ export async function writeToCloudflareKV(config: CloudflareSource, content: str
 
   const { accountId, namespaceId, token, storageKey, useProxy = true } = config;
 
-  const base = useProxy ? '/cf-api' : 'https://api.cloudflare.com';
+  const base = useProxy ? apiUrl('/cf-api').pathname.replace(/\/$/, '') : 'https://api.cloudflare.com';
 
   const url = `${base}/client/v4/accounts/${accountId}/storage/kv/namespaces/${namespaceId}/values/${encodeURIComponent(storageKey)}`;
 

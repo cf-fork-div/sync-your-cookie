@@ -1,3 +1,4 @@
+import { apiUrl, parseJsonResponse } from './api';
 import { getDevViteBasePath, PRODUCTION_BASE_PATH, segmentToBasePathPrefix } from './basePath';
 
 export type SessionInfo = {
@@ -64,11 +65,11 @@ export async function fetchSession(): Promise<SessionInfo> {
   }
 
   try {
-    const res = await fetch('/api/session', { credentials: 'same-origin' });
+    const res = await fetch(apiUrl('/api/session').toString(), { credentials: 'same-origin' });
     if (!res.ok) {
       throw new Error('session_fetch_failed');
     }
-    return (await res.json()) as SessionInfo;
+    return await parseJsonResponse<SessionInfo>(res);
   } catch {
     return {
       authenticated: false,
@@ -89,13 +90,13 @@ export async function login(password: string): Promise<LoginResult> {
   }
 
   try {
-    const res = await fetch('/api/login', {
+    const res = await fetch(apiUrl('/api/login').toString(), {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password: trimmed }),
     });
-    const data = (await res.json()) as { ok?: boolean; error?: string };
+    const data = await parseJsonResponse<{ ok?: boolean; error?: string }>(res);
     if (res.ok && data.ok) {
       return { ok: true };
     }
@@ -118,7 +119,7 @@ export async function logout(): Promise<void> {
   }
 
   try {
-    await fetch('/api/logout', {
+    await fetch(apiUrl('/api/logout').toString(), {
       method: 'POST',
       credentials: 'same-origin',
     });

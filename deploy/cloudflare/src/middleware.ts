@@ -7,6 +7,7 @@ import {
   type WorkerEnv,
 } from './lib/env';
 import { isPasswordAuthorized } from './lib/request-auth';
+import { jsonResponse } from './lib/response';
 import { isValidSession } from './lib/session';
 
 const PUBLIC_API_SUFFIXES = ['/api/login', '/api/session', '/api/logout'];
@@ -70,23 +71,23 @@ export async function applyMiddleware(request: Request, env: WorkerEnv): Promise
   if (shouldRequireAuth(pathname)) {
     const password = getWebAccessPassword(env);
     if (!password) {
-      return { pathname, response: new Response('Service Unavailable', { status: 503 }) };
+      return { pathname, response: jsonResponse({ ok: false, error: 'password_not_configured' }, { status: 503 }) };
     }
 
     if (isSyncApiPath(pathname)) {
       const authorized = await isPasswordAuthorized(request, env);
       if (!authorized) {
-        return { pathname, response: new Response('Unauthorized', { status: 401 }) };
+        return { pathname, response: jsonResponse({ ok: false, error: 'unauthorized' }, { status: 401 }) };
       }
     } else if (isAdminApiPath(pathname)) {
       const authenticated = await isValidSession(request, password);
       if (!authenticated) {
-        return { pathname, response: new Response('Unauthorized', { status: 401 }) };
+        return { pathname, response: jsonResponse({ ok: false, error: 'unauthorized' }, { status: 401 }) };
       }
     } else {
       const authenticated = await isValidSession(request, password);
       if (!authenticated) {
-        return { pathname, response: new Response('Unauthorized', { status: 401 }) };
+        return { pathname, response: jsonResponse({ ok: false, error: 'unauthorized' }, { status: 401 }) };
       }
     }
   }
