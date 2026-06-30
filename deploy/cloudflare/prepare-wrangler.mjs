@@ -8,7 +8,8 @@
  *   pnpm prepare:cloudflare-worker
  *
  * Optional env:
- *   SYNC_KV_NAMESPACE_ID — skip lookup/create, bind this namespace directly
+ *   SYNC_KV_NAMESPACE_ID — bind this namespace directly (skips lookup/create)
+ *   DEPLOY_ALLOW_KV_CREATE=1 — allow auto-create when no namespace found (Git CI default: off)
  *   CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID — same as deploy.mjs
  */
 import {

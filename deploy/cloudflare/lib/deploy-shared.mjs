@@ -8,7 +8,9 @@ export const ROOT = resolve(__dirname, '../../..');
 export const DEPLOY_DIR = resolve(__dirname, '..');
 export const STATE_FILE = join(DEPLOY_DIR, '.deploy-state.json');
 export const WRANGLER_TOML = join(DEPLOY_DIR, 'wrangler.toml');
-export const KV_NAMESPACE_NAME = 'SYNC_YOUR_COOKIE';
+/** Primary name for new namespaces; lookup also tries legacy SYNC_YOUR_COOKIE. */
+export const KV_NAMESPACE_NAME = 'sync-your-cookie';
+export const KV_NAMESPACE_NAMES = [KV_NAMESPACE_NAME, 'SYNC_YOUR_COOKIE'];
 export const WORKER_NAME = 'sync-your-cookie';
 export const DATASOURCE_CONFIG_KEY = '__syc_datasource_config__';
 export const DEFAULT_STORAGE_KEY = 'sync-your-cookie';
@@ -84,8 +86,8 @@ export function getCfHeaders(env) {
   return { Authorization: `Bearer ${token}` };
 }
 
-async function fetchJson(url, headers) {
-  const res = await fetch(url, { headers });
+async function fetchJson(url, headers, init) {
+  const res = await fetch(url, init ? { ...init, headers: { ...headers, ...init.headers } } : { headers });
   const data = await res.json();
   if (!res.ok || data.success === false) {
     const msg = data.errors?.[0]?.message ?? res.statusText;
@@ -172,37 +174,66 @@ export async function resolveAccountId(env) {
   );
 }
 
-function listKvNamespacesViaWrangler() {
-  const raw = runWranglerCapture('kv namespace list', { cwd: DEPLOY_DIR });
-  const namespaces = JSON.parse(raw);
-  return namespaces.filter(ns => ns.title === KV_NAMESPACE_NAME);
+function namespaceNameMatches(title) {
+  return KV_NAMESPACE_NAMES.includes(title);
 }
 
-async function listKvNamespacesByTitle(env, accountId) {
-  const matches = [];
+async function listAllKvNamespacesViaApi(env, accountId) {
   const headers = getCfHeaders(env);
-  if (headers) {
-    try {
-      const list = await fetchJson(
-        `https://api.cloudflare.com/client/v4/accounts/${accountId}/storage/kv/namespaces?per_page=100`,
-        headers,
-      );
-      matches.push(...(list.result ?? []).filter(ns => ns.title === KV_NAMESPACE_NAME));
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      log(`Cloudflare API 列出 KV 失败，尝试 wrangler: ${message}`);
-    }
+  if (!headers) {
+    return null;
   }
 
-  if (matches.length === 0) {
-    try {
-      matches.push(...listKvNamespacesViaWrangler());
-    } catch {
-      // fall through
+  const all = [];
+  let page = 1;
+  for (;;) {
+    const data = await fetchJson(
+      `https://api.cloudflare.com/client/v4/accounts/${accountId}/storage/kv/namespaces?per_page=100&page=${page}`,
+      headers,
+    );
+    all.push(...(data.result ?? []));
+    const totalPages = data.result_info?.total_pages ?? 1;
+    if (page >= totalPages) {
+      break;
     }
+    page += 1;
+  }
+  return all;
+}
+
+async function findKvNamespacesByName(env, accountId) {
+  const all = await listAllKvNamespacesViaApi(env, accountId);
+  if (all === null) {
+    return { matches: [], apiAvailable: false };
+  }
+  return {
+    matches: all.filter(ns => namespaceNameMatches(ns.title)),
+    apiAvailable: true,
+  };
+}
+
+async function createKvNamespaceViaApi(env, accountId, title) {
+  const headers = getCfHeaders(env);
+  if (!headers) {
+    fail(
+      '无法创建 KV 命名空间：需要 CLOUDFLARE_API_TOKEN（Workers KV Storage:Edit）。或设置 SYNC_KV_NAMESPACE_ID 绑定已有命名空间。',
+    );
   }
 
-  return matches;
+  const data = await fetchJson(
+    `https://api.cloudflare.com/client/v4/accounts/${accountId}/storage/kv/namespaces`,
+    headers,
+    {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title }),
+    },
+  );
+  const namespaceId = data.result?.id;
+  if (!namespaceId) {
+    fail(`KV 命名空间创建失败: ${JSON.stringify(data)}`);
+  }
+  return namespaceId;
 }
 
 function pickExistingNamespaceId(matches, preferredIds = []) {
@@ -212,7 +243,7 @@ function pickExistingNamespaceId(matches, preferredIds = []) {
     }
     const match = matches.find(ns => ns.id === preferredId);
     if (match?.id) {
-      return match.id;
+      return { id: match.id, title: match.title };
     }
   }
 
@@ -221,55 +252,65 @@ function pickExistingNamespaceId(matches, preferredIds = []) {
   }
 
   if (matches.length > 1) {
+    const names = [...new Set(matches.map(ns => ns.title))].join(' / ');
     log(
-      `警告: 发现 ${matches.length} 个同名 KV 命名空间 "${KV_NAMESPACE_NAME}"，绑定 ${matches[0].id}（请在 Dashboard 设置 SYNC_KV_NAMESPACE_ID 固定绑定）`,
+      `警告: 发现 ${matches.length} 个匹配 KV 命名空间 (${names})，绑定 ${matches[0].id}（请在 Dashboard 设置 SYNC_KV_NAMESPACE_ID 固定绑定）`,
     );
   }
 
-  return matches[0].id;
+  return { id: matches[0].id, title: matches[0].title };
 }
 
-export async function ensureKvNamespace(env, accountId, { dryRun = false } = {}) {
+export async function ensureKvNamespace(env, accountId, { dryRun = false, allowCreate = false } = {}) {
   const explicitId = env.SYNC_KV_NAMESPACE_ID?.trim();
   const state = loadState();
-  const preferredIds = [explicitId, state.namespaceId].filter(Boolean);
 
-  const existingMatches = await listKvNamespacesByTitle(env, accountId);
-  const existingId = pickExistingNamespaceId(existingMatches, preferredIds);
-
-  if (existingId) {
-    if (explicitId && explicitId !== existingId) {
-      log(`SYNC_KV_NAMESPACE_ID (${explicitId}) 与按名称找到的命名空间 (${existingId}) 不一致，使用按名称找到的命名空间`);
-    } else if (explicitId) {
-      log(`使用 SYNC_KV_NAMESPACE_ID: ${existingId}`);
-    } else if (state.namespaceId === existingId) {
-      log(`复用已有 KV 命名空间: ${existingId}`);
-    } else {
-      log(`找到已有 KV 命名空间: ${existingId}`);
-    }
-    saveState({ namespaceId: existingId, namespaceName: KV_NAMESPACE_NAME, accountId });
-    return existingId;
-  }
-
+  // Priority 1: explicit env var — skip lookup/create entirely
   if (explicitId && explicitId !== PLACEHOLDER_KV_ID) {
-    log(`使用 SYNC_KV_NAMESPACE_ID（未在账户中验证）: ${explicitId}`);
+    log(`使用 SYNC_KV_NAMESPACE_ID: ${explicitId}`);
     saveState({ namespaceId: explicitId, namespaceName: KV_NAMESPACE_NAME, accountId });
     return explicitId;
   }
 
+  // Priority 2: lookup by name via Cloudflare REST API
+  let existing = null;
+  try {
+    const { matches, apiAvailable } = await findKvNamespacesByName(env, accountId);
+    if (apiAvailable) {
+      existing = pickExistingNamespaceId(matches, [state.namespaceId].filter(Boolean));
+    } else {
+      log('未配置 CLOUDFLARE_API_TOKEN，跳过 KV 按名称查找');
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    log(`Cloudflare API 列出 KV 失败: ${message}`);
+  }
+
+  if (existing?.id) {
+    log(`找到已有 KV 命名空间 "${existing.title}": ${existing.id}`);
+    saveState({ namespaceId: existing.id, namespaceName: existing.title, accountId });
+    return existing.id;
+  }
+
+  // Priority 3: .deploy-state.json cache
+  if (state.namespaceId && state.namespaceId !== PLACEHOLDER_KV_ID) {
+    log(`复用 .deploy-state.json 中的 KV 命名空间: ${state.namespaceId}`);
+    return state.namespaceId;
+  }
+
   if (dryRun) {
     log('dry-run: 跳过 KV 命名空间创建');
-    return state.namespaceId ?? PLACEHOLDER_KV_ID;
+    return PLACEHOLDER_KV_ID;
+  }
+
+  if (!allowCreate) {
+    fail(
+      `未找到 KV 命名空间（已查找: ${KV_NAMESPACE_NAMES.join(', ')}）。请在 Dashboard 设置 SYNC_KV_NAMESPACE_ID，或设置 DEPLOY_ALLOW_KV_CREATE=1 允许自动创建。`,
+    );
   }
 
   log(`创建 KV 命名空间: ${KV_NAMESPACE_NAME}`);
-  const raw = runWranglerCapture(`kv namespace create "${KV_NAMESPACE_NAME}"`, { cwd: DEPLOY_DIR });
-  const parsed = JSON.parse(raw);
-  const namespaceId = parsed.id;
-  if (!namespaceId) {
-    fail(`KV 命名空间创建失败: ${raw}`);
-  }
-
+  const namespaceId = await createKvNamespaceViaApi(env, accountId, KV_NAMESPACE_NAME);
   saveState({ namespaceId, namespaceName: KV_NAMESPACE_NAME, accountId });
   return namespaceId;
 }
@@ -375,9 +416,10 @@ export async function seedDatasourceConfigIfNeeded(env, accountId, syncKvNamespa
   return { seeded: true, config: { ...config, token: undefined } };
 }
 
-export async function prepareWranglerConfig(env, { dryRun = false } = {}) {
+export async function prepareWranglerConfig(env, { dryRun = false, allowCreate = false } = {}) {
   const accountId = await resolveAccountId(env);
-  const namespaceId = await ensureKvNamespace(env, accountId, { dryRun });
+  const allowKvCreate = allowCreate || env.DEPLOY_ALLOW_KV_CREATE === '1';
+  const namespaceId = await ensureKvNamespace(env, accountId, { dryRun, allowCreate: allowKvCreate });
   if (dryRun && namespaceId === PLACEHOLDER_KV_ID) {
     log('dry-run: 跳过 wrangler.toml KV 绑定写入');
     return { accountId, namespaceId };

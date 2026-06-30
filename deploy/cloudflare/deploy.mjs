@@ -174,7 +174,7 @@ function printSummary({ accountId, namespaceId, basePath, workerUrl, env }) {
     console.log('  请在 Dashboard 设置 WEB_ACCESS_PASSWORD 后再访问 Web Viewer\n');
   }
   console.log('自动化项:');
-  console.log('  ✓ KV 命名空间按名称复用（SYNC_YOUR_COOKIE），避免 redeploy 换绑');
+  console.log('  ✓ KV 命名空间按名称复用（sync-your-cookie / SYNC_YOUR_COOKIE），避免 redeploy 换绑');
   console.log('  ✓ Worker 部署 + 运行时认证 + /api/sync 扩展同步 API');
   if (env.DEPLOY_SEED_DATASOURCE === '1' || env.DEPLOY_SEED_DATASOURCE === 'force') {
     console.log('  ✓ datasource 配置写入 SYNC_KV（DEPLOY_SEED_DATASOURCE）');
@@ -216,7 +216,7 @@ async function main() {
 
   buildWeb();
 
-  const { accountId, namespaceId } = await prepareWranglerConfig(env, { dryRun });
+  const { accountId, namespaceId } = await prepareWranglerConfig(env, { dryRun, allowCreate: true });
 
   let workerUrl = `https://${WORKER_NAME}.workers.dev`;
   if (!dryRun) {
