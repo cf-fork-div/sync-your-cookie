@@ -23,10 +23,10 @@ const manifest = Object.assign(
      * if you want to support multiple languages, you can use the following reference
      * https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Internationalization
      */
-    name: 'Sync Your Cookie',
+    name: '__MSG_extensionName__',
     version: packageJson.version,
-    description: 'A browser extension for syncing cookies and localStorage to Cloudflare KV or GitHub Gist',
-    permissions: ['cookies', 'activeTab', 'tabs', 'storage', 'identity'].concat(sidePanelConfig.permissions),
+    description: '__MSG_extensionDescription__',
+    permissions: ['cookies', 'activeTab', 'tabs', 'storage'].concat(sidePanelConfig.permissions),
     host_permissions: ['<all_urls>'],
     options_page: 'options/index.html',
     background: {

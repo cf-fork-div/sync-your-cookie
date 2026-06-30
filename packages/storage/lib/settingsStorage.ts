@@ -1,90 +1,68 @@
-import { BaseStorage, createStorage, StorageType } from './base';
-export interface IStorageItem {
-  value: string;
-  label: string;
-  rawUrl?: string;
-  [key: string]: unknown;
-}
+import { BaseStorage } from './base';
+import {
+  accountProfileStorage,
+  getActiveProfileSettings,
+} from './accountProfileStorage';
+import type { ISettings, IStorageItem } from './settingsTypes';
+import { defaultKey, defaultSettings } from './settingsTypes';
 
-export interface ISettings {
-  storageKeyList: IStorageItem[];
-  storageKey?: string;
-  storageKeyGistId?: string;
-  gistHtmlUrl?: string;
-  protobufEncoding?: boolean;
-  includeLocalStorage?: boolean;
-  localStorageGetting?: boolean;
-  contextMenu?: boolean;
-  encryptionEnabled?: boolean;
-  encryptionPassword?: string;
-}
-const key = 'settings-storage-key';
-const cacheStorageMap = new Map();
-export const defaultKey = 'sync-your-cookie';
-
-const initStorage = (): BaseStorage<ISettings> => {
-  if (cacheStorageMap.has(key)) {
-    return cacheStorageMap.get(key);
-  }
-  const storage = createStorage<ISettings>(
-    key,
-    {
-      storageKeyList: [{ value: defaultKey, label: defaultKey }],
-      storageKey: defaultKey,
-      protobufEncoding: false,
-      includeLocalStorage: true,
-      contextMenu: false,
-    },
-    {
-      storageType: StorageType.Sync,
-      liveUpdate: true,
-    },
-  );
-  cacheStorageMap.set(key, storage);
-  return storage;
-};
-
-const storage = initStorage();
+export type { ISettings, IStorageItem };
+export { defaultKey, defaultSettings };
 
 type TSettingsStorage = BaseStorage<ISettings> & {
   update: (updateInfo: Partial<ISettings>) => Promise<void>;
   addStorageKey: (key: string) => Promise<void>;
   removeStorageKey: (key: string) => Promise<void>;
-  // getStorageKeyList: () => Promise<string[]>;
 };
 
+const emitListeners: Array<() => void> = [];
+
+const notify = () => {
+  emitListeners.forEach(listener => listener());
+};
+
+accountProfileStorage.subscribe(() => {
+  notify();
+});
+
 export const settingsStorage: TSettingsStorage = {
-  ...storage,
+  get: async () => {
+    await accountProfileStorage.ensureMigrated();
+    return getActiveProfileSettings(await accountProfileStorage.get());
+  },
+  getSnapshot: () => getActiveProfileSettings(accountProfileStorage.getSnapshot()),
+  subscribe: (listener: () => void) => {
+    emitListeners.push(listener);
+    const unsubscribeProfile = accountProfileStorage.subscribe(listener);
+    return () => {
+      const index = emitListeners.indexOf(listener);
+      if (index >= 0) {
+        emitListeners.splice(index, 1);
+      }
+      unsubscribeProfile();
+    };
+  },
+  set: async valueOrUpdate => {
+    await accountProfileStorage.ensureMigrated();
+    const current = getActiveProfileSettings(accountProfileStorage.getSnapshot());
+    const next =
+      typeof valueOrUpdate === 'function'
+        ? await valueOrUpdate(current)
+        : valueOrUpdate;
+    await accountProfileStorage.updateActiveProfileSettings(next);
+    notify();
+  },
   update: async (updateInfo: Partial<ISettings>) => {
-    await storage.set(currentInfo => {
-      return { ...currentInfo, ...updateInfo };
-    });
+    await accountProfileStorage.updateActiveProfileSettings(updateInfo);
+    notify();
   },
-
   addStorageKey: async (key: string) => {
-    await storage.set(currentInfo => {
-      const exists = currentInfo.storageKeyList.find(item => item.value === key);
-      if (exists) {
-        return currentInfo;
-      }
-      return {
-        ...currentInfo,
-        storageKeyList: [...currentInfo.storageKeyList, { value: key, label: key }],
-      };
-    });
+    await accountProfileStorage.addStorageKeyToActive(key);
+    notify();
   },
-
   removeStorageKey: async (key: string) => {
-    await storage.set(currentInfo => {
-      const exists = currentInfo.storageKeyList.find(item => item.value === key);
-      if (!exists) {
-        return currentInfo;
-      }
-      return {
-        ...currentInfo,
-        storageKeyList: currentInfo.storageKeyList.filter(item => item.value !== key),
-      };
-    });
+    await accountProfileStorage.removeStorageKeyFromActive(key);
+    notify();
   },
 };
 

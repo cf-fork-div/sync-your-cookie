@@ -1,6 +1,5 @@
 import { ErrorCode, WriteResponse } from '@lib/cloudflare';
 import { MessageErrorCode, SendResponse } from '@lib/message';
-import { accountStorage } from '@sync-your-cookie/storage/lib/accountStorage';
 import { settingsStorage } from '@sync-your-cookie/storage/lib/settingsStorage';
 
 export function debounce<T = unknown>(func: (...args: T[]) => void, timeout = 300) {
@@ -29,41 +28,27 @@ export function checkResponseAndCallback(
   scene: 'push' | 'pull' | 'remove' | 'delete' | 'edit',
   callback: (response?: SendResponse) => void,
 ) {
-  const accountInfo = accountStorage.getSnapshot();
-  if (accountInfo?.selectedProvider === 'github') {
-    const statusCode = res?.status;
-    if (statusCode === 200 || statusCode === 201 || statusCode === 204) {
-      callback({ isOk: true, msg: `${successSceneMap[scene]} success` });
+  if ((res as WriteResponse)?.success) {
+    callback({ isOk: true, msg: `${successSceneMap[scene]} success` });
+  } else {
+    const cloudFlareErrors = [ErrorCode.NotFoundRoute, ErrorCode.NamespaceIdError, ErrorCode.AuthenicationError];
+    const isAccountError = res?.errors?.length && cloudFlareErrors.includes(res.errors[0].code);
+    if (isAccountError) {
+      callback({
+        isOk: false,
+        msg:
+          res.errors[0].code === ErrorCode.NamespaceIdError
+            ? 'cloudflare namespace Id info is incorrect.'
+            : 'cloudflare account info is incorrect.',
+        code: MessageErrorCode.CloudflareNotFoundRoute,
+        result: res,
+      });
     } else {
       const defaultErrMsg =
-        res?.message?.toLowerCase().includes?.(scene) || ((statusCode || res.code) && res?.message)
+        res?.message?.toLowerCase().includes?.(scene) || (res?.code && res?.message)
           ? res?.message
-          : `${scene} fail (status:${statusCode || res.code}), please try again.`;
+          : `${scene} fail, please try again.`;
       callback({ isOk: false, code: res?.code, msg: defaultErrMsg, result: res });
-    }
-  } else {
-    if ((res as WriteResponse)?.success) {
-      callback({ isOk: true, msg: `${successSceneMap[scene]} success` });
-    } else {
-      const cloudFlareErrors = [ErrorCode.NotFoundRoute, ErrorCode.NamespaceIdError, ErrorCode.AuthenicationError];
-      const isAccountError = res?.errors?.length && cloudFlareErrors.includes(res.errors[0].code);
-      if (isAccountError) {
-        callback({
-          isOk: false,
-          msg:
-            res.errors[0].code === ErrorCode.NamespaceIdError
-              ? 'cloudflare namespace Id info is incorrect.'
-              : 'cloudflare account info is incorrect.',
-          code: MessageErrorCode.CloudflareNotFoundRoute,
-          result: res,
-        });
-      } else {
-        const defaultErrMsg =
-          res?.message?.toLowerCase().includes?.(scene) || (res?.code && res?.message)
-            ? res?.message
-            : `${scene} fail, please try again.`;
-        callback({ isOk: false, code: res?.code, msg: defaultErrMsg, result: res });
-      }
     }
   }
 }
@@ -118,7 +103,6 @@ export async function extractDomainAndPort(url: string, isRemoveWWW = true): Pro
               }
             }
           } else {
-            // const match = hostname.match(/([^.]+\.[^.]+)$/);
             resolve([hostname, port, hostname]);
           }
         },

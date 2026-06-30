@@ -4,15 +4,30 @@ import {
   pushCookieUsingMessage,
   removeCookieUsingMessage,
 } from '@lib/message';
+import type { MessageKey } from '@lib/i18n/messages';
 import { domainConfigStorage } from '@sync-your-cookie/storage/lib/domainConfigStorage';
 import { domainStatusStorage } from '@sync-your-cookie/storage/lib/domainStatusStorage';
 
 import { toast as Toast } from 'sonner';
+import { useI18n } from '../i18n/useI18n';
 import { useStorageSuspense } from './index';
 
+const sceneFailKey: Record<'push' | 'pull' | 'remove' | 'delete' | 'edit', MessageKey> = {
+  push: 'pushFail',
+  pull: 'pullFailScene',
+  remove: 'removeFail',
+  delete: 'deleteFail',
+  edit: 'editFail',
+};
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const catchHandler = (err: any, scene: 'push' | 'pull' | 'remove' | 'delete' | 'edit', toast: typeof Toast) => {
-  const defaultMsg = `${scene} fail`;
+export const catchHandler = (
+  err: any,
+  scene: 'push' | 'pull' | 'remove' | 'delete' | 'edit',
+  toast: typeof Toast,
+  t?: (key: MessageKey, params?: Record<string, string | number>) => string,
+) => {
+  const defaultMsg = t ? t(sceneFailKey[scene]) : `${scene} fail`;
   const code = err?.code;
   const settingErrors = [
     MessageErrorCode.AccountCheck,
@@ -23,7 +38,7 @@ export const catchHandler = (err: any, scene: 'push' | 'pull' | 'remove' | 'dele
   if (settingErrors.includes(code)) {
     toast.error(err?.msg || err?.result?.message || defaultMsg, {
       action: {
-        label: 'go to settings',
+        label: t ? t('goToSettings') : 'go to settings',
         onClick: () => {
           chrome.runtime.openOptionsPage();
         },
@@ -36,6 +51,7 @@ export const catchHandler = (err: any, scene: 'push' | 'pull' | 'remove' | 'dele
 };
 
 export const useCookieAction = (host: string, toast: typeof Toast) => {
+  const { t } = useI18n();
   const domainStatus = useStorageSuspense(domainStatusStorage);
   const domainConfig = useStorageSuspense(domainConfigStorage);
 
@@ -47,14 +63,14 @@ export const useCookieAction = (host: string, toast: typeof Toast) => {
     })
       .then(res => {
         if (res.isOk) {
-          toast.success('Pushed success');
+          toast.success(t('pushedSuccess'));
         } else {
-          toast.error(res.msg || 'Pushed fail');
+          toast.error(res.msg || t('pushedFail'));
         }
         console.log('res', res);
       })
       .catch(err => {
-        catchHandler(err, 'push', toast);
+        catchHandler(err, 'push', toast, t);
       });
   };
 
@@ -67,13 +83,13 @@ export const useCookieAction = (host: string, toast: typeof Toast) => {
       .then(res => {
         console.log('res', res);
         if (res.isOk) {
-          toast.success('Pull success');
+          toast.success(t('pullSuccess'));
         } else {
-          toast.error(res.msg || 'Pull fail');
+          toast.error(res.msg || t('pullFail'));
         }
       })
       .catch(err => {
-        catchHandler(err, 'pull', toast);
+        catchHandler(err, 'pull', toast, t);
       });
   };
 
@@ -84,15 +100,15 @@ export const useCookieAction = (host: string, toast: typeof Toast) => {
       .then(async res => {
         console.log('res', res);
         if (res.isOk) {
-          toast.success(res.msg || 'success');
+          toast.success(res.msg || t('success'));
           await domainConfigStorage.removeItem(host);
         } else {
-          toast.error(res.msg || 'Removed fail');
+          toast.error(res.msg || t('removedFail'));
         }
         console.log('res', res);
       })
       .catch(err => {
-        catchHandler(err, 'remove', toast);
+        catchHandler(err, 'remove', toast, t);
       });
   };
 

@@ -1,48 +1,60 @@
-import { BaseStorage, createStorage, StorageType } from './base';
+import { BaseStorage } from './base';
+import { accountProfileStorage, getActiveProfile } from './accountProfileStorage';
 
 export interface AccountInfo {
   accountId?: string;
   namespaceId?: string;
   token?: string;
-  selectedProvider?: 'cloudflare' | 'github';
-  githubAccessToken?: string;
-  avatarUrl?: string;
-  name?: string | null;
-  bio?: string | null;
-  email?: string | null;
 }
-const key = 'cloudflare-account-storage-key';
-const cacheStorageMap = new Map();
-
-const initStorage = (): BaseStorage<AccountInfo> => {
-  if (cacheStorageMap.has(key)) {
-    return cacheStorageMap.get(key);
-  }
-  const storage = createStorage<AccountInfo>(
-    key,
-    {
-      selectedProvider: 'cloudflare',
-    },
-    {
-      storageType: StorageType.Sync,
-      liveUpdate: true,
-    },
-  );
-  cacheStorageMap.set(key, storage);
-  return storage;
-};
-
-const storage = initStorage();
 
 type AccountInfoStorage = BaseStorage<AccountInfo> & {
   update: (updateInfo: AccountInfo) => Promise<void>;
 };
 
+const toAccountInfo = (profile?: { accountId?: string; namespaceId?: string; token?: string }): AccountInfo => ({
+  accountId: profile?.accountId,
+  namespaceId: profile?.namespaceId,
+  token: profile?.token,
+});
+
+const emitListeners: Array<() => void> = [];
+
+const notify = () => {
+  emitListeners.forEach(listener => listener());
+};
+
+accountProfileStorage.subscribe(() => {
+  notify();
+});
+
 export const accountStorage: AccountInfoStorage = {
-  ...storage,
+  get: async () => {
+    await accountProfileStorage.ensureMigrated();
+    const profile = await accountProfileStorage.getActiveProfile();
+    return toAccountInfo(profile);
+  },
+  getSnapshot: () => toAccountInfo(getActiveProfile(accountProfileStorage.getSnapshot())),
+  subscribe: (listener: () => void) => {
+    emitListeners.push(listener);
+    const unsubscribeProfile = accountProfileStorage.subscribe(listener);
+    return () => {
+      const index = emitListeners.indexOf(listener);
+      if (index >= 0) {
+        emitListeners.splice(index, 1);
+      }
+      unsubscribeProfile();
+    };
+  },
+  set: async valueOrUpdate => {
+    await accountProfileStorage.ensureMigrated();
+    const current = toAccountInfo(getActiveProfile(accountProfileStorage.getSnapshot()));
+    const next =
+      typeof valueOrUpdate === 'function' ? await valueOrUpdate(current) : valueOrUpdate;
+    await accountProfileStorage.updateActiveProfile(next);
+    notify();
+  },
   update: async (updateInfo: AccountInfo) => {
-    await storage.set(currentInfo => {
-      return { ...currentInfo, ...updateInfo };
-    });
+    await accountProfileStorage.updateActiveProfile(updateInfo);
+    notify();
   },
 };

@@ -13,6 +13,7 @@
     "build:firefox": "cross-env __FIREFOX__=true turbo build",
     "dev-server": "pnpm -F hmr build && pnpm -F hmr dev-server",
     "dev:apps": "cross-env __DEV__=true turbo run dev --filter=./pages/* --filter=chrome-extension --filter=@sync-your-cookie/hmr --concurrency 15",
+    "dev:web": "pnpm -F @sync-your-cookie/protobuf build && pnpm -F @sync-your-cookie/shared build && pnpm -F @sync-your-cookie/ui build && pnpm -F @sync-your-cookie/web dev",
     "dev": "cross-env __DEV__=true turbo run dev --concurrency 25",
     "dev:firefox": "cross-env __DEV__=true __FIREFOX__=true turbo dev --concurrency 20",
     "zip": "pnpm build && pnpm -F zipper zip",
@@ -20,7 +21,9 @@
     "type-check": "turbo type-check",
     "lint": "turbo lint",
     "lint:fix": "turbo lint:fix",
-    "prettier": "turbo prettier"
+    "prettier": "turbo prettier",
+    "build:cloudflare-pages": "node deploy/cloudflare/build-pages.mjs",
+    "deploy:cloudflare": "node deploy/cloudflare/deploy.mjs"
   },
   "type": "module",
   "dependencies": {
@@ -54,7 +57,9 @@
     "tslib": "^2.6.2",
     "turbo": "^2.0.3",
     "typescript": "5.2.2",
-    "vite": "^5.2.11"
+    "typescript-transform-paths": "^3.4.10",
+    "vite": "^5.2.11",
+    "wrangler": "^3.114.0"
   },
   "packageManager": "pnpm@9.1.1",
   "engines": {

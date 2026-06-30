@@ -1,8 +1,9 @@
-import { useTheme, withErrorBoundary, withSuspense } from '@sync-your-cookie/shared';
+import { ErrorFallback, LoadingFallback, useDocumentTitle, useTheme, withErrorBoundary, withSuspense } from '@sync-your-cookie/shared';
 import { Toaster } from '@sync-your-cookie/ui';
 import { useEffect } from 'react';
 import CookieTable from './components/CookieTable';
 const SidePanel = () => {
+  useDocumentTitle('pageTitleSidePanel');
   useEffect(() => {
     chrome.runtime.onMessage.addListener(message => {
       // Might not be as easy if there are multiple side panels open
@@ -36,4 +37,4 @@ const SidePanel = () => {
   );
 };
 
-export default withErrorBoundary(withSuspense(SidePanel, <div> Loading ... </div>), <div> Error Occur </div>);
+export default withErrorBoundary(withSuspense(SidePanel, <LoadingFallback />), <ErrorFallback />);

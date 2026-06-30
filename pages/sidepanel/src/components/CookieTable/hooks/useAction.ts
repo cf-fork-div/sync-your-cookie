@@ -1,4 +1,4 @@
-import { useCookieAction } from '@sync-your-cookie/shared';
+import { useCookieAction, useI18n } from '@sync-your-cookie/shared';
 import type { Cookie } from '@sync-your-cookie/storage/lib/cookieStorage';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -6,6 +6,7 @@ import { CookieItem } from './../index';
 import { useSelected } from './useSelected';
 
 export const useAction = (cookie: Cookie) => {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [currentSearchStr, setCurrentSearchStr] = useState('');
   const {
@@ -63,11 +64,11 @@ export const useAction = (cookie: Cookie) => {
   const handleCopy = (domain: string, isJSON: boolean = false) => {
     const cookies = cookie.domainCookieMap?.[domain]?.cookies || [];
     if (cookies.length === 0) {
-      toast.warning('no cookie to copy, check again.');
+      toast.warning(t('noCookieToCopy'));
       return;
     }
     if (!navigator.clipboard) {
-      toast.warning('please check clipboard permission settings before copy ');
+      toast.warning(t('checkClipboardPermission'));
       return;
     }
     let copyText = '';
@@ -85,11 +86,11 @@ export const useAction = (cookie: Cookie) => {
     }
     navigator?.clipboard?.writeText(copyText).then(
       () => {
-        toast.success('Copy success');
+        toast.success(t('copySuccess'));
       },
       err => {
         console.log('err', err);
-        toast.error('Copy failed');
+        toast.error(t('copyFailed'));
       },
     );
   };

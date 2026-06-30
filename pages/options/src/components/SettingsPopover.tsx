@@ -1,18 +1,21 @@
-import { GithubApi, pullCookies, useStorageSuspense } from '@sync-your-cookie/shared';
-import { accountStorage } from '@sync-your-cookie/storage/lib/accountStorage';
+import { pullCookies, useI18n, useStorageSuspense } from '@sync-your-cookie/shared';
+import { accountProfileStorage } from '@sync-your-cookie/storage/lib/accountProfileStorage';
 import { cookieStorage } from '@sync-your-cookie/storage/lib/cookieStorage';
 import { domainStatusStorage } from '@sync-your-cookie/storage/lib/domainStatusStorage';
 import { settingsStorage } from '@sync-your-cookie/storage/lib/settingsStorage';
 import { Input, Label, Popover, PopoverContent, PopoverTrigger, Switch, SyncTooltip } from '@sync-your-cookie/ui';
-import { Eye, EyeOff, Info, Lock, SquareArrowOutUpRight } from 'lucide-react';
+import { Eye, EyeOff, Info, Lock } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { StorageSelect } from './StorageSelect';
+
 interface SettingsPopover {
   trigger: React.ReactNode;
 }
 
 export function SettingsPopover({ trigger }: SettingsPopover) {
+  const { t } = useI18n();
   const settingsInfo = useStorageSuspense(settingsStorage);
+  const profileState = useStorageSuspense(accountProfileStorage);
   const [selectOpen, setSelectOpen] = useState(false);
   const [openEye, setOpenEye] = useState(false);
 
@@ -46,19 +49,14 @@ export function SettingsPopover({ trigger }: SettingsPopover) {
 
   useEffect(() => {
     reset();
-  }, [settingsInfo.storageKey]);
+  }, [settingsInfo.storageKey, profileState.activeProfileId]);
+
   const handleToggleEye = () => {
     setOpenEye(!openEye);
   };
+
   const handleOpenChange = (open: boolean) => {
     if (selectOpen) return;
-    // if (open === false && (settingsInfo.storageKey !== storageKey || !storageKey)) {
-    //   console.log('open', open);
-    //   settingsStorage.update({
-    //     storageKey: storageKey || defaultKey,
-    //   });
-    //   domainConfigStorage.resetState();
-    // }
   };
 
   const handleSelectOpenChange = (open: boolean) => {
@@ -67,25 +65,11 @@ export function SettingsPopover({ trigger }: SettingsPopover) {
   };
 
   const handleAddStorageKey = async (key: string) => {
-    const accountStorageInfo = await accountStorage.getSnapshot();
-    if (accountStorageInfo?.selectedProvider === 'github') {
-      const gistId = settingsInfo.storageKeyGistId;
-      await GithubApi.instance.addGistFile(gistId!, key);
-      await GithubApi.instance.initStorageKeyList();
-    } else {
-      await settingsStorage.addStorageKey(key);
-    }
+    await settingsStorage.addStorageKey(key);
   };
 
   const handleRemoveStorageKey = async (key: string) => {
-    const accountStorageInfo = await accountStorage.getSnapshot();
-    if (accountStorageInfo?.selectedProvider === 'github') {
-      const gistId = settingsInfo.storageKeyGistId;
-      await GithubApi.instance.deleteGistFile(gistId!, key);
-      await GithubApi.instance.initStorageKeyList();
-    } else {
-      await settingsStorage.removeStorageKey(key);
-    }
+    await settingsStorage.removeStorageKey(key);
   };
 
   return (
@@ -94,28 +78,14 @@ export function SettingsPopover({ trigger }: SettingsPopover) {
       <PopoverContent align="start" className="w-[328px]">
         <div className="grid gap-4">
           <div className="space-y-2">
-            <h3 className="leading-none font-medium text-base">Save Settings</h3>
-            <p className="text-muted-foreground text-sm">Set the save format. </p>
+            <h3 className="leading-none font-medium text-base">{t('saveSettings')}</h3>
+            <p className="text-muted-foreground text-sm">{t('saveSettingsDesc')}</p>
           </div>
           <div className="gap-2">
             <div className="flex items-center gap-4 mb-4">
               <Label className="w-[136px] block text-right" htmlFor="storage-key">
-                <div className="flex gap-2 justify-end">
-                  Storage Key
-                  {settingsInfo.gistHtmlUrl ? (
-                    <a href={settingsInfo.gistHtmlUrl} target="_blank" rel="noreferrer">
-                      <SquareArrowOutUpRight size={16} />
-                    </a>
-                  ) : null}
-                </div>
+                {t('storageKey')}
               </Label>
-              {/* <Input
-                onChange={handleKeyInputChange}
-                id="storage-key"
-                value={storageKey}
-                className="h-8 flex-1"
-                placeholder={defaultKey}
-              /> */}
               <StorageSelect
                 options={settingsInfo.storageKeyList}
                 open={selectOpen}
@@ -128,7 +98,7 @@ export function SettingsPopover({ trigger }: SettingsPopover) {
             </div>
             <div className="flex items-center gap-4 mb-4">
               <Label className="whitespace-nowrap block w-[136px] justify-end text-right" htmlFor="encoding">
-                Protobuf Encoding
+                {t('protobufEncoding')}
               </Label>
               <Switch
                 onCheckedChange={checked => handleCheckChange(checked, 'protobufEncoding')}
@@ -141,7 +111,7 @@ export function SettingsPopover({ trigger }: SettingsPopover) {
               <Label
                 className="items-center  whitespace-nowrap flex w-[136px] justify-end text-right"
                 htmlFor="include">
-                Include LocalStorage
+                {t('includeLocalStorage')}
               </Label>
               <div className="flex items-center gap-1">
                 <Switch
@@ -149,7 +119,7 @@ export function SettingsPopover({ trigger }: SettingsPopover) {
                   checked={settingsInfo.includeLocalStorage}
                   id="include"
                 />
-                <SyncTooltip title="Note: LocalStorage cannot supports Auto Push & If the retrieval fails, the page will be reloaded once to try again.">
+                <SyncTooltip title={t('includeLocalStorageNote')}>
                   <Info className="mx-2" size={18} />
                 </SyncTooltip>
               </div>
@@ -159,7 +129,7 @@ export function SettingsPopover({ trigger }: SettingsPopover) {
               <Label
                 className="items-center whitespace-nowrap flex w-[136px] justify-end text-right"
                 htmlFor="contextMenu">
-                Show ContextMenu
+                {t('showContextMenu')}
               </Label>
               <div className="flex items-center gap-1">
                 <Switch
@@ -176,7 +146,7 @@ export function SettingsPopover({ trigger }: SettingsPopover) {
                   className="items-center whitespace-nowrap flex w-[136px] justify-end text-right"
                   htmlFor="encryption">
                   <Lock size={14} className="mr-1" />
-                  E2E Encryption
+                  {t('e2eEncryption')}
                 </Label>
                 <div className="flex items-center gap-1">
                   <Switch
@@ -185,7 +155,7 @@ export function SettingsPopover({ trigger }: SettingsPopover) {
                     disabled={!settingsInfo.protobufEncoding}
                     id="encryption"
                   />
-                  <SyncTooltip title="End-to-end encryption requires Protobuf Encoding to be enabled. Your data will be encrypted with AES-256-GCM before being sent to the cloud.">
+                  <SyncTooltip title={t('e2eEncryptionNote')}>
                     <Info className="mx-2" size={18} />
                   </SyncTooltip>
                 </div>
@@ -196,7 +166,7 @@ export function SettingsPopover({ trigger }: SettingsPopover) {
                   <Label
                     className="items-center mr-2 whitespace-nowrap flex w-[136px] justify-end text-right"
                     htmlFor="encryptionPassword">
-                    Password
+                    {t('password')}
                   </Label>
                   <Input
                     type={openEye ? 'text' : 'password'}
@@ -204,7 +174,7 @@ export function SettingsPopover({ trigger }: SettingsPopover) {
                     value={settingsInfo.encryptionPassword || ''}
                     onChange={handlePasswordChange}
                     className="h-8 flex-1"
-                    placeholder="Enter encryption password"
+                    placeholder={t('encryptionPasswordPlaceholder')}
                   />
                   <span
                     role="button"

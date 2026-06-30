@@ -1,5 +1,6 @@
-import { extractDomainAndPort, useTheme, withErrorBoundary, withSuspense } from '@sync-your-cookie/shared';
+import { extractDomainAndPort, ErrorFallback, LoadingFallback, useDocumentTitle, useI18n, useStorageSuspense, useTheme, withErrorBoundary, withSuspense } from '@sync-your-cookie/shared';
 
+import { accountProfileStorage } from '@sync-your-cookie/storage/lib/accountProfileStorage';
 import { Button, Image, Spinner, Toaster } from '@sync-your-cookie/ui';
 import { CloudDownload, CloudUpload, Copyright, PanelRightOpen, RotateCw, Settings } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -9,6 +10,12 @@ import { useDomainConfig } from './hooks/useDomainConfig';
 
 const Popup = () => {
   const { theme } = useTheme();
+  const { t } = useI18n();
+  useDocumentTitle('pageTitlePopup');
+  const profileState = useStorageSuspense(accountProfileStorage);
+  const activeProfile = profileState.accountProfileList.find(
+    profile => profile.id === profileState.activeProfileId,
+  );
   const [activeTabUrl, setActiveTabUrl] = useState('');
   const [favIconUrl, setFavIconUrl] = useState('');
 
@@ -53,7 +60,14 @@ const Popup = () => {
             className="h-10 w-10 overflow-hidden object-contain "
             alt="logo"
           />
-          <h2 className="text-base text-foreground	font-bold">SyncYourCookie</h2>
+          <div className="flex flex-col">
+            <h2 className="text-base text-foreground	font-bold">{t('appName')}</h2>
+            {activeProfile ? (
+              <span className="text-xs text-muted-foreground truncate max-w-[180px]">
+                {t('currentProfile', { name: activeProfile.name })}
+              </span>
+            ) : null}
+          </div>
         </div>
         <Button
           variant="ghost"
@@ -87,7 +101,7 @@ const Popup = () => {
                 ) : (
                   <CloudUpload size={16} className="mr-2" />
                 )}
-                Push cookie
+                {t('pushCookie')}
               </Button>
               <AutoSwitch
                 disabled={!activeTabUrl}
@@ -107,7 +121,7 @@ const Popup = () => {
                 ) : (
                   <CloudDownload size={16} className="mr-2" />
                 )}
-                Pull cookie
+                {t('pullCookie')}
               </Button>
 
               <AutoSwitch
@@ -136,7 +150,7 @@ const Popup = () => {
                 });
               }}>
               <PanelRightOpen size={16} className="mr-2" />
-              Open Manager
+              {t('openManager')}
             </Button>
           </div>
           <Toaster
@@ -179,4 +193,4 @@ const Popup = () => {
   );
 };
 
-export default withErrorBoundary(withSuspense(Popup, <div> Loading ... </div>), <div> Error Occur </div>);
+export default withErrorBoundary(withSuspense(Popup, <LoadingFallback />), <ErrorFallback />);

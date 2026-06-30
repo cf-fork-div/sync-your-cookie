@@ -1,4 +1,5 @@
 import { Input } from '@sync-your-cookie/ui';
+import { useI18n } from '@sync-your-cookie/shared';
 import { Search, X } from 'lucide-react';
 import { FC, useState } from 'react';
 
@@ -7,6 +8,7 @@ export interface SearchInputProps {
 }
 
 export const SearchInput: FC<SearchInputProps> = props => {
+  const { t } = useI18n();
   const { onEnter } = props;
   const [searchVal, setSearchVal] = useState('');
   return (
@@ -26,7 +28,7 @@ export const SearchInput: FC<SearchInputProps> = props => {
           }
         }}
         className="bg-gray-100 pl-[36px]"
-        placeholder="Filter"
+        placeholder={t('filter')}
       />
       {searchVal && (
         <X

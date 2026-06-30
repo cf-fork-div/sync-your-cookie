@@ -1,13 +1,26 @@
 import {
+  ErrorFallback,
+  LoadingFallback,
+  useDocumentTitle,
+  useI18n,
   useStorageSuspense,
   useTheme,
   verifyCloudflareToken,
   withErrorBoundary,
   withSuspense,
 } from '@sync-your-cookie/shared';
+import { accountProfileStorage } from '@sync-your-cookie/storage/lib/accountProfileStorage';
 import { accountStorage } from '@sync-your-cookie/storage/lib/accountStorage';
-import { initStorageKey } from '@sync-your-cookie/storage/lib/settingsStorage';
 import {
+  AccountProfileDropdown,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Button,
   Card,
   CardContent,
@@ -16,26 +29,40 @@ import {
   CardTitle,
   Input,
   Label,
-  SyncTooltip,
+  LanguageDropdown,
   ThemeDropdown,
   Toaster,
 } from '@sync-your-cookie/ui';
-import { Eye, EyeOff, Info, Loader2, LogOut, SlidersVertical } from 'lucide-react';
-import { useState } from 'react';
+import { Eye, EyeOff, Loader2, Plus, SlidersVertical, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { SettingsPopover } from './components/SettingsPopover';
-import { useGithub } from './hooks/useGithub';
 
 const Options = () => {
+  const { t, localePreference, setLocale } = useI18n();
+  useDocumentTitle('pageTitleOptions');
+  const profileState = useStorageSuspense(accountProfileStorage);
   const accountInfo = useStorageSuspense(accountStorage);
+  const [profileName, setProfileName] = useState('');
   const [token, setToken] = useState(accountInfo.token);
   const [accountId, setAccountId] = useState(accountInfo.accountId);
   const [namespaceId, setNamespaceId] = useState(accountInfo.namespaceId);
   const [openEye, setOpenEye] = useState(false);
-  const { loading, handleLaunchAuth } = useGithub();
   const [loadingSave, setLoadingSave] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const { setTheme } = useTheme();
+
+  const activeProfile = profileState.accountProfileList.find(
+    profile => profile.id === profileState.activeProfileId,
+  );
+
+  useEffect(() => {
+    setToken(accountInfo.token);
+    setAccountId(accountInfo.accountId);
+    setNamespaceId(accountInfo.namespaceId);
+    setProfileName(activeProfile?.name || '');
+  }, [accountInfo.token, accountInfo.accountId, accountInfo.namespaceId, activeProfile?.name, activeProfile?.id]);
 
   const handleTokenInput: React.ChangeEventHandler<HTMLInputElement> = evt => {
     setToken(evt.target.value);
@@ -49,12 +76,52 @@ const Options = () => {
     setNamespaceId(evt.target.value);
   };
 
+  const handleProfileNameInput: React.ChangeEventHandler<HTMLInputElement> = evt => {
+    setProfileName(evt.target.value);
+  };
+
+  const handleSwitchProfile = async (id: string) => {
+    if (id === profileState.activeProfileId) {
+      return;
+    }
+    await accountProfileStorage.setActiveProfileId(id);
+    const profile = profileState.accountProfileList.find(item => item.id === id);
+    if (profile) {
+      toast.success(t('profileSwitched', { name: profile.name }));
+    }
+  };
+
+  const handleAddProfile = async () => {
+    const count = profileState.accountProfileList.length;
+    const profile = await accountProfileStorage.addProfile(
+      t('profileNumber', { number: count + 1 }),
+    );
+    toast.success(t('profileAdded'));
+    setProfileName(profile.name);
+    setToken('');
+    setAccountId('');
+    setNamespaceId('');
+  };
+
+  const handleDeleteProfile = async () => {
+    if (!activeProfile) {
+      return;
+    }
+    if (profileState.accountProfileList.length <= 1) {
+      toast.warning(t('cannotDeleteLastProfile'));
+      return;
+    }
+    await accountProfileStorage.deleteProfile(activeProfile.id);
+    setDeleteDialogOpen(false);
+    toast.success(t('profileDeleted'));
+  };
+
   const handleSave = async () => {
     if (!accountId?.trim() || !token?.trim()) {
-      toast.warning('Account ID and Token are required');
+      toast.warning(t('accountIdTokenRequired'));
       return;
     } else if (!namespaceId?.trim()) {
-      toast.warning('NamespaceId are required');
+      toast.warning(t('namespaceIdRequired'));
       return;
     }
     try {
@@ -63,31 +130,31 @@ const Options = () => {
       if (res.success === true) {
         const [message] = res.messages;
         if (message?.message) {
-          toast.success('Save Success (' + message.message.replace('API', '') + ')');
+          toast.success(t('saveSuccessWithMessage', { message: message.message.replace('API', '') }));
         } else {
-          toast.success('Save Success');
+          toast.success(t('saveSuccess'));
         }
-        accountStorage.update({
-          selectedProvider: 'cloudflare',
-          accountId: accountId,
-          namespaceId: namespaceId,
-          token: token,
+        await accountProfileStorage.updateActiveProfile({
+          name: profileName.trim() || activeProfile?.name || t('profileNumber', { number: 1 }),
+          accountId: accountId.trim(),
+          namespaceId: namespaceId.trim(),
+          token: token.trim(),
         });
       } else {
         const [error] = res.errors;
         if (error?.message) {
-          toast.error('Verify Failed: ' + error.message);
+          toast.error(t('verifyFailed', { message: error.message }));
         } else {
-          toast.error('Verify Failed: Unknown Error');
+          toast.error(t('verifyFailedUnknown'));
         }
       }
     } catch (err: any) {
       console.log('error', err);
       const [error] = err?.errors || [];
       if (error?.message) {
-        toast.error('Verify Failed: ' + error.message);
+        toast.error(t('verifyFailed', { message: error.message }));
       } else {
-        toast.error('Verify Failed: Unknown Error');
+        toast.error(t('verifyFailedUnknown'));
       }
     } finally {
       setLoadingSave(false);
@@ -98,174 +165,23 @@ const Options = () => {
     setOpenEye(!openEye);
   };
 
-  const handleLogout = () => {
-    accountStorage.update({
-      githubAccessToken: '',
-      selectedProvider: 'cloudflare',
-      name: '',
-      avatarUrl: '',
-      bio: '',
-      email: '',
-    });
-    toast.success('Log out Success');
-    initStorageKey();
-  };
-
-  const renderAccount = () => {
-    if (accountInfo.selectedProvider === 'github' && accountInfo.githubAccessToken) {
-      return (
-        <CardContent className="w-full">
-          <div>
-            <div className="flex relative items-center">
-              <img className="size-12 rounded-full" src={accountInfo.avatarUrl} alt="" />
-              <div className="flex  flex-col flex-1 ml-4">
-                <SyncTooltip
-                  title={
-                    <div>
-                      <p>
-                        githubAccessToken: <span className="text-orange-500">{accountInfo.githubAccessToken}</span>
-                      </p>
-                      <p>Your accessToken is only stored on your local device.</p>
-                    </div>
-                  }>
-                  <p className="text-base flex items-center font-medium">
-                    <span className="mr-2">{accountInfo.name}</span>
-                    <Info className="" size={16} />
-                  </p>
-                </SyncTooltip>
-                <p className="text-xs">{accountInfo.email || accountInfo.bio}</p>
-              </div>
-            </div>
-            <Button onClick={handleLogout} type="submit" variant="outline" className="w-full mt-4">
-              <LogOut size={16} className="mr-2" />
-              Log out
-            </Button>
-          </div>
-        </CardContent>
-      );
-    }
-    return (
-      <>
-        <CardContent>
-          <CardDescription className="mt-[-16px] mb-4">
-            Enter your cloudflare account Or using Github Gist
-          </CardDescription>
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <div className="flex justify-between items-center ">
-                <Label htmlFor="token">Authorization Token</Label>
-                <p className="flex items-center text-center text-xs">
-                  <a
-                    href="https://github.com/jackluson/sync-your-cookie/blob/main/how-to-use.md"
-                    target="_blank"
-                    className=" cursor-pointer underline mx-2"
-                    rel="noreferrer">
-                    How to get it?
-                  </a>
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => handleToggleEye()}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        handleToggleEye();
-                      }
-                    }}
-                    className="cursor-pointer">
-                    {openEye ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </span>
-                </p>
-              </div>
-              <Input
-                id="token"
-                value={token}
-                onChange={handleTokenInput}
-                className="w-full mb-2"
-                type={openEye ? 'text' : 'password'}
-                placeholder="please input your cloudflare token "
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <div className="flex justify-between items-center ">
-                <Label htmlFor="accountId">Account ID</Label>
-                <p className="flex items-center text-center text-xs">
-                  Don’t have a cloudflare Account yet?
-                  <a
-                    href="https://dash.cloudflare.com/sign-up"
-                    target="_blank"
-                    className=" cursor-pointer underline ml-2"
-                    rel="noreferrer">
-                    Sign up
-                  </a>
-                </p>
-              </div>
-              <Input
-                id="accountId"
-                value={accountId}
-                onChange={handleAccountInput}
-                className="w-full mb-2"
-                type="text"
-                placeholder="please input your cloudflare account ID "
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <div className="flex justify-between items-center ">
-                <Label htmlFor="namespaceId">Namespace ID</Label>
-                {namespaceId?.trim() && accountId?.trim() ? (
-                  <a
-                    href={`https://dash.cloudflare.com/${accountId.trim()}/workers/kv/namespaces/${namespaceId.trim()}`}
-                    target="_blank"
-                    className=" cursor-pointer underline ml-2"
-                    rel="noreferrer">
-                    Go to namespace
-                  </a>
-                ) : null}
-
-                {/* {namespaceId ? null : (
-                      <div className="text-center ml-16 text-sm">
-                        Don’t have an ID yet?
-                        <span className=" cursor-pointer underline ml-2">Create</span>
-                      </div>
-                    )} */}
-              </div>
-              <Input
-                id="namespaceId"
-                value={namespaceId}
-                onChange={handleNamespaceInput}
-                className="w-full mb-4"
-                type="text"
-                placeholder="please input namespace ID "
-              />
-            </div>
-            <Button disabled={loadingSave} onClick={handleSave} type="submit" className="w-full">
-              {loadingSave ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Save
-            </Button>
-          </div>
-        </CardContent>
-        <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
-          <span className="bg-background text-muted-foreground relative z-10 px-2">Or continue with</span>
-        </div>
-        <CardContent>
-          <Button disabled={loading} onClick={handleLaunchAuth} className="w-full mt-6" variant="outline" size="sm">
-            <img
-              src={chrome.runtime.getURL('popup/github.svg')}
-              className="ml-1 h-4 w-4 overflow-hidden object-contain "
-              alt="logo"
-            />
-            <span className="ml-2">Using with GitHub</span>
-          </Button>
-        </CardContent>
-      </>
-    );
-  };
-
   return (
     <div className="w-screen h-screen absolute top-0 left-0 right-0 bottom-0 flex flex-col items-center justify-center p-4 bg-background ">
-      <div className="fixed right-8 top-8 ">
-        <ThemeDropdown setTheme={setTheme} />
+      <div className="fixed right-8 top-8 flex gap-2">
+        <LanguageDropdown
+          locale={localePreference}
+          setLocale={setLocale}
+          labels={{
+            language: t('language'),
+            followSystem: t('followSystem'),
+            english: t('english'),
+            chinese: t('chinese'),
+          }}
+        />
+        <ThemeDropdown
+          setTheme={setTheme}
+          labels={{ light: t('light'), dark: t('dark'), system: t('system'), toggleTheme: t('toggleTheme') }}
+        />
       </div>
       <div className=" mt-[-80px] flex justify-center flex-col items-center">
         <img
@@ -276,8 +192,22 @@ const Options = () => {
         <div className="w-full">
           <Card className="mx-auto min-w-[400px] max-w-lg">
             <CardHeader className="relative">
-              <div className="flex justify-between">
-                <CardTitle className="text-xl">Settings</CardTitle>
+              <div className="flex justify-between items-center gap-2 pr-8">
+                <CardTitle className="text-xl">{t('settings')}</CardTitle>
+                <AccountProfileDropdown
+                  profiles={profileState.accountProfileList.map(profile => ({
+                    id: profile.id,
+                    name: profile.name,
+                  }))}
+                  activeProfileId={profileState.activeProfileId}
+                  onSelect={handleSwitchProfile}
+                  onAdd={handleAddProfile}
+                  labels={{
+                    accountProfile: t('accountProfile'),
+                    addProfile: t('addProfile'),
+                    switchProfile: t('switchProfile'),
+                  }}
+                />
               </div>
               <SettingsPopover
                 trigger={
@@ -287,13 +217,144 @@ const Options = () => {
                 }
               />
             </CardHeader>
-            {renderAccount()}
+            <CardContent>
+              <CardDescription className="mt-[-16px] mb-4">{t('enterCloudflareAccount')}</CardDescription>
+              <div className="grid gap-4">
+                <div className="grid gap-2">
+                  <div className="flex justify-between items-center">
+                    <Label htmlFor="profileName">{t('profileName')}</Label>
+                    <div className="flex gap-1">
+                      <Button variant="outline" size="icon" className="size-7" onClick={handleAddProfile} title={t('addProfile')}>
+                        <Plus size={14} />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="size-7"
+                        disabled={profileState.accountProfileList.length <= 1}
+                        onClick={() => setDeleteDialogOpen(true)}
+                        title={t('deleteProfile')}>
+                        <Trash2 size={14} />
+                      </Button>
+                    </div>
+                  </div>
+                  <Input
+                    id="profileName"
+                    value={profileName}
+                    onChange={handleProfileNameInput}
+                    className="w-full"
+                    type="text"
+                    placeholder={t('profileNamePlaceholder')}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <div className="flex justify-between items-center ">
+                    <Label htmlFor="token">{t('authorizationToken')}</Label>
+                    <p className="flex items-center text-center text-xs">
+                      <a
+                        href="https://github.com/jackluson/sync-your-cookie/blob/main/how-to-use.md"
+                        target="_blank"
+                        className=" cursor-pointer underline mx-2"
+                        rel="noreferrer">
+                        {t('howToGetIt')}
+                      </a>
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => handleToggleEye()}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            handleToggleEye();
+                          }
+                        }}
+                        className="cursor-pointer">
+                        {openEye ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </span>
+                    </p>
+                  </div>
+                  <Input
+                    id="token"
+                    value={token}
+                    onChange={handleTokenInput}
+                    className="w-full mb-2"
+                    type={openEye ? 'text' : 'password'}
+                    placeholder={t('cloudflareTokenPlaceholder')}
+                    required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <div className="flex justify-between items-center ">
+                    <Label htmlFor="accountId">{t('accountId')}</Label>
+                    <p className="flex items-center text-center text-xs">
+                      {t('noCloudflareAccount')}
+                      <a
+                        href="https://dash.cloudflare.com/sign-up"
+                        target="_blank"
+                        className=" cursor-pointer underline ml-2"
+                        rel="noreferrer">
+                        {t('signUp')}
+                      </a>
+                    </p>
+                  </div>
+                  <Input
+                    id="accountId"
+                    value={accountId}
+                    onChange={handleAccountInput}
+                    className="w-full mb-2"
+                    type="text"
+                    placeholder={t('cloudflareAccountIdPlaceholder')}
+                    required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <div className="flex justify-between items-center ">
+                    <Label htmlFor="namespaceId">{t('namespaceId')}</Label>
+                    {namespaceId?.trim() && accountId?.trim() ? (
+                      <a
+                        href={`https://dash.cloudflare.com/${accountId.trim()}/workers/kv/namespaces/${namespaceId.trim()}`}
+                        target="_blank"
+                        className=" cursor-pointer underline ml-2"
+                        rel="noreferrer">
+                        {t('goToNamespace')}
+                      </a>
+                    ) : null}
+                  </div>
+                  <Input
+                    id="namespaceId"
+                    value={namespaceId}
+                    onChange={handleNamespaceInput}
+                    className="w-full mb-4"
+                    type="text"
+                    placeholder={t('namespaceIdPlaceholder')}
+                  />
+                </div>
+                <Button disabled={loadingSave} onClick={handleSave} type="submit" className="w-full">
+                  {loadingSave ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {t('save')}
+                </Button>
+              </div>
+            </CardContent>
           </Card>
         </div>
       </div>
 
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('deleteProfile')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('deleteProfileConfirm', { name: activeProfile?.name || '' })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteProfile}>{t('delete')}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="mt-2 text-sm">
-        Built by
+        {t('builtBy')}
         <a
           className="mx-0.5 font-bold text-primary "
           target="_blank"
@@ -301,7 +362,7 @@ const Options = () => {
           rel="noreferrer">
           jackluson
         </a>
-        . The source code is available on{' '}
+        . {t('sourceOnGitHub')}{' '}
         <a
           className="font-bold inline-flex items-center "
           href="https://github.com/jackluson/sync-your-cookie"
@@ -329,4 +390,4 @@ const Options = () => {
   );
 };
 
-export default withErrorBoundary(withSuspense(Options, <div> Loading ... </div>), <div> Error Occur </div>);
+export default withErrorBoundary(withSuspense(Options, <LoadingFallback />), <ErrorFallback />);

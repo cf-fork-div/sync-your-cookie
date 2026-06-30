@@ -1,13 +1,16 @@
+import { accountProfileStorage } from '@sync-your-cookie/storage/lib/accountProfileStorage';
 import { accountStorage } from '@sync-your-cookie/storage/lib/accountStorage';
 import { domainStatusStorage } from '@sync-your-cookie/storage/lib/domainStatusStorage';
 
 import { pullCookies } from '@sync-your-cookie/shared';
 import { cookieStorage } from '@sync-your-cookie/storage/lib/cookieStorage';
+import { localeStorage } from '@sync-your-cookie/storage/lib/localeStorage';
 import { settingsStorage } from '@sync-your-cookie/storage/lib/settingsStorage';
 import { clearBadge, setPullingBadge, setPushingAndPullingBadge, setPushingBadge } from './badge';
-import { initContextMenu, removeContextMenu } from './contextMenu';
+import { initContextMenu, removeContextMenu, updateContextMenuTitle } from './contextMenu';
 
 export const initSubscribe = async () => {
+  await accountProfileStorage.ensureMigrated();
   await domainStatusStorage.resetState();
   domainStatusStorage.subscribe(async () => {
     const domainStatus = await domainStatusStorage.get();
@@ -38,9 +41,16 @@ export const initSubscribe = async () => {
     }
     previousContextMenu = settingsSnapShot?.contextMenu;
     if (settingsSnapShot?.contextMenu) {
-      initContextMenu();
+      await initContextMenu();
     } else {
       removeContextMenu();
+    }
+  });
+
+  localeStorage.subscribe(async () => {
+    const settingsSnapShot = await settingsStorage.getSnapshot();
+    if (settingsSnapShot?.contextMenu) {
+      await updateContextMenuTitle();
     }
   });
 };

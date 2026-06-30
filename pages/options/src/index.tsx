@@ -1,6 +1,6 @@
 import Options from '@src/Options';
 import '@src/index.css';
-import { ThemeProvider } from '@sync-your-cookie/shared';
+import { I18nProvider, ThemeProvider } from '@sync-your-cookie/shared';
 import '@sync-your-cookie/ui/css';
 import { createRoot } from 'react-dom/client';
 
@@ -11,9 +11,11 @@ function init() {
   }
   const root = createRoot(appContainer);
   root.render(
-    <ThemeProvider>
-      <Options />
-    </ThemeProvider>,
+    <I18nProvider>
+      <ThemeProvider>
+        <Options />
+      </ThemeProvider>
+    </I18nProvider>,
   );
 }
 

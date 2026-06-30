@@ -1,0 +1,13 @@
+{
+  "extends": "@sync-your-cookie/tsconfig/base",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@src/*": ["src/*"]
+    },
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "types": ["vite/client", "chrome"]
+  },
+  "include": ["src", "src/vite-env.d.ts"]
+}

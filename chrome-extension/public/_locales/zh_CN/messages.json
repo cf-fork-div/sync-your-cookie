@@ -1,0 +1,14 @@
+{
+  "extensionDescription": {
+    "description": "将 Cookie 同步到 Cloudflare",
+    "message": "将 Cookie 同步到 Cloudflare KV"
+  },
+  "extensionName": {
+    "description": "扩展名称",
+    "message": "同步你的 Cookie"
+  },
+  "openCookieManager": {
+    "description": "Context menu item to open cookie manager",
+    "message": "打开 Cookie 管理器"
+  }
+}

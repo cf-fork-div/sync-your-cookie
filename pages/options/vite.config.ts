@@ -1,14 +1,13 @@
 import { watchRebuildPlugin } from '@sync-your-cookie/hmr';
 import react from '@vitejs/plugin-react-swc';
 import { resolve } from 'path';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 
 const rootDir = resolve(__dirname);
 const srcDir = resolve(rootDir, 'src');
 
 const isDev = process.env.__DEV__ === 'true';
 const isProduction = !isDev;
-const envInfo = loadEnv(isDev ? 'development' : 'production', process.cwd(), 'SYNC');
 
 export default defineConfig({
   resolve: {
@@ -30,6 +29,5 @@ export default defineConfig({
   },
   define: {
     'process.env.NODE_ENV': isDev ? `"development"` : `"production"`,
-    'process.env.CLIENT_SECRET': JSON.stringify(envInfo.SYNC_CLIENT_SECRET || ''),
   },
 });

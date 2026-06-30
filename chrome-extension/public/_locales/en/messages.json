@@ -1,10 +1,14 @@
 {
   "extensionDescription": {
-    "description": "sync your cookie free",
-    "message": "Sync your cookies to cloudlfare "
+    "description": "Extension description",
+    "message": "A browser extension for syncing cookies and localStorage to Cloudflare KV"
   },
   "extensionName": {
-    "description": "Sync your cookie",
-    "message": "Sync your cookie"
+    "description": "Extension name",
+    "message": "Sync Your Cookie"
+  },
+  "openCookieManager": {
+    "description": "Context menu item to open cookie manager",
+    "message": "Open Cookie Manager"
   }
 }

@@ -1,3 +1,4 @@
+import { useI18n } from '@sync-your-cookie/shared';
 import {
   Button,
   Input,
@@ -27,6 +28,7 @@ interface StorageSelectProps extends React.ComponentProps<typeof Select> {
 }
 
 export function StorageSelect(props: StorageSelectProps) {
+  const { t } = useI18n();
   const { value, onRemove, options, onValueChange, ...rest } = props;
   const [loading, setLoading] = useState(false);
   const [inputValue, setInputValue] = useState('');
@@ -40,7 +42,7 @@ export function StorageSelect(props: StorageSelectProps) {
     const exist = options.find(option => option.value === newKey);
     if (exist) {
       console.warn('Key already exists or is empty');
-      toast.error('Key already exists');
+      toast.error(t('keyAlreadyExists'));
       return;
     }
     try {
@@ -81,7 +83,7 @@ export function StorageSelect(props: StorageSelectProps) {
         }}
         {...rest}>
         <SelectTrigger className="w-[150px] scale-90 ">
-          <SelectValue className="ml-[-8px]" placeholder="Select a Storage Key" />
+          <SelectValue className="ml-[-8px]" placeholder={t('selectStorageKey')} />
         </SelectTrigger>
         <SelectPortal>
           <SelectContent onCloseAutoFocus={evt => evt.preventDefault()}>
@@ -127,7 +129,7 @@ export function StorageSelect(props: StorageSelectProps) {
                 type="submit"
                 variant="outline">
                 <Plus size={18} />
-                Add
+                {t('add')}
               </Button>
             </div>
           </SelectContent>

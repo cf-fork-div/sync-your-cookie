@@ -1,11 +1,9 @@
 import { accountStorage, type AccountInfo } from '@sync-your-cookie/storage/lib/accountStorage';
-import { getActiveStorageItem, settingsStorage } from '@sync-your-cookie/storage/lib/settingsStorage';
+import { settingsStorage } from '@sync-your-cookie/storage/lib/settingsStorage';
 
 import { readCloudflareKV, writeCloudflareKV, WriteResponse } from '../cloudflare/api';
 
-import { GithubApi } from '@lib/github';
 import { MessageErrorCode } from '@lib/message';
-import { RestEndpointMethodTypes } from '@octokit/rest';
 import {
   arrayBufferToBase64,
   base64ToArrayBuffer,
@@ -21,42 +19,25 @@ import {
 
 export const check = (accountInfo?: AccountInfo) => {
   const cloudflareAccountInfo = accountInfo || accountStorage.getSnapshot();
-  if (cloudflareAccountInfo?.selectedProvider === 'github') {
-    if (!cloudflareAccountInfo.githubAccessToken) {
-      return Promise.reject({
-        message: 'GitHub Access Token is empty',
-        code: MessageErrorCode.AccountCheck,
-      });
+  if (!cloudflareAccountInfo?.accountId || !cloudflareAccountInfo.namespaceId || !cloudflareAccountInfo.token) {
+    let message = 'Account ID is empty';
+    if (!cloudflareAccountInfo?.namespaceId) {
+      message = 'NamespaceId ID is empty';
+    } else if (!cloudflareAccountInfo.token) {
+      message = 'Token is empty';
     }
-  } else {
-    if (!cloudflareAccountInfo?.accountId || !cloudflareAccountInfo.namespaceId || !cloudflareAccountInfo.token) {
-      let message = 'Account ID is empty';
-      if (!cloudflareAccountInfo?.namespaceId) {
-        message = 'NamespaceId ID is empty';
-      } else if (!cloudflareAccountInfo.token) {
-        message = 'Token is empty';
-      }
 
-      return Promise.reject({
-        message,
-        code: MessageErrorCode.AccountCheck,
-      });
-    }
+    return Promise.reject({
+      message,
+      code: MessageErrorCode.AccountCheck,
+    });
   }
   return cloudflareAccountInfo;
 };
 
 export const readCookiesMap = async (accountInfo: AccountInfo): Promise<ICookiesMap> => {
-  let content = '';
-  if (accountInfo.selectedProvider === 'github') {
-    const activeStorageItem = getActiveStorageItem();
-    if (activeStorageItem?.rawUrl) {
-      content = await GithubApi.instance.fetchRawContent(activeStorageItem.rawUrl);
-    }
-  } else {
-    await check(accountInfo);
-    content = await readCloudflareKV(accountInfo.accountId!, accountInfo.namespaceId!, accountInfo.token!);
-  }
+  await check(accountInfo);
+  const content = await readCloudflareKV(accountInfo.accountId!, accountInfo.namespaceId!, accountInfo.token!);
 
   if (content) {
     try {
@@ -79,7 +60,6 @@ export const readCookiesMap = async (accountInfo: AccountInfo): Promise<ICookies
           processedContent = await decryptBase64(content, encryptionPassword);
         } catch (decryptError) {
           console.error('Decryption failed:', decryptError);
-          // throw new Error('Failed to decrypt data. Please check your encryption password.');
           return Promise.reject({
             message: 'Failed to decrypt data. Please check your encryption password.',
             code: MessageErrorCode.DecryptFailed,
@@ -98,7 +78,6 @@ export const readCookiesMap = async (accountInfo: AccountInfo): Promise<ICookies
       }
     } catch (error) {
       console.log('Decode error', error, content);
-      // return {};
       return Promise.reject({
         message: `Decode error: ${error}, please check your save settings`,
         code: MessageErrorCode.DecodeFailed,
@@ -130,19 +109,14 @@ export const writeCookiesMap = async (accountInfo: AccountInfo, cookiesMap: ICoo
     encodingStr = JSON.stringify(cookiesMap);
     console.log('writeCookiesMap->', cookiesMap);
   }
-  if (accountInfo.selectedProvider === 'github') {
-    const storageKeyGistId = settingsInfo?.storageKeyGistId;
-    const storageKey = settingsInfo?.storageKey;
-    return await GithubApi.instance.updateGist(storageKeyGistId!, storageKey!, encodingStr);
-  } else {
-    const res = await writeCloudflareKV(
-      encodingStr,
-      accountInfo.accountId!,
-      accountInfo.namespaceId!,
-      accountInfo.token!,
-    );
-    return res;
-  }
+
+  const res = await writeCloudflareKV(
+    encodingStr,
+    accountInfo.accountId!,
+    accountInfo.namespaceId!,
+    accountInfo.token!,
+  );
+  return res;
 };
 
 export const mergeAndWriteCookies = async (
@@ -152,7 +126,7 @@ export const mergeAndWriteCookies = async (
   localStorageItems: ILocalStorageItem[] = [],
   userAgent = '',
   oldCookieMap: ICookiesMap = {},
-): Promise<[WriteResponse | RestEndpointMethodTypes['gists']['update']['response'], ICookiesMap]> => {
+): Promise<[WriteResponse, ICookiesMap]> => {
   await check(accountInfo);
   const cookiesMap: ICookiesMap = {
     updateTime: Date.now(),

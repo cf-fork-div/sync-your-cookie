@@ -1,6 +1,6 @@
 import '@src/index.css';
 import SidePanel from '@src/SidePanel';
-import { initGithubApi, ThemeProvider } from '@sync-your-cookie/shared';
+import { I18nProvider, ThemeProvider } from '@sync-your-cookie/shared';
 import '@sync-your-cookie/ui/css';
 import { createRoot } from 'react-dom/client';
 
@@ -11,11 +11,12 @@ function init() {
   }
   const root = createRoot(appContainer);
   root.render(
-    <ThemeProvider>
-      <SidePanel />
-    </ThemeProvider>,
+    <I18nProvider>
+      <ThemeProvider>
+        <SidePanel />
+      </ThemeProvider>
+    </I18nProvider>,
   );
 }
 
-initGithubApi();
 init();

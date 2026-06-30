@@ -1,7 +1,7 @@
 // sort-imports-ignore
 import 'webextension-polyfill';
 
-import { initGithubApi, pullAndSetCookies, pullCookies, pushMultipleDomainCookies } from '@sync-your-cookie/shared';
+import { pullAndSetCookies, pullCookies, pushMultipleDomainCookies } from '@sync-your-cookie/shared';
 import { cookieStorage } from '@sync-your-cookie/storage/lib/cookieStorage';
 import { domainConfigStorage } from '@sync-your-cookie/storage/lib/domainConfigStorage';
 import { domainStatusStorage } from '@sync-your-cookie/storage/lib/domainStatusStorage';
@@ -45,7 +45,7 @@ chrome.runtime.onInstalled.addListener(async () => {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
   const settingsSnapShot = await settingsStorage.get();
   if (settingsSnapShot?.contextMenu) {
-    initContextMenu();
+    await initContextMenu();
   }
 });
 
@@ -201,4 +201,3 @@ chrome.tabs.onActivated.addListener(async function () {
   }
 });
 
-initGithubApi(true);

@@ -3,11 +3,13 @@ import {
   editCookieItemUsingMessage,
   ICookie,
   removeCookieItemUsingMessage,
+  useI18n,
 } from '@sync-your-cookie/shared';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
 export const useCookieItem = (selectedDomain: string) => {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
 
   const handleDeleteItem = async (id: string) => {
@@ -19,13 +21,13 @@ export const useCookieItem = (selectedDomain: string) => {
       })
         .then(async res => {
           if (res.isOk) {
-            toast.success(res.msg || 'success');
+            toast.success(res.msg || t('success'));
           } else {
-            toast.error(res.msg || 'Deleted fail');
+            toast.error(res.msg || t('deletedFail'));
           }
         })
         .catch(err => {
-          catchHandler(err, 'delete', toast);
+          catchHandler(err, 'delete', toast, t);
         });
     } finally {
       setLoading(false);
@@ -42,14 +44,14 @@ export const useCookieItem = (selectedDomain: string) => {
       })
         .then(async res => {
           if (res.isOk) {
-            toast.success(res.msg || 'success');
+            toast.success(res.msg || t('success'));
           } else {
-            toast.error(res.msg || 'Edited fail');
+            toast.error(res.msg || t('editedFail'));
             return Promise.reject(res);
           }
         })
         .catch(err => {
-          catchHandler(err, 'edit', toast);
+          catchHandler(err, 'edit', toast, t);
           return Promise.reject(err);
         });
     } finally {

@@ -7,5 +7,4 @@ export * from './lib/Providers';
 
 export * from './lib/message';
 export * from './lib/utils';
-
-export * from './lib/github';
+export * from './lib/i18n';

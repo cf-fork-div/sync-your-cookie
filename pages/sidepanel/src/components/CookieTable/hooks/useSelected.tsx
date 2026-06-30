@@ -1,4 +1,4 @@
-import { useStorageSuspense } from '@sync-your-cookie/shared';
+import { useStorageSuspense, useI18n } from '@sync-your-cookie/shared';
 import { Cookie } from '@sync-your-cookie/storage/lib/cookieStorage';
 import { domainConfigStorage } from '@sync-your-cookie/storage/lib/domainConfigStorage';
 import { domainStatusStorage } from '@sync-your-cookie/storage/lib/domainStatusStorage';
@@ -45,6 +45,7 @@ export type LocalStorageShowItem = {
 };
 
 export const useSelected = (cookieMap: Cookie, currentSearchStr: string) => {
+  const { t } = useI18n();
   const [selectedDomain, setSelectedDomain] = useState('');
   const domainStatus = useStorageSuspense(domainStatusStorage);
 
@@ -264,10 +265,10 @@ export const useSelected = (cookieMap: Cookie, currentSearchStr: string) => {
     };
     try {
       await chrome.cookies.set(setVal);
-      toast.success('set success');
+      toast.success(t('setSuccess'));
     } catch (error) {
       console.log('set cookie error', setVal, error);
-      toast.error('set failed');
+      toast.error(t('setFailed'));
     }
   };
 
@@ -279,7 +280,7 @@ export const useSelected = (cookieMap: Cookie, currentSearchStr: string) => {
     {
       id: 'Domain',
       accessorKey: 'domain',
-      header: 'Domain',
+      header: t('domain'),
       cell: ({ row }) => {
         const domainValue = row.original.domain;
         if (currentSearchStr.trim() && domainValue.includes(currentSearchStr)) {
@@ -320,7 +321,7 @@ export const useSelected = (cookieMap: Cookie, currentSearchStr: string) => {
     {
       id: 'Value',
       accessorKey: 'value',
-      header: 'Key / Value',
+      header: t('keyValue'),
       cell: ({ row }) => {
         return renderEditCell('value', row.original);
       },
@@ -374,7 +375,7 @@ export const useSelected = (cookieMap: Cookie, currentSearchStr: string) => {
     {
       id: 'Value',
       accessorKey: 'value',
-      header: 'Key / Value',
+      header: t('keyValue'),
       cell: ({ row, cell }) => {
         const id = cell.id;
         return renderEditCell('value', { id, ...row.original }, 'key');

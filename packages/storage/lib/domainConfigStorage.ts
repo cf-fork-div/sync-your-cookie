@@ -1,85 +1,101 @@
-import { BaseStorage, createStorage, StorageType } from './base';
+import { BaseStorage } from './base';
+import {
+  accountProfileStorage,
+  getActiveProfileDomainConfig,
+} from './accountProfileStorage';
+import type { DomainConfig, DomainItemConfig } from './domainConfigTypes';
 
-type DomainItemConfig = {
-  autoPull?: boolean;
-  autoPush?: boolean;
-  favIconUrl?: string;
-  sourceUrl?: string;
+export type { DomainConfig, DomainItemConfig };
+
+type DomainConfigStorage = BaseStorage<DomainConfig> & {
+  update: (updateInfo: Partial<DomainConfig>) => Promise<void>;
+  updateItem: (host: string, updateConf: DomainItemConfig) => Promise<void>;
+  removeItem: (domain: string) => Promise<void>;
+  toggleAutoPullState: (domain: string, checked?: boolean) => Promise<void>;
+  toggleAutoPushState: (domain: string, checked?: boolean) => Promise<void>;
 };
 
-interface DomainConfig {
-  domainMap: {
-    [host: string]: DomainItemConfig;
-  };
-}
-const key = 'domainConfig-storage-key';
+const emitListeners: Array<() => void> = [];
 
-const cacheStorageMap = new Map();
-const initStorage = (): BaseStorage<DomainConfig> => {
-  if (cacheStorageMap.has(key)) {
-    return cacheStorageMap.get(key);
-  }
-  const storage: BaseStorage<DomainConfig> = createStorage<DomainConfig>(
-    key,
-    {
-      domainMap: {},
-    },
-    {
-      storageType: StorageType.Local,
-      liveUpdate: true,
-      // onLoad: onLoad,
-    },
-  );
-  cacheStorageMap.set(key, storage);
-  return storage;
+const notify = () => {
+  emitListeners.forEach(listener => listener());
 };
 
-const storage = initStorage();
+accountProfileStorage.subscribe(() => {
+  notify();
+});
 
-export const domainConfigStorage = {
-  ...storage,
+export const domainConfigStorage: DomainConfigStorage = {
+  get: async () => {
+    await accountProfileStorage.ensureMigrated();
+    return getActiveProfileDomainConfig(await accountProfileStorage.get());
+  },
+  getSnapshot: () => getActiveProfileDomainConfig(accountProfileStorage.getSnapshot()),
+  subscribe: (listener: () => void) => {
+    emitListeners.push(listener);
+    const unsubscribeProfile = accountProfileStorage.subscribe(listener);
+    return () => {
+      const index = emitListeners.indexOf(listener);
+      if (index >= 0) {
+        emitListeners.splice(index, 1);
+      }
+      unsubscribeProfile();
+    };
+  },
+  set: async valueOrUpdate => {
+    await accountProfileStorage.ensureMigrated();
+    const current = getActiveProfileDomainConfig(accountProfileStorage.getSnapshot());
+    const next =
+      typeof valueOrUpdate === 'function' ? await valueOrUpdate(current) : valueOrUpdate;
+    await accountProfileStorage.updateActiveProfileDomainConfig(() => next);
+    notify();
+  },
+  update: async (updateInfo: Partial<DomainConfig>) => {
+    await accountProfileStorage.updateActiveProfileDomainConfig(current => ({
+      ...current,
+      ...updateInfo,
+    }));
+    notify();
+  },
   updateItem: async (host: string, updateConf: DomainItemConfig) => {
-    return await storage.set(currentInfo => {
-      const domainMap = currentInfo?.domainMap || {};
+    await accountProfileStorage.updateActiveProfileDomainConfig(current => {
+      const domainMap = { ...current.domainMap };
       domainMap[host] = {
         ...domainMap[host],
         ...updateConf,
       };
-      return { ...(currentInfo || {}), domainMap };
+      return { domainMap };
     });
-  },
-  update: async (updateInfo: Partial<DomainConfig>) => {
-    return await storage.set(currentInfo => {
-      return { ...currentInfo, ...updateInfo };
-    });
+    notify();
   },
   removeItem: async (domain: string) => {
-    await storage.set(currentInfo => {
-      const domainCookieMap = currentInfo.domainMap || {};
-      delete domainCookieMap[domain];
-      return { ...currentInfo, domainCookieMap };
+    await accountProfileStorage.updateActiveProfileDomainConfig(current => {
+      const domainMap = { ...current.domainMap };
+      delete domainMap[domain];
+      return { domainMap };
     });
+    notify();
   },
-
   toggleAutoPullState: async (domain: string, checked?: boolean) => {
-    return await storage.set(currentInfo => {
-      const domainMap = currentInfo?.domainMap || {};
+    await accountProfileStorage.updateActiveProfileDomainConfig(current => {
+      const domainMap = { ...current.domainMap };
       domainMap[domain] = {
         ...domainMap[domain],
         autoPull: checked ?? !domainMap[domain]?.autoPull,
       };
-      return { ...(currentInfo || {}), domainMap };
+      return { domainMap };
     });
+    notify();
   },
-
   toggleAutoPushState: async (domain: string, checked?: boolean) => {
-    return await storage.set(currentInfo => {
-      const domainMap = currentInfo?.domainMap || {};
+    await accountProfileStorage.updateActiveProfileDomainConfig(current => {
+      const domainMap = { ...current.domainMap };
       domainMap[domain] = {
         ...domainMap[domain],
         autoPush: checked ?? !domainMap[domain]?.autoPush,
       };
-      return { ...(currentInfo || {}), domainMap };
+      return { domainMap };
     });
+    notify();
   },
 };

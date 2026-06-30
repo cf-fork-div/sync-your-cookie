@@ -1,6 +1,6 @@
 /* eslint-disable react/no-unescaped-entities */
 /* eslint-disable jsx-a11y/click-events-have-key-events */
-import { getTabsByHost, useStorageSuspense } from '@sync-your-cookie/shared';
+import { getTabsByHost, useI18n, useStorageSuspense } from '@sync-your-cookie/shared';
 import {
   Button,
   DataTable,
@@ -49,6 +49,7 @@ export type CookieItem = {
 };
 
 const CookieTable = () => {
+  const { t } = useI18n();
   const domainConfig = useStorageSuspense(domainConfigStorage);
   const domainStatus = useStorageSuspense(domainStatusStorage);
 
@@ -125,7 +126,7 @@ const CookieTable = () => {
   const columns: ColumnDef<CookieItem>[] = [
     {
       accessorKey: 'host',
-      header: 'Host',
+      header: t('host'),
       cell: ({ row, getValue }) => {
         const value = getValue<string>() || '';
         const sourceUrl = row.original.sourceUrl;
@@ -176,7 +177,7 @@ const CookieTable = () => {
     },
     {
       accessorKey: 'autoPush',
-      header: 'AutoPush',
+      header: t('autoPush'),
       id: 'autoPush',
       cell: record => {
         return (
@@ -197,7 +198,7 @@ const CookieTable = () => {
     },
     {
       accessorKey: 'autoPull',
-      header: 'AutoPull',
+      header: t('autoPull'),
       id: 'autoPull',
       cell: record => {
         return (
@@ -230,12 +231,12 @@ const CookieTable = () => {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
+                <span className="sr-only">{t('openMenu')}</span>
                 <Ellipsis className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Cookie Actions</DropdownMenuLabel>
+              <DropdownMenuLabel>{t('cookieActions')}</DropdownMenuLabel>
               {/* <DropdownMenuItem onClick={() => navigator.clipboard.writeText(.id)}>
                 Copy payment ID
               </DropdownMenuItem> */}
@@ -252,16 +253,11 @@ const CookieTable = () => {
                 ) : (
                   <CloudUpload size={16} className="mr-2 h-4 w-4" />
                 )}
-                Push
+                {t('push')}
                 <SyncTooltip
                   align="start"
                   alignOffset={80}
-                  title={
-                    <p>
-                      <p>If 'Include LocalStorage' is enabled and no 'host' tab is present,</p>a 'host' tab will
-                      automatically open.
-                    </p>
-                  }>
+                  title={<p>{t('pushLocalStorageNote')}</p>}>
                   <p className="text-base flex items-center font-medium">
                     <Info className="ml-14" size={16} />
                   </p>
@@ -278,7 +274,7 @@ const CookieTable = () => {
                 ) : (
                   <CloudDownload size={16} className="mr-2 h-4 w-4" />
                 )}
-                Pull
+                {t('pull')}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -287,7 +283,7 @@ const CookieTable = () => {
                   handleViewCookies(row.original.host);
                 }}>
                 <TableIcon size={16} className="mr-2 h-4 w-4" />
-                View
+                {t('view')}
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="cursor-pointer"
@@ -295,7 +291,7 @@ const CookieTable = () => {
                   handleCopy(row.original.host);
                 }}>
                 <Copy size={16} className="mr-2 h-4 w-4" />
-                Copy
+                {t('copy')}
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="cursor-pointer"
@@ -303,7 +299,7 @@ const CookieTable = () => {
                   handleCopy(row.original.host, true);
                 }}>
                 <ClipboardList size={16} className="mr-2 h-4 w-4" />
-                Copy With JSON
+                {t('copyWithJson')}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -315,7 +311,7 @@ const CookieTable = () => {
                 ) : (
                   <Trash size={16} className="mr-2 h-4 w-4" />
                 )}
-                Delete
+                {t('delete')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -343,7 +339,7 @@ const CookieTable = () => {
                 handleBack();
               }}>
               <ChevronLeft className="h-4 w-4" />
-              <span className="sr-only">Back</span>
+              <span className="sr-only">{t('back')}</span>
             </Button>
             <a
               href={href}
@@ -355,7 +351,7 @@ const CookieTable = () => {
             </a>
           </div>
           {hasLocalStorage ? (
-            <SyncTooltip title="Toggle LocalStorage View">
+            <SyncTooltip title={t('toggleLocalStorageView')}>
               <Toggle pressed={localStorageMode} onPressedChange={handlePressChange} className="ml-6" variant="outline">
                 <Database size={16} className="h-4 w-4" />
               </Toggle>
@@ -379,9 +375,9 @@ const CookieTable = () => {
     <div className="h-screen flex flex-col">
       <div className="space-y-4 p-4 ">
         <div>
-          <h2 className="text-xl font-bold tracking-tight">Welcome back!</h2>
+          <h2 className="text-xl font-bold tracking-tight">{t('welcomeBack')}</h2>
           <p className="text-muted-foreground text-sm">
-            Here&apos;s a list of your pushed {localStorageMode ? 'localStorage items' : 'cookies'}{' '}
+            {t('pushedList', { type: localStorageMode ? t('localStorageItems') : t('cookies') })}{' '}
           </p>
         </div>
       </div>
@@ -395,16 +391,16 @@ const CookieTable = () => {
                 <div className=" mx-4 w-1/3 min-w-[328px] bg-primary/10 mb-4 rounded-xl border text-card-foreground shadow">
                   <div className="p-3">
                     <div className="flex flex-row items-center justify-between">
-                      <p className="tracking-tight text-sm font-normal">Total Cookie and LocalStorage</p>
+                      <p className="tracking-tight text-sm font-normal">{t('totalCookieAndLocalStorage')}</p>
                     </div>
                     <div className="">
                       <p className="text-2xl font-bold">
-                        {domainList.length} <span className="text-xl">sites</span>
+                        {domainList.length} <span className="text-xl">{t('sites')}</span>
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        <span>{totalCookieItem} cookie items</span>
-                        <span className="mx-1">&</span>
-                        <span>{totalLocalStorageItem} localStorage items</span>
+                        <span>{t('cookieItems', { count: totalCookieItem })}</span>
+                        <span className="mx-1">{t('and')}</span>
+                        <span>{t('localStorageItemsCount', { count: totalLocalStorageItem })}</span>
                       </p>
                     </div>
                   </div>

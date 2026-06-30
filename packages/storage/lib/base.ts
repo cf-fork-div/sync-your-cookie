@@ -127,14 +127,87 @@ function checkStoragePermission(storageType: StorageType): void {
   }
 }
 
+function hasChromeStorage(storageType: StorageType): boolean {
+  return typeof chrome !== 'undefined' && chrome.storage?.[storageType] !== undefined;
+}
+
+function createBrowserStorage<D = string>(key: string, fallback: D, config?: StorageConfig<D>): BaseStorage<D> {
+  let cache: D | null = null;
+  let listeners: Array<() => void> = [];
+  const storageKey = `syc-storage:${key}`;
+  const serialize = config?.serialization?.serialize ?? ((v: D) => v);
+  const deserialize = config?.serialization?.deserialize ?? (v => v as D);
+
+  const readFromLocal = (): D => {
+    if (typeof localStorage === 'undefined') {
+      return fallback;
+    }
+    const raw = localStorage.getItem(storageKey);
+    if (raw === null) {
+      return fallback;
+    }
+    try {
+      return deserialize(JSON.parse(raw));
+    } catch {
+      return deserialize(raw as unknown as string);
+    }
+  };
+
+  const writeToLocal = (value: D) => {
+    if (typeof localStorage === 'undefined') {
+      return;
+    }
+    const serialized = serialize(value);
+    localStorage.setItem(
+      storageKey,
+      typeof serialized === 'string' ? serialized : JSON.stringify(serialized),
+    );
+  };
+
+  cache = readFromLocal();
+
+  const emitChange = () => {
+    listeners.forEach(listener => listener());
+  };
+
+  const get = async (): Promise<D> => {
+    return cache ?? readFromLocal();
+  };
+
+  const set = async (valueOrUpdate: ValueOrUpdate<D>) => {
+    cache = await updateCache(valueOrUpdate, cache ?? readFromLocal());
+    writeToLocal(cache);
+    emitChange();
+  };
+
+  const subscribe = (listener: () => void) => {
+    listeners = [...listeners, listener];
+    return () => {
+      listeners = listeners.filter(l => l !== listener);
+    };
+  };
+
+  return {
+    get,
+    set,
+    getSnapshot: () => cache,
+    subscribe,
+  };
+}
+
 /**
  * Creates a storage area for persisting and exchanging data.
  */
 export function createStorage<D = string>(key: string, fallback: D, config?: StorageConfig<D>): BaseStorage<D> {
+  const storageType = config?.storageType ?? StorageType.Local;
+
+  if (!hasChromeStorage(storageType)) {
+    return createBrowserStorage(key, fallback, config);
+  }
+
   let cache: D | null = null;
   let initedCache = false;
   let listeners: Array<() => void> = [];
-  const storageType = config?.storageType ?? StorageType.Local;
   const liveUpdate = config?.liveUpdate ?? false;
   const serialize = config?.serialization?.serialize ?? ((v: D) => v);
   const deserialize = config?.serialization?.deserialize ?? (v => v as D);
