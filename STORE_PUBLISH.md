@@ -44,7 +44,7 @@ Verify locally:
 2. Open the existing **Sync Your Cookie** item (or create new)
 3. **Package** → **Upload new package**
 4. Upload `dist/release/sync-your-cookie-1.5.1.zip`
-5. Update **Detailed description** to match [README.md](./README.md) features
+5. Update **Detailed description** to match [README_EN.md](./README_EN.md) features
 6. Set version notes from [CHANGELOG.md](./CHANGELOG.md)
 7. Submit for review
 

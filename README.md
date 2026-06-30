@@ -1,125 +1,109 @@
 <div align="center">
 <img src="chrome-extension/public/icon-128.png" alt="logo"/>
 <h1>Sync Your Cookie</h1>
-<p>Sync browser cookies and LocalStorage to Cloudflare KV — across devices and browsers.</p>
+<p>将浏览器 Cookie 与 LocalStorage 同步到 Cloudflare KV — 跨设备、跨浏览器共享登录态。</p>
 
-![](https://img.shields.io/badge/React-61DAFB?style=flat-square&logo=react&logoColor=black)
-![](https://img.shields.io/badge/Typescript-3178C6?style=flat-square&logo=typescript&logoColor=white)
-![](https://badges.aleen42.com/src/vitejs.svg)
-![Version](https://img.shields.io/badge/version-1.5.1-blue)
-![GitHub action badge](https://github.com/jackluson/sync-your-cookie/actions/workflows/build-zip.yml/badge.svg)
+![](https://img.shields.io/badge/version-1.5.1-blue)
 
 </div>
 
-[English](./README.md) | [中文](./README_ZH.md)
+[English](./README_EN.md) | [中文](./README.md)
 
-**Sync Your Cookie** is a Chromium extension (Chrome, Edge, and compatible browsers) that syncs cookies and LocalStorage to **Cloudflare KV**. Share login sessions between devices without repeated sign-ins, manage multiple accounts per site, and optionally deploy a **Cloudflare Worker** backend with a password-protected web admin.
+**Sync Your Cookie** 是一款 Chromium 扩展（Chrome、Edge 及兼容浏览器），可将 Cookie 与 LocalStorage 同步到 **Cloudflare KV**。在不同设备间共享登录会话、为同一站点管理多个账号，并可选择部署 **Cloudflare Worker** 后端与密码保护的 Web 管理端。
 
-> **Note:** GitHub Gist sync has been removed. The only supported backend is a **Cloudflare Worker** (URL + password).
+> **说明：** 已移除 GitHub Gist 同步，**仅支持 Cloudflare Worker**（URL + 密码）后端。
 
-### Install
+### 安装
 
-| Store | Link |
-|-------|------|
+| 商店 | 链接 |
+|------|------|
 | Chrome | [Sync Your Cookie](https://chromewebstore.google.com/detail/sync-your-cookie/bcegpckmgklcpcapnbigfdadedcneopf) |
 | Edge | [Sync Your Cookie](https://microsoftedge.microsoft.com/addons/detail/sync-your-cookie/ohlcghldllgnmkegocpcphdbbphikgfm) |
 
-Build from source: see [Setup](#setup) and [Store publishing](./STORE_PUBLISH.md).
+从源码构建：见 [安装配置](#安装配置) 与 [商店发布说明](./STORE_PUBLISH.md)。
 
-### Features
+### 功能
 
-#### Sync & storage
-- Sync **cookies** and **LocalStorage** to Cloudflare KV (protobuf-encoded payload)
-- **Cross-browser sync** — same backend works on Chrome, Edge, and other Chromium browsers
-- **Worker connection:** Server URL + access password → `/api/sync/*`
-- **Pull mirrors remote** — clears local cookies for the host before applying remote data
-- Per-site **Auto Push** and **Auto Pull** rules
+#### 同步与存储
+- 同步 **Cookie** 与 **LocalStorage** 到 Cloudflare KV（protobuf 编码）
+- **跨浏览器同步** — 同一后端可在 Chrome、Edge 等 Chromium 浏览器间使用
+- **Worker 连接：** 服务器 URL + 访问密码 → `/api/sync/*`
+- **Pull 镜像远程** — 应用远程数据前先清除该域名下的本地 Cookie
+- 按站点配置 **Auto Push** 与 **Auto Pull**
 
-#### Multi-account & metadata
-- **Multiple accounts per domain** — separate entries on the same host with labels
-- **Folder & type** — Bitwarden-style folders plus entry types: login / session / other
-- **`entryMetaMap` sync** — label, folder, and type travel with the cookie payload
-- **First push** requires an account remark (label) when no remote entry exists
-- **Push conflict dialog** — overwrite an existing entry or save as a new account
+#### 多账号与元数据
+- **同域名多账号** — 同一 host 下多条记录，各自带标签
+- **文件夹与类型** — Bitwarden 风格文件夹；类型：login / session / other
+- **`entryMetaMap` 同步** — 标签、文件夹、类型随 Cookie 数据一并同步
+- **首次 Push** 需填写账号备注（无远程记录时）
+- **Push 冲突对话框** — 覆盖已有条目或另存为新账号
 
-#### UI & management
-- **Bitwarden-style login gate** — profile name, server URL, and password in popup / side panel
-- **Auto refresh** before push, pull, and open manager (verifies server connection first)
-- **Popup cookie view/edit** — inspect, edit, remove, or clear all cookies for the active tab
-- **Side panel manager** — full cookie and LocalStorage detail view
-- **Web admin manager** — optional Cloudflare Worker deployment; UI aligned with side panel (search, folder/type filters)
-- **Multi-account profiles** — separate credentials and domain rules per profile
-- **i18n** — English and Simplified Chinese (`en`, `zh_CN`)
-- **Version display** — `v1.5.1` in popup footer and options page
+#### 界面与管理
+- **Bitwarden 风格登录** — 弹窗/侧边栏输入配置名、服务器 URL、密码
+- **操作前自动刷新** — Push、Pull、打开管理器前先验证服务器连接
+- **弹窗 Cookie 查看/编辑** — 查看、编辑、删除或一键清空当前标签页 Cookie
+- **侧边栏管理器** — 完整 Cookie 与 LocalStorage 详情
+- **Web 管理端** — 可选 Worker 部署；界面与侧边栏对齐（搜索、文件夹/类型筛选）
+- **多账户配置（Account Profiles）** — 每套配置独立凭据与域名规则
+- **国际化** — 英文与简体中文（`en`、`zh_CN`）
+- **版本显示** — 弹窗底部与 Options 页显示 `v1.5.1`
 
-#### Cloudflare Worker backend
+#### Cloudflare Worker 后端
 
-Connect this Git repo in Cloudflare to deploy the Worker (web admin + sync API). Extension login uses Worker URL + password. See [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md).
+Git 连接 Cloudflare 部署 Worker（Web 管理端 + 同步 API），扩展用 Worker URL + 密码登录。部署见 [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md)。
 
-### Screenshots
+### 截图
 
-Settings — sync server URL and access password
+设置 — 同步服务器 URL 与访问密码
 
-<img width="600" src="./screenshots/settings.png" alt="Settings page"/>
+<img width="600" src="./screenshots/settings.png" alt="设置页"/>
 
-Popup — Push/Pull sync for the current tab
+弹窗 — 当前站点 Push/Pull 同步
 
-<img width="600" src="./screenshots/popup.png" alt="Popup sync"/>
+<img width="600" src="./screenshots/popup.png" alt="弹窗同步"/>
 
-Popup — cookie list with view/edit mode
+弹窗 — Cookie 列表与查看/编辑切换
 
-<img width="600" src="./screenshots/popup-cookie-editor.png" alt="Popup cookie editor"/>
+<img width="600" src="./screenshots/popup-cookie-editor.png" alt="弹窗 Cookie 编辑"/>
 
-Side panel — site list with folder and type filters
+侧边栏 — 站点列表与文件夹/类型筛选
 
-<img width="600" src="./screenshots/sidepanel-manager.png" alt="Side panel manager"/>
+<img width="600" src="./screenshots/sidepanel-manager.png" alt="侧边栏管理器"/>
 
-### Setup
+### 安装配置
 
-1. Install the extension from the store, or load `dist/` after `pnpm build`.
-2. Deploy the Worker via Git-connected Cloudflare Builds — [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md) — and set `WEB_ACCESS_PASSWORD`.
-3. Log in from the extension popup with **Server URL** + **access password** — [how-to-use.md](./how-to-use.md).
+1. 从商店安装扩展，或 `pnpm build` 后加载 `dist/`。
+2. 按 [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md) 连接 Git 部署 Worker，设置 `WEB_ACCESS_PASSWORD`。
+3. 扩展弹窗用 Worker URL + 密码登录 — 见 [how-to-use.md](./how-to-use.md)。
 
-#### Build from source
+#### 从源码构建
 
 ```bash
 pnpm install
-pnpm dev          # development with HMR
-pnpm build        # production → dist/
-pnpm release:zip  # store-ready zip → dist/release/
+pnpm dev          # 开发模式（HMR）
+pnpm build        # 生产构建 → dist/
+pnpm release:zip  # 商店用 zip → dist/release/
 ```
 
-### Usage
+### 使用指引
 
-1. **Log in** — Worker URL + password.
-2. **Push** — upload current tab cookies to remote (conflict dialog when data differs).
-3. **Pull** — download remote cookies; local cookies for that host are cleared first (mirror sync).
-4. **Open manager** — side panel for full cookie/LocalStorage management.
-5. **Web admin** (optional) — open your Worker URL in a browser for the same manager UI.
+1. **登录** — Worker URL + 密码。
+2. **Push** — 上传当前标签页 Cookie（与远程不一致时弹出冲突对话框）。
+3. **Pull** — 下载远程 Cookie；会先清除该 host 本地 Cookie（镜像同步）。
+4. **打开管理器** — 侧边栏查看完整 Cookie/LocalStorage。
+5. **Web 管理端**（可选） — 浏览器打开 Worker URL，界面与侧边栏一致。
 
-Usage: [how-to-use.md](./how-to-use.md) · Worker deploy: [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md) · Store publishing: [STORE_PUBLISH.md](./STORE_PUBLISH.md)
+使用说明：[how-to-use.md](./how-to-use.md) · Worker 部署：[deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md) · 商店发布：[STORE_PUBLISH.md](./STORE_PUBLISH.md)
 
-### Changelog
+### 更新日志
 
-| Version | Highlights |
-|---------|------------|
-| **1.5.1** | Account folder/type in push dialog; entry meta UI shared across surfaces |
-| **1.5.0** | Worker sync backend, Bitwarden-style login, multi-account per domain, push conflict dialog, pull mirror sync, popup cookie editor, web admin alignment |
+| 版本 | 要点 |
+|------|------|
+| **1.5.1** | Push 对话框支持文件夹/类型；entry meta UI 统一 |
+| **1.5.0** | Worker 同步后端、Bitwarden 风格登录、同域名多账号、Push 冲突、Pull 镜像、弹窗 Cookie 编辑、Web 管理端对齐 |
 
-Full history: [CHANGELOG.md](./CHANGELOG.md)
+完整记录：[CHANGELOG.md](./CHANGELOG.md)
 
-### Privacy Policy
+### 隐私政策
 
-Please refer to [Privacy Policy](./private-policy.md) for more information.
-
-### Support
-
-If you find this project helpful, you can support the development by:
-
-- Starring the repository ⭐ — [github.com/jackluson/sync-your-cookie](https://github.com/jackluson/sync-your-cookie)
-- [Sponsoring via Ko-fi](https://ko-fi.com/jacklu) 💖
-- Sponsor via Wechat
-  <div>
-    <img src="./screenshots/wechat_sponsor.jpg" alt="微信支付" style="width: 150px;">
-  </div>
-- Sharing it with others 🚀
+详见 [隐私政策](./private-policy.md)。
