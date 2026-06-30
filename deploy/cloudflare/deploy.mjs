@@ -21,6 +21,7 @@ import {
   mergeEnv,
   prepareWranglerConfig,
   runWranglerCapture,
+  seedDatasourceConfigIfNeeded,
   updateWranglerBasePath,
   wranglerCmd,
 } from './lib/deploy-shared.mjs';
@@ -145,7 +146,7 @@ function printSummary({ accountId, namespaceId, basePath, workerUrl, env }) {
   console.log('请填入扩展的同步服务器信息:\n');
   console.log(`  服务器 URL:  ${viewerUrl.replace(/\/$/, '')}`);
   console.log('  访问密码:    与 WEB_ACCESS_PASSWORD 相同\n');
-  console.log('Web 管理端一次性配置（登录后「连接数据源」）:\n');
+  console.log('Web 管理端 / 扩展 KV 凭据（登录后「连接数据源」，或 DEPLOY_SEED_DATASOURCE=1 自动写入）:\n');
   console.log(`  Account ID:    ${accountId}`);
   console.log(`  Namespace ID:  ${namespaceId}`);
   if (token) {
@@ -173,13 +174,24 @@ function printSummary({ accountId, namespaceId, basePath, workerUrl, env }) {
     console.log('  请在 Dashboard 设置 WEB_ACCESS_PASSWORD 后再访问 Web Viewer\n');
   }
   console.log('自动化项:');
-  console.log('  ✓ KV 命名空间创建/复用并绑定 Worker');
+  console.log('  ✓ KV 命名空间按名称复用（SYNC_YOUR_COOKIE），避免 redeploy 换绑');
   console.log('  ✓ Worker 部署 + 运行时认证 + /api/sync 扩展同步 API');
-  console.log('  ✓ Web 管理端数据源配置（一次性）');
-  console.log('\n需手动完成:');
+  if (env.DEPLOY_SEED_DATASOURCE === '1' || env.DEPLOY_SEED_DATASOURCE === 'force') {
+    console.log('  ✓ datasource 配置写入 SYNC_KV（DEPLOY_SEED_DATASOURCE）');
+  } else {
+    console.log('  ○ datasource 配置：设置 DEPLOY_SEED_DATASOURCE=1 可部署时自动写入');
+  }
+  if (env.DEPLOY_RUNTIME_SECRETS === '1' && env.WEB_ACCESS_PASSWORD?.trim()) {
+    console.log('  ✓ WEB_ACCESS_PASSWORD 已通过 wrangler secret 推送');
+  }
+  console.log('\n需手动完成（一次性）:');
   console.log('  • 首次授权: wrangler login 或设置 CLOUDFLARE_API_TOKEN');
-  console.log('  • 在 Dashboard 设置 WEB_ACCESS_PASSWORD');
-  console.log('  • 登录 Web 管理端，在「连接数据源」保存 Cloudflare KV 凭据');
+  if (env.DEPLOY_RUNTIME_SECRETS !== '1' || !env.WEB_ACCESS_PASSWORD?.trim()) {
+    console.log('  • 在 Dashboard 设置 WEB_ACCESS_PASSWORD（或 DEPLOY_RUNTIME_SECRETS=1 + .env）');
+  }
+  if (env.DEPLOY_SEED_DATASOURCE !== '1' && env.DEPLOY_SEED_DATASOURCE !== 'force') {
+    console.log('  • 登录 Web 管理端保存 KV 凭据，或设置 DEPLOY_SEED_DATASOURCE=1');
+  }
   if (basePath) {
     console.log('  • 确认 WEB_BASE_PATH 自定义路径');
   }
@@ -210,8 +222,10 @@ async function main() {
   if (!dryRun) {
     pushRuntimeSecrets(env);
     workerUrl = deployWorker();
+    await seedDatasourceConfigIfNeeded(env, accountId, namespaceId, { dryRun: false });
   } else {
     log('dry-run: 跳过 Worker 部署');
+    await seedDatasourceConfigIfNeeded(env, accountId, namespaceId, { dryRun: true });
   }
 
   printSummary({ accountId, namespaceId, basePath, workerUrl, env });

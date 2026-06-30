@@ -19,6 +19,8 @@ export function ConnectForm({ onLoaded }: ConnectFormProps) {
   const [tab, setTab] = useState<SourceTab>('cloudflare');
   const [loading, setLoading] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState(true);
+  const [savedConfigured, setSavedConfigured] = useState(false);
+  const [tokenMasked, setTokenMasked] = useState<string | undefined>();
 
   const [accountId, setAccountId] = useState('');
   const [namespaceId, setNamespaceId] = useState('');
@@ -32,15 +34,20 @@ export function ConnectForm({ onLoaded }: ConnectFormProps) {
     let cancelled = false;
     void fetchDatasourceStatus()
       .then(status => {
-        if (cancelled || !status.configured) {
+        if (cancelled) {
           return;
         }
+        if (!status.configured) {
+          return;
+        }
+        setSavedConfigured(true);
         setAccountId(status.accountId || '');
         setNamespaceId(status.namespaceId || '');
         setStorageKey(status.storageKey || 'sync-your-cookie');
+        setTokenMasked(status.tokenMasked);
       })
       .catch(() => {
-        // ignore — admin may configure fresh
+        toast.error(t('loadFailed'));
       })
       .finally(() => {
         if (!cancelled) {
@@ -147,6 +154,13 @@ export function ConnectForm({ onLoaded }: ConnectFormProps) {
         {tab === 'cloudflare' && (
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground">{t('adminDatasourceHint')}</p>
+            {savedConfigured && (
+              <p className="text-xs text-muted-foreground rounded-md border border-border bg-muted/40 px-3 py-2">
+                {tokenMasked
+                  ? `${t('apiToken')} ${t('savedOnServer')} (${tokenMasked}). ${t('reenterTokenToLoad')}`
+                  : t('reenterTokenToLoad')}
+              </p>
+            )}
             <div className="space-y-2">
               <Label htmlFor="accountId">{t('accountId')}</Label>
               <Input
@@ -172,7 +186,13 @@ export function ConnectForm({ onLoaded }: ConnectFormProps) {
                 type="password"
                 value={token}
                 onChange={e => setToken(e.target.value)}
-                placeholder={loadingStatus ? t('loading') : undefined}
+                placeholder={
+                  loadingStatus
+                    ? t('loading')
+                    : savedConfigured
+                      ? t('reenterApiTokenPlaceholder')
+                      : undefined
+                }
               />
             </div>
             <div className="space-y-2">

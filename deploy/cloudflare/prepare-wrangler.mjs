@@ -18,6 +18,7 @@ import {
   mergeEnv,
   prepareWranglerConfig,
   runWranglerCapture,
+  seedDatasourceConfigIfNeeded,
 } from './lib/deploy-shared.mjs';
 
 const dryRun = process.argv.includes('--dry-run');
@@ -32,7 +33,11 @@ async function main() {
     fail('未找到 wrangler。请先运行 pnpm install。');
   }
 
-  await prepareWranglerConfig(env, { dryRun });
+  const { accountId, namespaceId } = await prepareWranglerConfig(env, { dryRun });
+
+  if (!dryRun && (env.DEPLOY_SEED_DATASOURCE === '1' || env.DEPLOY_SEED_DATASOURCE === 'force')) {
+    await seedDatasourceConfigIfNeeded(env, accountId, namespaceId, { dryRun: false });
+  }
 
   if (dryRun) {
     log('dry-run: 完成（未写入 wrangler.toml）');

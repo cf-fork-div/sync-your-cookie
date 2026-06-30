@@ -10,6 +10,8 @@ export const STATE_FILE = join(DEPLOY_DIR, '.deploy-state.json');
 export const WRANGLER_TOML = join(DEPLOY_DIR, 'wrangler.toml');
 export const KV_NAMESPACE_NAME = 'SYNC_YOUR_COOKIE';
 export const WORKER_NAME = 'sync-your-cookie';
+export const DATASOURCE_CONFIG_KEY = '__syc_datasource_config__';
+export const DEFAULT_STORAGE_KEY = 'sync-your-cookie';
 const PLACEHOLDER_KV_ID = '00000000000000000000000000000000';
 
 export function log(msg) {
@@ -170,49 +172,94 @@ export async function resolveAccountId(env) {
   );
 }
 
-function findKvNamespaceViaWrangler() {
+function listKvNamespacesViaWrangler() {
   const raw = runWranglerCapture('kv namespace list', { cwd: DEPLOY_DIR });
   const namespaces = JSON.parse(raw);
-  return namespaces.find(ns => ns.title === KV_NAMESPACE_NAME);
+  return namespaces.filter(ns => ns.title === KV_NAMESPACE_NAME);
+}
+
+async function listKvNamespacesByTitle(env, accountId) {
+  const matches = [];
+  const headers = getCfHeaders(env);
+  if (headers) {
+    try {
+      const list = await fetchJson(
+        `https://api.cloudflare.com/client/v4/accounts/${accountId}/storage/kv/namespaces?per_page=100`,
+        headers,
+      );
+      matches.push(...(list.result ?? []).filter(ns => ns.title === KV_NAMESPACE_NAME));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      log(`Cloudflare API 列出 KV 失败，尝试 wrangler: ${message}`);
+    }
+  }
+
+  if (matches.length === 0) {
+    try {
+      matches.push(...listKvNamespacesViaWrangler());
+    } catch {
+      // fall through
+    }
+  }
+
+  return matches;
+}
+
+function pickExistingNamespaceId(matches, preferredIds = []) {
+  for (const preferredId of preferredIds) {
+    if (!preferredId || preferredId === PLACEHOLDER_KV_ID) {
+      continue;
+    }
+    const match = matches.find(ns => ns.id === preferredId);
+    if (match?.id) {
+      return match.id;
+    }
+  }
+
+  if (matches.length === 0) {
+    return null;
+  }
+
+  if (matches.length > 1) {
+    log(
+      `警告: 发现 ${matches.length} 个同名 KV 命名空间 "${KV_NAMESPACE_NAME}"，绑定 ${matches[0].id}（请在 Dashboard 设置 SYNC_KV_NAMESPACE_ID 固定绑定）`,
+    );
+  }
+
+  return matches[0].id;
 }
 
 export async function ensureKvNamespace(env, accountId, { dryRun = false } = {}) {
   const explicitId = env.SYNC_KV_NAMESPACE_ID?.trim();
-  if (explicitId && explicitId !== PLACEHOLDER_KV_ID) {
-    log(`使用 SYNC_KV_NAMESPACE_ID: ${explicitId}`);
-    return explicitId;
+  const state = loadState();
+  const preferredIds = [explicitId, state.namespaceId].filter(Boolean);
+
+  const existingMatches = await listKvNamespacesByTitle(env, accountId);
+  const existingId = pickExistingNamespaceId(existingMatches, preferredIds);
+
+  if (existingId) {
+    if (explicitId && explicitId !== existingId) {
+      log(`SYNC_KV_NAMESPACE_ID (${explicitId}) 与按名称找到的命名空间 (${existingId}) 不一致，使用按名称找到的命名空间`);
+    } else if (explicitId) {
+      log(`使用 SYNC_KV_NAMESPACE_ID: ${existingId}`);
+    } else if (state.namespaceId === existingId) {
+      log(`复用已有 KV 命名空间: ${existingId}`);
+    } else {
+      log(`找到已有 KV 命名空间: ${existingId}`);
+    }
+    saveState({ namespaceId: existingId, namespaceName: KV_NAMESPACE_NAME, accountId });
+    return existingId;
   }
 
-  const state = loadState();
-  if (state.namespaceId && state.namespaceName === KV_NAMESPACE_NAME && state.namespaceId !== PLACEHOLDER_KV_ID) {
-    log(`复用已有 KV 命名空间: ${state.namespaceId}`);
-    return state.namespaceId;
+  if (explicitId && explicitId !== PLACEHOLDER_KV_ID) {
+    log(`使用 SYNC_KV_NAMESPACE_ID（未在账户中验证）: ${explicitId}`);
+    saveState({ namespaceId: explicitId, namespaceName: KV_NAMESPACE_NAME, accountId });
+    return explicitId;
   }
 
   if (dryRun) {
     log('dry-run: 跳过 KV 命名空间创建');
     return state.namespaceId ?? PLACEHOLDER_KV_ID;
-  }
-
-  const headers = getCfHeaders(env);
-  if (headers) {
-    const list = await fetchJson(
-      `https://api.cloudflare.com/client/v4/accounts/${accountId}/storage/kv/namespaces?per_page=100`,
-      headers,
-    );
-    const existing = list.result?.find(ns => ns.title === KV_NAMESPACE_NAME);
-    if (existing?.id) {
-      log(`找到已有 KV 命名空间: ${existing.id}`);
-      saveState({ namespaceId: existing.id, namespaceName: KV_NAMESPACE_NAME, accountId });
-      return existing.id;
-    }
-  } else {
-    const existing = findKvNamespaceViaWrangler();
-    if (existing?.id) {
-      log(`找到已有 KV 命名空间: ${existing.id}`);
-      saveState({ namespaceId: existing.id, namespaceName: KV_NAMESPACE_NAME, accountId });
-      return existing.id;
-    }
   }
 
   log(`创建 KV 命名空间: ${KV_NAMESPACE_NAME}`);
@@ -225,6 +272,107 @@ export async function ensureKvNamespace(env, accountId, { dryRun = false } = {})
 
   saveState({ namespaceId, namespaceName: KV_NAMESPACE_NAME, accountId });
   return namespaceId;
+}
+
+async function readDatasourceConfigFromKv(env, accountId, syncKvNamespaceId) {
+  const headers = getCfHeaders(env);
+  if (!headers) {
+    return null;
+  }
+
+  const key = encodeURIComponent(DATASOURCE_CONFIG_KEY);
+  const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/storage/kv/namespaces/${syncKvNamespaceId}/values/${key}`;
+  const res = await fetch(url, { headers });
+  if (res.status === 404) {
+    return null;
+  }
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`读取 datasource 配置失败 (${res.status}): ${text}`);
+  }
+
+  const raw = (await res.text()).trim();
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+async function writeDatasourceConfigToKv(env, accountId, syncKvNamespaceId, config) {
+  const headers = getCfHeaders(env);
+  if (!headers) {
+    fail('无法写入 datasource 配置：需要 CLOUDFLARE_API_TOKEN 或 wrangler 授权');
+  }
+
+  const key = encodeURIComponent(DATASOURCE_CONFIG_KEY);
+  const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/storage/kv/namespaces/${syncKvNamespaceId}/values/${key}`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      ...headers,
+      'Content-Type': 'text/plain',
+    },
+    body: JSON.stringify(config),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`写入 datasource 配置失败 (${res.status}): ${text}`);
+  }
+}
+
+/**
+ * Seed /api/admin/datasource config into SYNC_KV so redeploy does not require manual ConnectForm setup.
+ * Enabled when DEPLOY_SEED_DATASOURCE=1 (or "force") and CLOUDFLARE_API_TOKEN is available.
+ */
+export async function seedDatasourceConfigIfNeeded(env, accountId, syncKvNamespaceId, { dryRun = false } = {}) {
+  const mode = env.DEPLOY_SEED_DATASOURCE?.trim();
+  if (!mode) {
+    log('跳过 datasource 种子写入（设置 DEPLOY_SEED_DATASOURCE=1 可在部署时自动写入 ConnectForm 配置）');
+    return { seeded: false, reason: 'disabled' };
+  }
+
+  const token = env.CLOUDFLARE_API_TOKEN?.trim();
+  if (!token) {
+    log('跳过 datasource 种子写入（需要 CLOUDFLARE_API_TOKEN；Git CI 会自动注入）');
+    return { seeded: false, reason: 'no_token' };
+  }
+
+  const cookieNamespaceId =
+    env.COOKIE_KV_NAMESPACE_ID?.trim() || env.DATASOURCE_NAMESPACE_ID?.trim() || syncKvNamespaceId;
+  const storageKey = env.DATASOURCE_STORAGE_KEY?.trim() || DEFAULT_STORAGE_KEY;
+  const config = {
+    accountId: accountId.trim(),
+    namespaceId: cookieNamespaceId.trim(),
+    token,
+    storageKey,
+  };
+
+  if (!config.accountId || !config.namespaceId) {
+    log('跳过 datasource 种子写入（缺少 Account ID 或 Namespace ID）');
+    return { seeded: false, reason: 'missing_ids' };
+  }
+
+  if (dryRun) {
+    log('dry-run: 跳过 datasource 配置写入 SYNC_KV');
+    return { seeded: false, reason: 'dry_run' };
+  }
+
+  if (mode !== 'force') {
+    const existing = await readDatasourceConfigFromKv(env, accountId, syncKvNamespaceId);
+    if (existing?.accountId && existing?.namespaceId && existing?.token) {
+      log('SYNC_KV 中已有 datasource 配置，跳过种子写入（使用 DEPLOY_SEED_DATASOURCE=force 可覆盖）');
+      return { seeded: false, reason: 'exists' };
+    }
+  }
+
+  await writeDatasourceConfigToKv(env, accountId, syncKvNamespaceId, config);
+  log(`已写入 datasource 配置到 SYNC_KV（Namespace ID: ${config.namespaceId}，Storage Key: ${storageKey}）`);
+  return { seeded: true, config: { ...config, token: undefined } };
 }
 
 export async function prepareWranglerConfig(env, { dryRun = false } = {}) {
