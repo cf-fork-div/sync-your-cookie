@@ -1,4 +1,4 @@
-import { BaseStorage } from './base';
+import { BaseStorage, createCachedSnapshot } from './base';
 import {
   accountProfileStorage,
   getActiveProfileSettings,
@@ -25,12 +25,17 @@ accountProfileStorage.subscribe(() => {
   notify();
 });
 
+const getSettingsSnapshot = createCachedSnapshot(
+  () => accountProfileStorage.getSnapshot(),
+  state => getActiveProfileSettings(state),
+);
+
 export const settingsStorage: TSettingsStorage = {
   get: async () => {
     await accountProfileStorage.ensureMigrated();
     return getActiveProfileSettings(await accountProfileStorage.get());
   },
-  getSnapshot: () => getActiveProfileSettings(accountProfileStorage.getSnapshot()),
+  getSnapshot: () => getSettingsSnapshot(),
   subscribe: (listener: () => void) => {
     emitListeners.push(listener);
     const unsubscribeProfile = accountProfileStorage.subscribe(listener);

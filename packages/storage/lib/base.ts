@@ -50,6 +50,25 @@ export type BaseStorage<D> = {
   subscribe: (listener: () => void) => () => void;
 };
 
+/** Keep useSyncExternalStore snapshots referentially stable between store updates. */
+export function createCachedSnapshot<TSource, TSnapshot>(
+  getSource: () => TSource,
+  compute: (source: TSource) => TSnapshot,
+): () => TSnapshot {
+  let lastSource: TSource;
+  let cached: TSnapshot;
+  let hasCache = false;
+  return () => {
+    const source = getSource();
+    if (!hasCache || source !== lastSource) {
+      lastSource = source;
+      cached = compute(source);
+      hasCache = true;
+    }
+    return cached;
+  };
+}
+
 type StorageConfig<D = string> = {
   /**
    * Assign the {@link StorageType} to use.

@@ -1,4 +1,4 @@
-import { BaseStorage, createStorage, StorageType } from './base';
+import { BaseStorage, createCachedSnapshot, createStorage, StorageType } from './base';
 import type { DomainConfig } from './domainConfigTypes';
 import { defaultDomainConfig } from './domainConfigTypes';
 import type { ISettings } from './settingsTypes';
@@ -85,6 +85,11 @@ const initStorage = (): BaseStorage<AccountProfileState> => {
 };
 
 const storage = initStorage();
+
+const getNormalizedSnapshot = createCachedSnapshot(
+  () => storage.getSnapshot(),
+  snapshot => (snapshot === null ? null : normalizeAccountProfileState(snapshot)),
+);
 
 let migrationPromise: Promise<void> | null = null;
 
@@ -225,10 +230,7 @@ export const accountProfileStorage: AccountProfileStorage = {
     await ensureMigrated();
     return normalizeAccountProfileState(await storage.get());
   },
-  getSnapshot: () => {
-    const snapshot = storage.getSnapshot();
-    return snapshot === null ? null : normalizeAccountProfileState(snapshot);
-  },
+  getSnapshot: () => getNormalizedSnapshot(),
   ensureMigrated,
   getActiveProfile: async () => {
     await ensureMigrated();

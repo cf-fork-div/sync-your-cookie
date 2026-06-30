@@ -1,4 +1,4 @@
-import { BaseStorage } from './base';
+import { BaseStorage, createCachedSnapshot } from './base';
 import { accountProfileStorage, getActiveProfile } from './accountProfileStorage';
 
 export interface AccountInfo {
@@ -27,13 +27,18 @@ accountProfileStorage.subscribe(() => {
   notify();
 });
 
+const getAccountInfoSnapshot = createCachedSnapshot(
+  () => accountProfileStorage.getSnapshot(),
+  state => toAccountInfo(getActiveProfile(state)),
+);
+
 export const accountStorage: AccountInfoStorage = {
   get: async () => {
     await accountProfileStorage.ensureMigrated();
     const profile = await accountProfileStorage.getActiveProfile();
     return toAccountInfo(profile);
   },
-  getSnapshot: () => toAccountInfo(getActiveProfile(accountProfileStorage.getSnapshot())),
+  getSnapshot: () => getAccountInfoSnapshot(),
   subscribe: (listener: () => void) => {
     emitListeners.push(listener);
     const unsubscribeProfile = accountProfileStorage.subscribe(listener);

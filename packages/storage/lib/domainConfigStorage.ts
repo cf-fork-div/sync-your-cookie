@@ -1,4 +1,4 @@
-import { BaseStorage } from './base';
+import { BaseStorage, createCachedSnapshot } from './base';
 import {
   accountProfileStorage,
   getActiveProfileDomainConfig,
@@ -25,12 +25,17 @@ accountProfileStorage.subscribe(() => {
   notify();
 });
 
+const getDomainConfigSnapshot = createCachedSnapshot(
+  () => accountProfileStorage.getSnapshot(),
+  state => getActiveProfileDomainConfig(state),
+);
+
 export const domainConfigStorage: DomainConfigStorage = {
   get: async () => {
     await accountProfileStorage.ensureMigrated();
     return getActiveProfileDomainConfig(await accountProfileStorage.get());
   },
-  getSnapshot: () => getActiveProfileDomainConfig(accountProfileStorage.getSnapshot()),
+  getSnapshot: () => getDomainConfigSnapshot(),
   subscribe: (listener: () => void) => {
     emitListeners.push(listener);
     const unsubscribeProfile = accountProfileStorage.subscribe(listener);
