@@ -42,6 +42,13 @@ const enMessages = {
 
   // Options
   settings: 'Settings',
+  serverUrlPasswordRequired: 'Server URL and access password are required',
+  syncServerUrl: 'Sync server URL',
+  syncServerUrlPlaceholder: 'https://sync-your-cookie.example.com',
+  enterSyncServer: 'Enter your sync server URL and access password',
+  datasourceNotConfigured:
+    'Server data source is not configured yet. Ask the admin to set up Cloudflare KV on the web console.',
+  extensionLoginHint: 'Cloudflare KV is configured once on the web admin console.',
   accountIdTokenRequired: 'Account ID and Token are required',
   namespaceIdRequired: 'NamespaceId are required',
   saveSuccess: 'Save Success',
@@ -171,11 +178,12 @@ const enMessages = {
   accessPasswordNotConfigured:
     'Access password is not configured. Set WEB_ACCESS_PASSWORD in Cloudflare Worker (or VITE_WEB_ACCESS_PASSWORD for local dev).',
   devDefaultPasswordHint: 'Dev mode default password: dev (set VITE_WEB_ACCESS_PASSWORD in .env.local to override)',
-  webAccessPathHint: 'Access at {{path}} (optional: set WEB_BASE_PATH in Cloudflare for a hidden path)',
   logout: 'Sign out',
   connectDataSource: 'Connect data source',
   connectDataSourceDesc:
-    'View and edit cookies. Cloudflare KV mode can save changes; paste mode is view-only (export after editing).',
+    'One-time admin setup: save Cloudflare KV credentials here. Extension users only need server URL + password.',
+  adminDatasourceHint:
+    'Save Cloudflare KV credentials on the server (one-time). Extension users only need the server URL and access password.',
   pasteContent: 'Paste content',
   apiToken: 'API Token',
   devModeNote: 'In dev mode (pnpm dev:web) read/write works. Static deploy needs /cf-api reverse proxy.',
@@ -238,6 +246,47 @@ const enMessages = {
   defaultProfile: 'Default',
   profileNumber: 'Profile {{number}}',
   newProfile: 'New Profile',
+
+  // Extension login gate
+  extensionLoginTitle: 'Sign in to sync',
+  extensionLoginDesc: 'Enter the sync server URL and access password to sync cookies across devices.',
+  loginAndSync: 'Sign in & sync',
+  loginSuccessSync: 'Signed in. Synced cookies from server.',
+  loginRequiredHint: 'Sign in to view and sync your cookies.',
+
+  // Folders & entry types
+  folder: 'Folder',
+  allFolders: 'All folders',
+  noFolder: 'No folder',
+  entryType: 'Type',
+  allTypes: 'All types',
+  typeLogin: 'Login',
+  typeSession: 'Session',
+  typeOther: 'Other',
+  accountLabel: 'Account',
+  defaultAccount: 'Default',
+  addAccount: 'Add account',
+  addAccountPrompt: 'Name this account',
+  accountsForHost: '{{count}} accounts',
+  selectAccount: 'Sync account',
+  selectAccountHint: 'Choose which saved account to push or pull for this site.',
+  pushExistingAccountTitle: 'This site already has saved account data',
+  pushExistingAccountDesc:
+    'Browser cookies differ from saved accounts. Overwrite an existing entry or save as a new account.',
+  overwriteAccount: 'Overwrite {{label}}',
+  saveAsNewAccount: 'Save as new account',
+  newAccountLabelPlaceholder: 'Account name (e.g. email)',
+  autoSyncMultiAccountNote:
+    'Auto push runs per account entry with AutoPush enabled. Auto pull uses your selected account when several entries share the same host.',
+  cookieDetails: 'Cookie details',
+  viewDetails: 'View details',
+  hostOnly: 'Host only',
+  sessionCookie: 'Session cookie',
+  storeId: 'Store ID',
+  yes: 'Yes',
+  no: 'No',
+  editEntryMeta: 'Edit entry',
+  saveEntryMeta: 'Save',
 } as const;
 
 const zhCNMessages: Record<MessageKey, string> = {
@@ -277,6 +326,12 @@ const zhCNMessages: Record<MessageKey, string> = {
   openManager: '打开管理器',
 
   settings: '设置',
+  serverUrlPasswordRequired: '服务器 URL 和访问密码为必填项',
+  syncServerUrl: '同步服务器 URL',
+  syncServerUrlPlaceholder: 'https://sync-your-cookie.example.com',
+  enterSyncServer: '输入同步服务器 URL 和访问密码',
+  datasourceNotConfigured: '服务器数据源尚未配置，请联系管理员在 Web 管理端完成「连接数据源」设置。',
+  extensionLoginHint: 'Cloudflare KV 凭据只需在 Web 管理端配置一次。',
   accountIdTokenRequired: 'Account ID 和 Token 为必填项',
   namespaceIdRequired: 'NamespaceId 为必填项',
   saveSuccess: '保存成功',
@@ -399,11 +454,12 @@ const zhCNMessages: Record<MessageKey, string> = {
   accessPasswordNotConfigured:
     '未配置访问密码。请在 Cloudflare Worker 设置 WEB_ACCESS_PASSWORD（本地开发可用 VITE_WEB_ACCESS_PASSWORD）。',
   devDefaultPasswordHint: '开发模式默认密码：dev（可在 .env.local 中设置 VITE_WEB_ACCESS_PASSWORD 覆盖）',
-  webAccessPathHint: '访问地址 {{path}}（可选：在 Cloudflare 设置 WEB_BASE_PATH 使用隐藏路径）',
   logout: '退出登录',
   connectDataSource: '连接数据源',
   connectDataSourceDesc:
-    '支持查看与编辑 Cookie。Cloudflare KV 模式可保存修改；粘贴模式仅可查看（修改后可导出）。',
+    '管理员一次性配置：在此保存 Cloudflare KV 凭据。扩展用户只需服务器 URL + 访问密码。',
+  adminDatasourceHint:
+    '将 Cloudflare KV 凭据保存在服务器上（一次性配置）。扩展用户只需填写服务器 URL 和访问密码。',
   pasteContent: '粘贴内容',
   apiToken: 'API Token',
   devModeNote: '开发模式 (pnpm dev:web) 下可读写。静态部署需配置 /cf-api 反向代理。',
@@ -465,6 +521,44 @@ const zhCNMessages: Record<MessageKey, string> = {
   defaultProfile: '默认',
   profileNumber: '配置 {{number}}',
   newProfile: '新配置',
+
+  extensionLoginTitle: '登录以同步',
+  extensionLoginDesc: '输入同步服务器 URL 和访问密码，在设备间同步 Cookie。',
+  loginAndSync: '登录并同步',
+  loginSuccessSync: '登录成功，已从服务器同步 Cookie。',
+  loginRequiredHint: '请先登录以查看和同步 Cookie。',
+
+  folder: '文件夹',
+  allFolders: '全部文件夹',
+  noFolder: '未分类',
+  entryType: '类型',
+  allTypes: '全部类型',
+  typeLogin: '登录',
+  typeSession: '会话',
+  typeOther: '其他',
+  accountLabel: '账户',
+  defaultAccount: '默认',
+  addAccount: '添加账户',
+  addAccountPrompt: '为此账户命名',
+  accountsForHost: '{{count}} 个账户',
+  selectAccount: '同步账户',
+  selectAccountHint: '选择要推送或拉取的已保存账户。',
+  pushExistingAccountTitle: '该域名已有账号数据',
+  pushExistingAccountDesc: '浏览器 Cookie 与已保存账户不同。可覆盖已有条目，或保存为新账户。',
+  overwriteAccount: '覆盖 {{label}}',
+  saveAsNewAccount: '保存为新账户',
+  newAccountLabelPlaceholder: '账户名称（如邮箱）',
+  autoSyncMultiAccountNote:
+    '自动推送会分别作用于开启了 AutoPush 的账户条目。同一站点有多个账户时，自动拉取使用你选中的账户。',
+  cookieDetails: 'Cookie 详情',
+  viewDetails: '查看详情',
+  hostOnly: '仅主机',
+  sessionCookie: '会话 Cookie',
+  storeId: 'Store ID',
+  yes: '是',
+  no: '否',
+  editEntryMeta: '编辑条目',
+  saveEntryMeta: '保存',
 };
 
 export const messages = {

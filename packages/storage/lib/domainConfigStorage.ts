@@ -13,6 +13,8 @@ type DomainConfigStorage = BaseStorage<DomainConfig> & {
   removeItem: (domain: string) => Promise<void>;
   toggleAutoPullState: (domain: string, checked?: boolean) => Promise<void>;
   toggleAutoPushState: (domain: string, checked?: boolean) => Promise<void>;
+  ensureFolder: (folderName: string) => Promise<void>;
+  setLastSelectedEntry: (host: string, storageKey: string) => Promise<void>;
 };
 
 const emitListeners: Array<() => void> = [];
@@ -38,13 +40,11 @@ export const domainConfigStorage: DomainConfigStorage = {
   getSnapshot: () => getDomainConfigSnapshot(),
   subscribe: (listener: () => void) => {
     emitListeners.push(listener);
-    const unsubscribeProfile = accountProfileStorage.subscribe(listener);
     return () => {
       const index = emitListeners.indexOf(listener);
       if (index >= 0) {
         emitListeners.splice(index, 1);
       }
-      unsubscribeProfile();
     };
   },
   set: async valueOrUpdate => {
@@ -101,6 +101,30 @@ export const domainConfigStorage: DomainConfigStorage = {
       };
       return { domainMap };
     });
+    notify();
+  },
+  ensureFolder: async (folderName: string) => {
+    const trimmed = folderName.trim();
+    if (!trimmed) {
+      return;
+    }
+    await accountProfileStorage.updateActiveProfileDomainConfig(current => {
+      const folders = current.folders || [];
+      if (folders.includes(trimmed)) {
+        return current;
+      }
+      return { ...current, folders: [...folders, trimmed] };
+    });
+    notify();
+  },
+  setLastSelectedEntry: async (host: string, storageKey: string) => {
+    await accountProfileStorage.updateActiveProfileDomainConfig(current => ({
+      ...current,
+      lastSelectedEntryByHost: {
+        ...current.lastSelectedEntryByHost,
+        [host]: storageKey,
+      },
+    }));
     notify();
   },
 };

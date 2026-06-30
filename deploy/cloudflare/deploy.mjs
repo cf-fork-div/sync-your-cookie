@@ -157,6 +157,19 @@ function saveState(state) {
   writeFileSync(STATE_FILE, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
 }
 
+function updateWranglerKvBinding(namespaceId) {
+  let toml = readFileSync(WRANGLER_TOML, 'utf8');
+  const idLine = `id = "${namespaceId}"`;
+  const previewLine = `preview_id = "${namespaceId}"`;
+  if (/^\[\[kv_namespaces\]\]/m.test(toml)) {
+    toml = toml.replace(/^id = .*$/m, idLine);
+    toml = toml.replace(/^preview_id = .*$/m, previewLine);
+  } else {
+    toml = `${toml.trimEnd()}\n\n[[kv_namespaces]]\nbinding = "SYNC_KV"\n${idLine}\n${previewLine}\n`;
+  }
+  writeFileSync(WRANGLER_TOML, toml, 'utf8');
+}
+
 function updateWranglerBasePath(basePath) {
   let toml = readFileSync(WRANGLER_TOML, 'utf8');
   if (basePath) {
@@ -330,7 +343,10 @@ function printSummary({ accountId, namespaceId, basePath, workerUrl, env }) {
   console.log('========================================\n');
   console.log('Web Viewer 地址:');
   console.log(`  ${viewerUrl}\n`);
-  console.log('请填入扩展 Options 页面的凭据:\n');
+  console.log('请填入扩展的同步服务器信息:\n');
+  console.log(`  服务器 URL:  ${viewerUrl.replace(/\/$/, '')}`);
+  console.log('  访问密码:    与 WEB_ACCESS_PASSWORD 相同\n');
+  console.log('Web 管理端一次性配置（登录后「连接数据源」）:\n');
   console.log(`  Account ID:    ${accountId}`);
   console.log(`  Namespace ID:  ${namespaceId}`);
   if (token) {
@@ -340,6 +356,7 @@ function printSummary({ accountId, namespaceId, basePath, workerUrl, env }) {
     console.log('  API Token:     请使用具备 Workers KV Storage:Edit 权限的 Token');
     console.log('                 (部署时使用了 wrangler login，需在 Dashboard 手动创建 Token)\n');
   }
+  console.log('  Storage Key:   sync-your-cookie（可在 Web 管理端修改）\n');
   console.log('Web Viewer 运行时配置（Cloudflare Dashboard 修改后立即生效，无需重新构建）:\n');
   console.log('  WEB_ACCESS_PASSWORD  — 登录密码（Encrypted Secret，必填）');
   if (basePath) {
@@ -357,17 +374,17 @@ function printSummary({ accountId, namespaceId, basePath, workerUrl, env }) {
     console.log('  请在 Dashboard 设置 WEB_ACCESS_PASSWORD 后再访问 Web Viewer\n');
   }
   console.log('自动化项:');
-  console.log('  ✓ KV 命名空间创建/复用（扩展凭据，不绑定 Worker）');
-  console.log('  ✓ Worker 部署 + 运行时认证 + /cf-api 反向代理');
-  console.log('  ✓ Account ID / Namespace ID 输出');
+  console.log('  ✓ KV 命名空间创建/复用并绑定 Worker');
+  console.log('  ✓ Worker 部署 + 运行时认证 + /api/sync 扩展同步 API');
+  console.log('  ✓ Web 管理端数据源配置（一次性）');
   console.log('\n需手动完成:');
   console.log('  • 首次授权: wrangler login 或设置 CLOUDFLARE_API_TOKEN');
-  console.log('  • 若未设置 CLOUDFLARE_API_TOKEN，需在 Dashboard 创建 API Token 填入扩展');
   console.log('  • 在 Dashboard 设置 WEB_ACCESS_PASSWORD');
+  console.log('  • 登录 Web 管理端，在「连接数据源」保存 Cloudflare KV 凭据');
   if (basePath) {
     console.log('  • 确认 WEB_BASE_PATH 自定义路径');
   }
-  console.log('  • 在扩展 Options 保存上述凭据\n');
+  console.log('  • 在扩展中填写服务器 URL + 访问密码\n');
   console.log('详细说明: deploy/CLOUDFLARE.md');
   console.log('========================================\n');
 }
@@ -390,6 +407,7 @@ async function main() {
 
   const accountId = await resolveAccountId(env);
   const namespaceId = await ensureKvNamespace(env, accountId);
+  updateWranglerKvBinding(namespaceId);
 
   let workerUrl = `https://${WORKER_NAME}.workers.dev`;
   if (!dryRun) {

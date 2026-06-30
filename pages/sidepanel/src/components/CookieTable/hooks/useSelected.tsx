@@ -19,9 +19,10 @@ import {
   type ColumnDef,
 } from '@sync-your-cookie/ui';
 
-import { Ellipsis, PencilLine, Trash2, Wrench } from 'lucide-react';
+import { Ellipsis, Eye, PencilLine, Trash2, Wrench } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { CookieDetailPanel } from '../CookieDetailPanel';
 import { useCookieItem } from './useCookieItem';
 export type CookieShowItem = {
   id: string;
@@ -54,6 +55,7 @@ export const useSelected = (cookieMap: Cookie, currentSearchStr: string) => {
   const [selectedKey, setSelectedKey] = useState<string>('');
   const [hasLocalStorage, setHasLocalStorage] = useState(false);
   const [localStorageMode, setLocalStorageMode] = useState(false);
+  const [detailCookie, setDetailCookie] = useState<CookieShowItem | null>(null);
   const handleEdit = (key: string, row: Record<string, string>) => {
     setSelectedKey(key);
     setSelectedRow(row);
@@ -343,6 +345,13 @@ export const useSelected = (cookieMap: Cookie, currentSearchStr: string) => {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
+                className="cursor-pointer"
+                onClick={() => setDetailCookie(row.original)}>
+                <Eye size={16} className="mr-2 h-4 w-4" />
+                {t('viewDetails')}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
                 // disabled={domainConfig.pushing}
                 className="cursor-pointer"
                 onClick={() => handleSet(row.original)}>
@@ -424,5 +433,7 @@ export const useSelected = (cookieMap: Cookie, currentSearchStr: string) => {
     localStorageMode,
     hasLocalStorage,
     setLocalStorageMode,
+    detailCookie,
+    setDetailCookie,
   };
 };

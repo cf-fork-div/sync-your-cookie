@@ -50,10 +50,26 @@ export type BaseStorage<D> = {
   subscribe: (listener: () => void) => () => void;
 };
 
+/** Shallow structural compare for storage payloads (handles chrome.storage onChanged echo). */
+export function storageValuesEqual(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) {
+    return true;
+  }
+  if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') {
+    return false;
+  }
+  try {
+    return JSON.stringify(a) === JSON.stringify(b);
+  } catch {
+    return false;
+  }
+}
+
 /** Keep useSyncExternalStore snapshots referentially stable between store updates. */
 export function createCachedSnapshot<TSource, TSnapshot>(
   getSource: () => TSource,
   compute: (source: TSource) => TSnapshot,
+  areSnapshotsEqual: (a: TSnapshot, b: TSnapshot) => boolean = storageValuesEqual,
 ): () => TSnapshot {
   let lastSource: TSource;
   let cached: TSnapshot;
@@ -62,7 +78,10 @@ export function createCachedSnapshot<TSource, TSnapshot>(
     const source = getSource();
     if (!hasCache || source !== lastSource) {
       lastSource = source;
-      cached = compute(source);
+      const next = compute(source);
+      if (!hasCache || !areSnapshotsEqual(cached, next)) {
+        cached = next;
+      }
       hasCache = true;
     }
     return cached;
@@ -301,8 +320,19 @@ export function createStorage<D = string>(key: string, fallback: D, config?: Sto
     return cache;
   };
 
+  const get = async (): Promise<D> => {
+    const data = await _getDataFromStorage();
+    if (cache === null || !storageValuesEqual(cache, data)) {
+      cache = data;
+    }
+    initedCache = true;
+    return cache as D;
+  };
+
   _getDataFromStorage().then(data => {
-    cache = data;
+    if (cache === null || !storageValuesEqual(cache, data)) {
+      cache = data;
+    }
     initedCache = true;
     _emitChange();
   });
@@ -316,8 +346,12 @@ export function createStorage<D = string>(key: string, fallback: D, config?: Sto
 
     if (cache === valueOrUpdate) return;
 
-    cache = await updateCache(valueOrUpdate, cache);
+    const next = await updateCache(valueOrUpdate, cache);
+    if (cache !== null && storageValuesEqual(cache, next)) {
+      return;
+    }
 
+    cache = next;
     _emitChange();
   }
 
@@ -327,7 +361,7 @@ export function createStorage<D = string>(key: string, fallback: D, config?: Sto
   }
 
   return {
-    get: _getDataFromStorage,
+    get,
     set,
     getSnapshot,
     subscribe,

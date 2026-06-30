@@ -1,10 +1,11 @@
-import { loadSession, parseRawContent } from '@src/lib/cookies';
+import { fetchDatasourceStatus, fetchKvViaServer, saveDatasourceConfig } from '@src/lib/datasource';
+import { parseRawContent } from '@src/lib/cookies';
 import { detectFormat } from '@src/lib/mutations';
 import type { ViewerSession } from '@src/lib/types';
 import { useI18n } from '@sync-your-cookie/shared';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from '@sync-your-cookie/ui';
 import { ClipboardPaste, Cloud, Loader2 } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 type SourceTab = 'cloudflare' | 'paste';
@@ -17,6 +18,7 @@ export function ConnectForm({ onLoaded }: ConnectFormProps) {
   const { t } = useI18n();
   const [tab, setTab] = useState<SourceTab>('cloudflare');
   const [loading, setLoading] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState(true);
 
   const [accountId, setAccountId] = useState('');
   const [namespaceId, setNamespaceId] = useState('');
@@ -26,6 +28,30 @@ export function ConnectForm({ onLoaded }: ConnectFormProps) {
   const [pasteContent, setPasteContent] = useState('');
   const [encryptionPassword, setEncryptionPassword] = useState('');
 
+  useEffect(() => {
+    let cancelled = false;
+    void fetchDatasourceStatus()
+      .then(status => {
+        if (cancelled || !status.configured) {
+          return;
+        }
+        setAccountId(status.accountId || '');
+        setNamespaceId(status.namespaceId || '');
+        setStorageKey(status.storageKey || 'sync-your-cookie');
+      })
+      .catch(() => {
+        // ignore — admin may configure fresh
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingStatus(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleSubmit = async () => {
     setLoading(true);
     try {
@@ -34,18 +60,35 @@ export function ConnectForm({ onLoaded }: ConnectFormProps) {
           toast.warning(t('fillCloudflareConfig'));
           return;
         }
-        const session = await loadSession({
+        const key = storageKey.trim() || 'sync-your-cookie';
+        await saveDatasourceConfig({
+          accountId: accountId.trim(),
+          namespaceId: namespaceId.trim(),
+          token: token.trim(),
+          storageKey: key,
+        });
+        const content = await fetchKvViaServer(key);
+        const format = detectFormat(content, encryptionPassword || undefined);
+        const parsed = await parseRawContent(content, {
+          encryptionPassword: encryptionPassword || undefined,
+        });
+        onLoaded({
+          cookieMap: {
+            ...parsed,
+            domainCookieMap: parsed.domainCookieMap ?? {},
+          },
           dataSource: {
             type: 'cloudflare',
             accountId: accountId.trim(),
             namespaceId: namespaceId.trim(),
             token: token.trim(),
-            storageKey: storageKey.trim() || 'sync-your-cookie',
+            storageKey: key,
             useProxy: true,
+            serverManaged: true,
           },
-          encryptionPassword: encryptionPassword || undefined,
+          format,
+          canWrite: true,
         });
-        onLoaded(session);
       } else {
         if (!pasteContent.trim()) {
           toast.warning(t('pasteKvContent'));
@@ -103,23 +146,39 @@ export function ConnectForm({ onLoaded }: ConnectFormProps) {
 
         {tab === 'cloudflare' && (
           <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">{t('adminDatasourceHint')}</p>
             <div className="space-y-2">
               <Label htmlFor="accountId">{t('accountId')}</Label>
-              <Input id="accountId" value={accountId} onChange={e => setAccountId(e.target.value)} />
+              <Input
+                id="accountId"
+                value={accountId}
+                onChange={e => setAccountId(e.target.value)}
+                disabled={loadingStatus}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="namespaceId">{t('namespaceId')}</Label>
-              <Input id="namespaceId" value={namespaceId} onChange={e => setNamespaceId(e.target.value)} />
+              <Input
+                id="namespaceId"
+                value={namespaceId}
+                onChange={e => setNamespaceId(e.target.value)}
+                disabled={loadingStatus}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="token">{t('apiToken')}</Label>
-              <Input id="token" type="password" value={token} onChange={e => setToken(e.target.value)} />
+              <Input
+                id="token"
+                type="password"
+                value={token}
+                onChange={e => setToken(e.target.value)}
+                placeholder={loadingStatus ? t('loading') : undefined}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="storageKey">{t('storageKey')}</Label>
               <Input id="storageKey" value={storageKey} onChange={e => setStorageKey(e.target.value)} />
             </div>
-            <p className="text-xs text-muted-foreground">{t('devModeNote')}</p>
           </div>
         )}
 
@@ -148,7 +207,7 @@ export function ConnectForm({ onLoaded }: ConnectFormProps) {
           />
         </div>
 
-        <Button className="w-full" onClick={handleSubmit} disabled={loading}>
+        <Button className="w-full" onClick={handleSubmit} disabled={loading || loadingStatus}>
           {loading ? <Loader2 size={16} className="mr-2 animate-spin" /> : null}
           {t('loadCookieData')}
         </Button>

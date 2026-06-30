@@ -17,7 +17,6 @@ export function LoginForm({ sessionInfo, onSuccess }: LoginFormProps) {
 
   const accessPasswordConfigured = sessionInfo?.passwordConfigured ?? isPasswordConfiguredLocally();
   const showDevHint = import.meta.env.DEV && !import.meta.env.VITE_WEB_ACCESS_PASSWORD?.trim();
-  const accessPath = sessionInfo?.basePath ?? '/';
 
   const handleSubmit = async () => {
     if (!accessPasswordConfigured) {
@@ -78,7 +77,6 @@ export function LoginForm({ sessionInfo, onSuccess }: LoginFormProps) {
               />
             </div>
             {showDevHint && <p className="text-xs text-muted-foreground">{t('devDefaultPasswordHint')}</p>}
-            <p className="text-xs text-muted-foreground">{t('webAccessPathHint', { path: accessPath })}</p>
             <Button className="w-full" onClick={() => void handleSubmit()} disabled={loading}>
               {loading ? <Loader2 size={16} className="mr-2 animate-spin" /> : null}
               {t('login')}

@@ -4,6 +4,8 @@ export * from './Spinner';
 export * from './ThemeDropdown';
 export * from './LanguageDropdown';
 export * from './AccountProfileDropdown';
+export * from './AccountLoginScreen';
+export * from './PushAccountDialog';
 export * from './ui';
 
 import { default as SyncTooltip } from './Tooltip';

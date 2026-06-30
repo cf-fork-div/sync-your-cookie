@@ -20,6 +20,9 @@ export type CloudflareSource = {
   storageKey: string;
 
   useProxy?: boolean;
+
+  /** Credentials stored server-side via /api/admin/datasource */
+  serverManaged?: boolean;
 };
 
 export type PasteSource = {

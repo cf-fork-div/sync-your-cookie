@@ -38,13 +38,11 @@ export const settingsStorage: TSettingsStorage = {
   getSnapshot: () => getSettingsSnapshot(),
   subscribe: (listener: () => void) => {
     emitListeners.push(listener);
-    const unsubscribeProfile = accountProfileStorage.subscribe(listener);
     return () => {
       const index = emitListeners.indexOf(listener);
       if (index >= 0) {
         emitListeners.splice(index, 1);
       }
-      unsubscribeProfile();
     };
   },
   set: async valueOrUpdate => {

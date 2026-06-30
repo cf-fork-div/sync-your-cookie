@@ -8,22 +8,25 @@ import {
   useI18n,
   useStorageSuspense,
   useTheme,
+  useAccountAuth,
   withErrorBoundary,
   withSuspense,
 } from '@sync-your-cookie/shared';
 
 import { accountProfileStorage, getActiveProfile } from '@sync-your-cookie/storage/lib/accountProfileStorage';
-import { Button, Image, Spinner, Toaster } from '@sync-your-cookie/ui';
+import { Button, Image, Label, PushAccountDialog, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Spinner, Toaster } from '@sync-your-cookie/ui';
 import { CloudDownload, CloudUpload, Copyright, PanelRightOpen, RotateCw, Settings } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { AutoSwitch } from './components/AutoSwtich';
+import { AccountLoginGate } from './components/AccountLoginGate';
 import { useDomainConfig } from './hooks/useDomainConfig';
 
 const Popup = () => {
   const { theme } = useTheme();
   const { t } = useI18n();
   useDocumentTitle('pageTitlePopup');
+  const { isAuthenticated } = useAccountAuth();
   const profileState = useStorageSuspense(accountProfileStorage);
   const activeProfile = getActiveProfile(profileState);
   const [activeTabUrl, setActiveTabUrl] = useState('');
@@ -35,9 +38,14 @@ const Popup = () => {
     toggleAutoPullState,
     domain,
     setDomain,
+    activeStorageKey,
+    entryOptions,
+    hasMultipleAccounts,
+    setSelectedStorageKey,
+    requestPush,
+    pushChoice,
     domainItemConfig,
     domainItemStatus,
-    handlePush,
     handlePull,
   } = useDomainConfig();
 
@@ -58,8 +66,16 @@ const Popup = () => {
   const isPushingOrPulling = domainItemStatus.pushing || domainItemStatus.pulling;
 
   const handleAndReload = () => {
-    handlePull(activeTabUrl, domain, true);
+    handlePull(activeTabUrl, activeStorageKey, true);
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-w-[400px] bg-background">
+        <AccountLoginGate compact />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center min-w-[400px] justify-center bg-background ">
@@ -98,6 +114,31 @@ const Popup = () => {
             </div>
           ) : null}
 
+          {hasMultipleAccounts ? (
+            <div className="mb-3 w-full">
+              <Label htmlFor="popup-account-select" className="text-xs text-muted-foreground mb-1 block">
+                {t('selectAccount')}
+              </Label>
+              <Select
+                value={activeStorageKey}
+                onValueChange={value => {
+                  void setSelectedStorageKey(value);
+                }}>
+                <SelectTrigger id="popup-account-select" className="w-full">
+                  <SelectValue placeholder={t('selectAccount')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {entryOptions.map(entry => (
+                    <SelectItem key={entry.storageKey} value={entry.storageKey}>
+                      {entry.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground mt-1">{t('selectAccountHint')}</p>
+            </div>
+          ) : null}
+
           <div className=" flex flex-col">
             {/* <Button title={cloudflareAccountId} className="mb-2" onClick={handleUpdateToken}>
             Update Token
@@ -106,7 +147,7 @@ const Popup = () => {
               <Button
                 disabled={!activeTabUrl || isPushingOrPulling || pushing}
                 className=" mr-2 w-[160px] justify-start"
-                onClick={() => handlePush(domain, activeTabUrl, favIconUrl)}>
+                onClick={() => void requestPush(activeTabUrl, favIconUrl)}>
                 {domainItemStatus.pushing ? (
                   <RotateCw size={16} className="mr-2 animate-spin" />
                 ) : (
@@ -116,7 +157,7 @@ const Popup = () => {
               </Button>
               <AutoSwitch
                 disabled={!activeTabUrl}
-                onChange={() => toggleAutoPushState(domain)}
+                onChange={() => toggleAutoPushState(activeStorageKey)}
                 id="autoPush"
                 value={!!domainItemConfig.autoPush}
               />
@@ -137,7 +178,7 @@ const Popup = () => {
 
               <AutoSwitch
                 disabled={!activeTabUrl}
-                onChange={() => toggleAutoPullState(domain)}
+                onChange={() => toggleAutoPullState(activeStorageKey)}
                 id="autoPull"
                 value={!!domainItemConfig.autoPull}
               />
@@ -164,6 +205,32 @@ const Popup = () => {
               {t('openManager')}
             </Button>
           </div>
+          <PushAccountDialog
+            open={Boolean(pushChoice.dialog)}
+            step={pushChoice.step}
+            labels={{
+              title: t('pushExistingAccountTitle'),
+              description: t('pushExistingAccountDesc'),
+              overwriteAccount: t('overwriteAccount', { label: '{{label}}' }),
+              saveAsNewAccount: t('saveAsNewAccount'),
+              accountLabel: t('accountLabel'),
+              newAccountLabelPlaceholder: t('newAccountLabelPlaceholder'),
+              cancel: t('cancel'),
+              confirm: t('add'),
+              back: t('back'),
+            }}
+            overwriteOptions={pushChoice.dialog?.overwriteOptions || []}
+            overwriteKey={pushChoice.overwriteKey}
+            newLabel={pushChoice.newLabel}
+            saving={pushChoice.saving}
+            onOverwriteKeyChange={pushChoice.setOverwriteKey}
+            onNewLabelChange={pushChoice.setNewLabel}
+            onOverwrite={() => void pushChoice.confirmOverwrite()}
+            onConfirmNew={() => void pushChoice.confirmSaveNew()}
+            onSaveAsNew={() => pushChoice.setStep('newLabel')}
+            onBack={() => pushChoice.setStep('choose')}
+            onClose={pushChoice.closeDialog}
+          />
           <Toaster
             theme={theme}
             closeButton

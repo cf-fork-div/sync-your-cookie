@@ -7,8 +7,13 @@ import { defaultKey, defaultSettings } from './settingsTypes';
 export interface AccountProfile {
   id: string;
   name: string;
+  serverUrl?: string;
+  authPassword?: string;
+  /** @deprecated Legacy direct Cloudflare KV credentials */
   accountId?: string;
+  /** @deprecated Legacy direct Cloudflare KV credentials */
   namespaceId?: string;
+  /** @deprecated Legacy direct Cloudflare KV credentials */
   token?: string;
   defaultStorageKey?: string;
   settings?: ISettings;
@@ -31,6 +36,13 @@ const cacheStorageMap = new Map();
 /** Chinese defaults for migration; UI layer uses i18n when creating profiles. */
 const DEFAULT_PROFILE_NAME = '默认';
 const DEFAULT_PROFILE_NUMBER_NAME = '配置 1';
+
+const EMPTY_DOMAIN_CONFIG: DomainConfig = { domainMap: {} };
+
+const defaultSettingsSnapshot: ISettings = {
+  ...defaultSettings,
+  storageKeyList: defaultSettings.storageKeyList,
+};
 
 const createDefaultProfile = (overrides: Partial<AccountProfile> = {}): AccountProfile => ({
   id: crypto.randomUUID(),
@@ -162,10 +174,13 @@ export const getActiveProfile = (state?: AccountProfileState | null): AccountPro
 
 export const getActiveProfileSettings = (state?: AccountProfileState | null): ISettings => {
   const profile = getActiveProfile(state);
+  if (!profile?.settings) {
+    return defaultSettingsSnapshot;
+  }
   return {
     ...defaultSettings,
-    ...profile?.settings,
-    storageKeyList: profile?.settings?.storageKeyList?.length
+    ...profile.settings,
+    storageKeyList: profile.settings.storageKeyList?.length
       ? profile.settings.storageKeyList
       : defaultSettings.storageKeyList,
   };
@@ -174,8 +189,8 @@ export const getActiveProfileSettings = (state?: AccountProfileState | null): IS
 export const getActiveProfileDomainConfig = (state?: AccountProfileState | null): DomainConfig => {
   const profile = getActiveProfile(state);
   const domainMap = profile?.domainConfig?.domainMap;
-  if (!domainMap || typeof domainMap !== 'object') {
-    return defaultDomainConfig();
+  if (!domainMap || typeof domainMap !== 'object' || Object.keys(domainMap).length === 0) {
+    return EMPTY_DOMAIN_CONFIG;
   }
   return { domainMap: { ...domainMap } };
 };

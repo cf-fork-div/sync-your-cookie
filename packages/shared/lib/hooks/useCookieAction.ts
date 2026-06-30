@@ -13,6 +13,8 @@ import { openExtensionOptionsPage } from '../constants';
 import { useI18n } from '../i18n/useI18n';
 import { useStorageSuspense } from './index';
 
+const EMPTY_DOMAIN_ITEM = Object.freeze({});
+
 const sceneFailKey: Record<'push' | 'pull' | 'remove' | 'delete' | 'edit', MessageKey> = {
   push: 'pushFail',
   pull: 'pullFailScene',
@@ -102,7 +104,7 @@ export const useCookieAction = (host: string, toast: typeof Toast) => {
         console.log('res', res);
         if (res.isOk) {
           toast.success(res.msg || t('success'));
-          await domainConfigStorage.removeItem(host);
+          await domainConfigStorage.removeItem(selectedDomain);
         } else {
           toast.error(res.msg || t('removedFail'));
         }
@@ -117,13 +119,13 @@ export const useCookieAction = (host: string, toast: typeof Toast) => {
     // domainConfig: domainConfig as typeof domainConfig,
     pulling: domainStatus.pulling,
     pushing: domainStatus.pushing,
-    domainItemConfig: domainConfig?.domainMap?.[host] || {},
-    domainItemStatus: domainStatus?.domainMap?.[host] || {},
+    domainItemConfig: domainConfig?.domainMap?.[host] || EMPTY_DOMAIN_ITEM,
+    domainItemStatus: domainStatus?.domainMap?.[host] || EMPTY_DOMAIN_ITEM,
     getDomainItemConfig: (selectedDomain: string) => {
-      return domainConfig?.domainMap?.[selectedDomain] || {};
+      return domainConfig?.domainMap?.[selectedDomain] || EMPTY_DOMAIN_ITEM;
     },
     getDomainItemStatus: (selectedDomain: string) => {
-      return domainStatus?.domainMap?.[selectedDomain] || {};
+      return domainStatus?.domainMap?.[selectedDomain] || EMPTY_DOMAIN_ITEM;
     },
     toggleAutoPullState: domainConfigStorage.toggleAutoPullState,
     toggleAutoPushState: domainConfigStorage.toggleAutoPushState,

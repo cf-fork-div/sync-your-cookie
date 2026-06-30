@@ -24,6 +24,7 @@ import {
   CloudUpload,
   Copy,
   Ellipsis,
+  Eye,
   FileText,
   PencilLine,
   Plus,
@@ -37,11 +38,13 @@ import type { BrowserCookieItem, CookieFormData } from '../../lib/browserCookies
 import { formatExpiration } from '../../lib/browserCookies';
 import { serializeHeaderString, serializeNetscape } from '../../lib/cookieFormats';
 import { CookieFormDialog } from './CookieFormDialog';
+import { CookieDetailPanel } from './CookieDetailPanel';
 import { DeleteCookieDialog, type DeleteTarget } from './DeleteCookieDialog';
 import { useLiveBrowserCookies } from './hooks/useLiveBrowserCookies';
 
 type LiveBrowserTabProps = {
   host: string;
+  storageKey: string;
   kvCookies: { name?: string | null; domain?: string | null }[];
   onPush: () => Promise<void>;
   searchStr: string;
@@ -71,7 +74,7 @@ function CopyValueButton({ value }: { value: string }) {
   );
 }
 
-export function LiveBrowserTab({ host, kvCookies, onPush, searchStr }: LiveBrowserTabProps) {
+export function LiveBrowserTab({ host, storageKey, kvCookies, onPush, searchStr }: LiveBrowserTabProps) {
   const { t } = useI18n();
   const { cookies, loading, domainUrl, refresh, handleSet, handleRemove, handleClearAll, handleImport } =
     useLiveBrowserCookies(host);
@@ -79,6 +82,7 @@ export function LiveBrowserTab({ host, kvCookies, onPush, searchStr }: LiveBrows
   const [editCookie, setEditCookie] = useState<BrowserCookieItem | null>(null);
   const [deleteCookie, setDeleteCookie] = useState<BrowserCookieItem | null>(null);
   const [clearAllOpen, setClearAllOpen] = useState(false);
+  const [detailCookie, setDetailCookie] = useState<BrowserCookieItem | null>(null);
   const [saving, setSaving] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
 
@@ -121,7 +125,7 @@ export function LiveBrowserTab({ host, kvCookies, onPush, searchStr }: LiveBrows
       }
       if (target === 'kv' || target === 'both') {
         await removeCookieItemUsingMessage({
-          domain: host,
+          domain: storageKey,
           id: `${deleteCookie.domain}_${deleteCookie.name}`,
         });
       }
@@ -247,6 +251,13 @@ export function LiveBrowserTab({ host, kvCookies, onPush, searchStr }: LiveBrows
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              className="cursor-pointer"
+              onClick={() => setDetailCookie(row.original)}>
+              <Eye size={16} className="mr-2 h-4 w-4" />
+              {t('viewDetails')}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem
               className="cursor-pointer"
               onClick={() => {
@@ -378,6 +389,24 @@ export function LiveBrowserTab({ host, kvCookies, onPush, searchStr }: LiveBrows
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {detailCookie ? (
+        <CookieDetailPanel
+          cookie={{
+            domain: detailCookie.domain,
+            name: detailCookie.name,
+            value: detailCookie.value,
+            path: detailCookie.path,
+            expirationDate: detailCookie.expirationDate,
+            secure: detailCookie.secure,
+            httpOnly: detailCookie.httpOnly,
+            sameSite: detailCookie.sameSite,
+            hostOnly: detailCookie.hostOnly,
+            session: detailCookie.session,
+            storeId: detailCookie.storeId,
+          }}
+          onClose={() => setDetailCookie(null)}
+        />
+      ) : null}
     </div>
   );
 }

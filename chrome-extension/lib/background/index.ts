@@ -1,7 +1,7 @@
 // sort-imports-ignore
 import 'webextension-polyfill';
 
-import { pullAndSetCookies, pullCookies, pushMultipleDomainCookies } from '@sync-your-cookie/shared';
+import { pullAndSetCookies, pullCookies, pushMultipleDomainCookies, getHostFromStorageKey, resolveAutoPullEntryKey, resolveAutoPushEntryKeys } from '@sync-your-cookie/shared';
 import { cookieStorage } from '@sync-your-cookie/storage/lib/cookieStorage';
 import { domainConfigStorage } from '@sync-your-cookie/storage/lib/domainConfigStorage';
 import { domainStatusStorage } from '@sync-your-cookie/storage/lib/domainStatusStorage';
@@ -60,7 +60,7 @@ chrome.cookies.onChanged.addListener(async changeInfo => {
   const removeHeadDomain = domain.startsWith('.') ? domain.slice(1) : domain;
   let flag = false;
   for (const key in domainMap) {
-    if (key.endsWith(removeHeadDomain) && domainMap[key]?.autoPush) {
+    if (getHostFromStorageKey(key) === removeHeadDomain && domainMap[key]?.autoPush) {
       flag = true;
       break;
     }
@@ -80,12 +80,9 @@ chrome.cookies.onChanged.addListener(async changeInfo => {
     // const pushDomainSet = new Set<string>();
     const pushDomainHostMap = new Map<string, string[]>();
     for (const domain of changedDomainSet) {
-      for (const key in domainConfig.domainMap) {
-        if (key.endsWith(domain) && domainConfig.domainMap[key]?.autoPush) {
-          // pushDomainSet.add(domain);
-          const existedHost = pushDomainHostMap.get(domain) || [];
-          pushDomainHostMap.set(domain, [key, ...existedHost]);
-        }
+      const keysToPush = resolveAutoPushEntryKeys(domain, domainConfig);
+      if (keysToPush.length) {
+        pushDomainHostMap.set(domain, keysToPush);
       }
     }
 
@@ -134,16 +131,9 @@ chrome.tabs.onUpdated.addListener(async function (tabId, changeInfo, tab) {
   // read changeInfo data and do something with it (like read the url)
   if (changeInfo.status === 'loading' && changeInfo.url) {
     const domainConfig = await domainConfigStorage.get();
-    let pullDomain = '';
-    let needPull = false;
-    for (const key in domainConfig.domainMap) {
-      if (new URL(changeInfo.url).host.endsWith(key) && domainConfig.domainMap[key]?.autoPull) {
-        needPull = true;
-        pullDomain = key;
-        break;
-        // await pullCookies();
-      }
-    }
+    const tabHost = new URL(changeInfo.url).host;
+    const pullDomain = resolveAutoPullEntryKey(tabHost, domainConfig);
+    let needPull = Boolean(pullDomain);
     if (needPull) {
       const allOpendTabs = await chrome.tabs.query({});
       const otherExistedTabs = allOpendTabs.filter(itemTab => tab.id !== itemTab.id);
@@ -164,7 +154,7 @@ chrome.tabs.onUpdated.addListener(async function (tabId, changeInfo, tab) {
       }
     }
     if (needPull) {
-      await pullAndSetCookies(changeInfo.url, pullDomain);
+      await pullAndSetCookies(changeInfo.url, pullDomain!);
     }
     const allActiveTabs = await chrome.tabs.query({
       active: true,

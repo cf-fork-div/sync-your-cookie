@@ -69,6 +69,53 @@ function getDevEnv(mode: string, env: Record<string, string>): DevEnv {
   };
 }
 
+type DevDatasourceConfig = {
+  accountId: string;
+  namespaceId: string;
+  token: string;
+  storageKey: string;
+};
+
+const devDatasourceConfig: { value: DevDatasourceConfig | null } = { value: null };
+const devKvStore = new Map<string, string>();
+
+function getBearerPassword(req: IncomingMessage): string | null {
+  const auth = req.headers.authorization?.trim();
+  if (!auth) {
+    return null;
+  }
+  const match = auth.match(/^Bearer\s+(.+)$/i);
+  return match?.[1]?.trim() || null;
+}
+
+async function isDevAuthorized(req: IncomingMessage, devEnv: DevEnv): Promise<boolean> {
+  const password = getWebAccessPassword(devEnv);
+  if (!password) {
+    return false;
+  }
+  const bearer = getBearerPassword(req);
+  if (bearer && bearer === password) {
+    return true;
+  }
+  const token = parseCookie(req, 'syc_session');
+  if (!token) {
+    return false;
+  }
+  return isValidSession(
+    new Request('http://localhost', {
+      headers: { Cookie: `syc_session=${encodeURIComponent(token)}` },
+    }),
+    password,
+  );
+}
+
+function getStorageKeyFromUrl(req: IncomingMessage): string {
+  const rawUrl = req.url || '';
+  const query = rawUrl.includes('?') ? rawUrl.split('?')[1] : '';
+  const params = new URLSearchParams(query);
+  return params.get('storageKey')?.trim() || devDatasourceConfig.value?.storageKey || 'sync-your-cookie';
+}
+
 export function devWebApiPlugin(mode: string, env: Record<string, string>): Plugin {
   const devEnv = getDevEnv(mode, env);
 
@@ -129,6 +176,91 @@ export function devWebApiPlugin(mode: string, env: Record<string, string>): Plug
             appendSetCookie(res, createLogoutCookie(false));
             sendJson(res, 200, { ok: true });
             return;
+          }
+
+          if (url === '/api/admin/datasource') {
+            const authorized = await isDevAuthorized(req, devEnv);
+            if (!authorized) {
+              sendJson(res, 401, { ok: false, error: 'unauthorized' });
+              return;
+            }
+            if (req.method === 'GET') {
+              const config = devDatasourceConfig.value;
+              sendJson(res, 200, {
+                ok: true,
+                configured: Boolean(config),
+                accountId: config?.accountId,
+                namespaceId: config?.namespaceId,
+                storageKey: config?.storageKey,
+                tokenMasked: config?.token ? `${config.token.slice(0, 4)}…${config.token.slice(-4)}` : undefined,
+              });
+              return;
+            }
+            if (req.method === 'PUT') {
+              const body = (await readJsonBody(req)) as Partial<DevDatasourceConfig>;
+              const accountId = body.accountId?.trim();
+              const namespaceId = body.namespaceId?.trim();
+              const token = body.token?.trim();
+              const storageKey = body.storageKey?.trim() || 'sync-your-cookie';
+              if (!accountId || !namespaceId || !token) {
+                sendJson(res, 400, { ok: false, error: 'missing_fields' });
+                return;
+              }
+              devDatasourceConfig.value = { accountId, namespaceId, token, storageKey };
+              sendJson(res, 200, {
+                ok: true,
+                configured: true,
+                accountId,
+                namespaceId,
+                storageKey,
+                tokenMasked: `${token.slice(0, 4)}…${token.slice(-4)}`,
+              });
+              return;
+            }
+          }
+
+          if (url === '/api/sync/status' && req.method === 'GET') {
+            const authorized = await isDevAuthorized(req, devEnv);
+            if (!authorized) {
+              sendJson(res, 401, { ok: false, error: 'unauthorized' });
+              return;
+            }
+            sendJson(res, 200, {
+              ok: true,
+              datasourceConfigured: Boolean(devDatasourceConfig.value),
+              storageKey: devDatasourceConfig.value?.storageKey,
+            });
+            return;
+          }
+
+          if (url === '/api/sync/kv') {
+            const authorized = await isDevAuthorized(req, devEnv);
+            if (!authorized) {
+              sendJson(res, 401, { ok: false, error: 'unauthorized' });
+              return;
+            }
+            if (!devDatasourceConfig.value) {
+              sendJson(res, 503, { ok: false, error: 'datasource_not_configured' });
+              return;
+            }
+            const key = getStorageKeyFromUrl(req);
+            if (req.method === 'GET') {
+              res.statusCode = 200;
+              res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+              res.end(devKvStore.get(key) || '');
+              return;
+            }
+            if (req.method === 'PUT') {
+              const chunks: Buffer[] = [];
+              await new Promise<void>((resolve, reject) => {
+                req.on('data', chunk => chunks.push(Buffer.from(chunk)));
+                req.on('end', () => resolve());
+                req.on('error', reject);
+              });
+              devKvStore.set(key, Buffer.concat(chunks).toString('utf8'));
+              sendJson(res, 200, { ok: true });
+              return;
+            }
           }
 
           sendJson(res, 404, { ok: false, error: 'not_found' });

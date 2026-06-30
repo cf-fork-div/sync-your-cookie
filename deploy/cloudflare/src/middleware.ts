@@ -6,6 +6,7 @@ import {
   stripBasePathPrefix,
   type WorkerEnv,
 } from './lib/env';
+import { isPasswordAuthorized } from './lib/request-auth';
 import { isValidSession } from './lib/session';
 
 const PUBLIC_API_SUFFIXES = ['/api/login', '/api/session', '/api/logout'];
@@ -14,8 +15,22 @@ function isPublicApiPath(pathname: string): boolean {
   return PUBLIC_API_SUFFIXES.includes(pathname);
 }
 
+function isSyncApiPath(pathname: string): boolean {
+  return pathname === '/api/sync' || pathname.startsWith('/api/sync/');
+}
+
+function isAdminApiPath(pathname: string): boolean {
+  return pathname === '/api/admin' || pathname.startsWith('/api/admin/');
+}
+
 function shouldRequireAuth(pathname: string): boolean {
   if (isCfApiPath(pathname)) {
+    return true;
+  }
+  if (isSyncApiPath(pathname)) {
+    return true;
+  }
+  if (isAdminApiPath(pathname)) {
     return true;
   }
   if (isApiPath(pathname) && !isPublicApiPath(pathname)) {
@@ -57,9 +72,22 @@ export async function applyMiddleware(request: Request, env: WorkerEnv): Promise
     if (!password) {
       return { pathname, response: new Response('Service Unavailable', { status: 503 }) };
     }
-    const authenticated = await isValidSession(request, password);
-    if (!authenticated) {
-      return { pathname, response: new Response('Unauthorized', { status: 401 }) };
+
+    if (isSyncApiPath(pathname)) {
+      const authorized = await isPasswordAuthorized(request, env);
+      if (!authorized) {
+        return { pathname, response: new Response('Unauthorized', { status: 401 }) };
+      }
+    } else if (isAdminApiPath(pathname)) {
+      const authenticated = await isValidSession(request, password);
+      if (!authenticated) {
+        return { pathname, response: new Response('Unauthorized', { status: 401 }) };
+      }
+    } else {
+      const authenticated = await isValidSession(request, password);
+      if (!authenticated) {
+        return { pathname, response: new Response('Unauthorized', { status: 401 }) };
+      }
     }
   }
 

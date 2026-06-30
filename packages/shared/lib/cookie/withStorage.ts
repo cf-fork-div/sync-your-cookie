@@ -28,7 +28,11 @@ export const readCookiesMapWithStatus = async (cloudflareInfo: AccountInfo) => {
 
 export const pullCookies = async (isInit = false): Promise<Cookie> => {
   const cloudflareInfo = await accountStorage.get();
-  if (isInit && (!cloudflareInfo.accountId || !cloudflareInfo.namespaceId || !cloudflareInfo.token)) {
+  if (
+    isInit &&
+    !cloudflareInfo.serverUrl &&
+    (!cloudflareInfo.accountId || !cloudflareInfo.namespaceId || !cloudflareInfo.token)
+  ) {
     return {};
   }
   try {

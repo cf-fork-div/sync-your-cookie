@@ -2,6 +2,8 @@ import { accountStorage, type AccountInfo } from '@sync-your-cookie/storage/lib/
 import { settingsStorage } from '@sync-your-cookie/storage/lib/settingsStorage';
 
 import { readCloudflareKV, writeCloudflareKV, WriteResponse } from '../cloudflare/api';
+import { isServerSyncConfigured } from '../auth/accountAuth';
+import { readSyncKV, writeSyncKV } from '../sync/api';
 
 import { MessageErrorCode } from '@lib/message';
 import {
@@ -18,7 +20,17 @@ import {
 } from '@sync-your-cookie/protobuf';
 
 export const check = (accountInfo?: AccountInfo) => {
-  const cloudflareAccountInfo = accountInfo || accountStorage.getSnapshot();
+  const info = accountInfo || accountStorage.getSnapshot();
+  if (isServerSyncConfigured(info)) {
+    if (!info?.serverUrl?.trim()) {
+      return Promise.reject({ message: 'Server URL is empty', code: MessageErrorCode.AccountCheck });
+    }
+    if (!info?.authPassword?.trim()) {
+      return Promise.reject({ message: 'Auth password is empty', code: MessageErrorCode.AccountCheck });
+    }
+    return info;
+  }
+  const cloudflareAccountInfo = info;
   if (!cloudflareAccountInfo?.accountId || !cloudflareAccountInfo.namespaceId || !cloudflareAccountInfo.token) {
     let message = 'Account ID is empty';
     if (!cloudflareAccountInfo?.namespaceId) {
@@ -35,9 +47,23 @@ export const check = (accountInfo?: AccountInfo) => {
   return cloudflareAccountInfo;
 };
 
+const readRemoteKv = async (accountInfo: AccountInfo): Promise<string> => {
+  if (isServerSyncConfigured(accountInfo)) {
+    return readSyncKV(accountInfo.serverUrl!, accountInfo.authPassword!);
+  }
+  return readCloudflareKV(accountInfo.accountId!, accountInfo.namespaceId!, accountInfo.token!);
+};
+
+const writeRemoteKv = async (accountInfo: AccountInfo, value: string): Promise<WriteResponse> => {
+  if (isServerSyncConfigured(accountInfo)) {
+    return writeSyncKV(accountInfo.serverUrl!, accountInfo.authPassword!, value);
+  }
+  return writeCloudflareKV(value, accountInfo.accountId!, accountInfo.namespaceId!, accountInfo.token!);
+};
+
 export const readCookiesMap = async (accountInfo: AccountInfo): Promise<ICookiesMap> => {
   await check(accountInfo);
-  const content = await readCloudflareKV(accountInfo.accountId!, accountInfo.namespaceId!, accountInfo.token!);
+  const content = await readRemoteKv(accountInfo);
 
   if (content) {
     try {
@@ -110,12 +136,7 @@ export const writeCookiesMap = async (accountInfo: AccountInfo, cookiesMap: ICoo
     console.log('writeCookiesMap->', cookiesMap);
   }
 
-  const res = await writeCloudflareKV(
-    encodingStr,
-    accountInfo.accountId!,
-    accountInfo.namespaceId!,
-    accountInfo.token!,
-  );
+  const res = await writeRemoteKv(accountInfo, encodingStr);
   return res;
 };
 

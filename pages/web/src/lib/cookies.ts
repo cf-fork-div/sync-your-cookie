@@ -1,4 +1,5 @@
 import { detectFormat } from '@src/lib/mutations';
+import { fetchKvViaServer } from '@src/lib/datasource';
 
 import type { CloudflareSource, DataSourceConfig, FormatInfo, ViewerSession } from '@src/lib/types';
 
@@ -100,6 +101,22 @@ export async function fetchFromCloudflareKV(config: CloudflareSource): Promise<s
 }
 
 export async function writeToCloudflareKV(config: CloudflareSource, content: string): Promise<void> {
+  if (config.serverManaged) {
+    const url = new URL('/api/sync/kv', window.location.origin);
+    url.searchParams.set('storageKey', config.storageKey);
+    const response = await fetch(url.toString(), {
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'text/plain' },
+      body: content,
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Server write failed (${response.status}): ${text}`);
+    }
+    return;
+  }
+
   const { accountId, namespaceId, token, storageKey, useProxy = true } = config;
 
   const base = useProxy ? '/cf-api' : 'https://api.cloudflare.com';
@@ -162,11 +179,14 @@ export async function loadSession(params: {
 
   switch (dataSource.type) {
     case 'cloudflare':
-      content = await fetchFromCloudflareKV({
-        ...dataSource,
-
-        useProxy: dataSource.useProxy ?? true,
-      });
+      if (dataSource.serverManaged) {
+        content = await fetchKvViaServer(dataSource.storageKey);
+      } else {
+        content = await fetchFromCloudflareKV({
+          ...dataSource,
+          useProxy: dataSource.useProxy ?? true,
+        });
+      }
 
       break;
 
