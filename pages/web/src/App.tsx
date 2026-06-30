@@ -71,7 +71,7 @@ export default function App() {
         )}
       </header>
 
-      <main className="flex-1 p-4 max-w-6xl w-full mx-auto">
+      <main className="flex-1 p-4 max-w-7xl w-full mx-auto">
         {!authReady ? null : !sessionInfo?.authenticated ? (
           <LoginForm sessionInfo={sessionInfo} onSuccess={handleLoginSuccess} />
         ) : session ? (

@@ -1,4 +1,6 @@
-import type { DomainEntryRow, MessageKey } from '@sync-your-cookie/shared';
+import { ENTRY_TYPE_OPTIONS, type DomainEntryRow, type MessageKey } from '@sync-your-cookie/shared';
+
+export { ENTRY_TYPE_OPTIONS };
 
 type Translate = (key: MessageKey) => string;
 
