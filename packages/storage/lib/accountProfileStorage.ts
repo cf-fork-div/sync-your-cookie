@@ -40,6 +40,17 @@ const createDefaultProfile = (overrides: Partial<AccountProfile> = {}): AccountP
   ...overrides,
 });
 
+const normalizeAccountProfileState = (
+  state: AccountProfileState | null | undefined,
+): AccountProfileState => {
+  const accountProfileList = state?.accountProfileList;
+  return {
+    accountProfileList: Array.isArray(accountProfileList) ? accountProfileList : [],
+    activeProfileId: typeof state?.activeProfileId === 'string' ? state.activeProfileId : undefined,
+    migrated: Boolean(state?.migrated),
+  };
+};
+
 const initStorage = (): BaseStorage<AccountProfileState> => {
   if (cacheStorageMap.has(PROFILE_STORAGE_KEY)) {
     return cacheStorageMap.get(PROFILE_STORAGE_KEY);
@@ -69,7 +80,7 @@ const ensureMigrated = async (): Promise<void> => {
     return migrationPromise;
   }
   migrationPromise = (async () => {
-    const state = await storage.get();
+    const state = normalizeAccountProfileState(await storage.get());
     const hasProfiles = state.accountProfileList.length > 0;
 
     if (state.migrated && hasProfiles) {
@@ -117,17 +128,18 @@ const ensureMigrated = async (): Promise<void> => {
       await storage.set(current => ({ ...current, migrated: true }));
     }
 
-    await migrateLegacyDomainConfig(await storage.get());
+    await migrateLegacyDomainConfig(normalizeAccountProfileState(await storage.get()));
   })();
   return migrationPromise;
 };
 
 export const getActiveProfile = (state?: AccountProfileState | null): AccountProfile | undefined => {
-  const snapshot = state ?? storage.getSnapshot();
-  if (!snapshot?.activeProfileId) {
-    return snapshot?.accountProfileList[0];
+  const snapshot = normalizeAccountProfileState(state ?? storage.getSnapshot());
+  const profiles = snapshot.accountProfileList;
+  if (!snapshot.activeProfileId) {
+    return profiles[0];
   }
-  return snapshot.accountProfileList.find(profile => profile.id === snapshot.activeProfileId);
+  return profiles.find(profile => profile.id === snapshot.activeProfileId);
 };
 
 export const getActiveProfileSettings = (state?: AccountProfileState | null): ISettings => {
@@ -194,9 +206,12 @@ export const accountProfileStorage: AccountProfileStorage = {
   ...storage,
   get: async () => {
     await ensureMigrated();
-    return storage.get();
+    return normalizeAccountProfileState(await storage.get());
   },
-  getSnapshot: () => storage.getSnapshot(),
+  getSnapshot: () => {
+    const snapshot = storage.getSnapshot();
+    return snapshot === null ? null : normalizeAccountProfileState(snapshot);
+  },
   ensureMigrated,
   getActiveProfile: async () => {
     await ensureMigrated();
