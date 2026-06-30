@@ -36,6 +36,7 @@ export type PushAccountDialogEntry = {
 export type PushAccountDialogProps = {
   open: boolean;
   step: 'choose' | 'newLabel';
+  variant?: 'conflict' | 'firstPush';
   labels: PushAccountDialogLabels;
   overwriteOptions: PushAccountDialogEntry[];
   overwriteKey: string;
@@ -53,6 +54,7 @@ export type PushAccountDialogProps = {
 export function PushAccountDialog({
   open,
   step,
+  variant = 'conflict',
   labels,
   overwriteOptions,
   overwriteKey,
@@ -68,6 +70,9 @@ export function PushAccountDialog({
 }: PushAccountDialogProps) {
   const overwriteLabel =
     overwriteOptions.find(entry => entry.storageKey === overwriteKey)?.label || overwriteOptions[0]?.label || '';
+  const isFirstPush = variant === 'firstPush';
+  const showNewLabelStep = isFirstPush || step === 'newLabel';
+  const canConfirmNew = Boolean(newLabel.trim());
 
   return (
     <AlertDialog open={open} onOpenChange={value => !value && onClose()}>
@@ -77,7 +82,17 @@ export function PushAccountDialog({
           <AlertDialogDescription>{labels.description}</AlertDialogDescription>
         </AlertDialogHeader>
 
-        {step === 'choose' ? (
+        {showNewLabelStep ? (
+          <div className="space-y-2 py-2">
+            <Label htmlFor="push-new-account-label">{labels.accountLabel}</Label>
+            <Input
+              id="push-new-account-label"
+              value={newLabel}
+              onChange={event => onNewLabelChange(event.target.value)}
+              placeholder={labels.newAccountLabelPlaceholder}
+            />
+          </div>
+        ) : (
           <div className="space-y-3 py-2">
             {overwriteOptions.length > 1 ? (
               <div className="space-y-2">
@@ -103,28 +118,18 @@ export function PushAccountDialog({
               {labels.saveAsNewAccount}
             </Button>
           </div>
-        ) : (
-          <div className="space-y-2 py-2">
-            <Label htmlFor="push-new-account-label">{labels.accountLabel}</Label>
-            <Input
-              id="push-new-account-label"
-              value={newLabel}
-              onChange={event => onNewLabelChange(event.target.value)}
-              placeholder={labels.newAccountLabelPlaceholder}
-            />
-          </div>
         )}
 
         <AlertDialogFooter>
-          {step === 'newLabel' ? (
+          {showNewLabelStep && !isFirstPush ? (
             <Button variant="outline" disabled={saving} onClick={onBack}>
               {labels.back}
             </Button>
           ) : (
             <AlertDialogCancel disabled={saving}>{labels.cancel}</AlertDialogCancel>
           )}
-          {step === 'newLabel' ? (
-            <Button disabled={saving} onClick={onConfirmNew}>
+          {showNewLabelStep ? (
+            <Button disabled={saving || (isFirstPush && !canConfirmNew)} onClick={onConfirmNew}>
               {labels.confirm}
             </Button>
           ) : null}

@@ -52,6 +52,7 @@ export const usePushWithAccountChoice = ({
         entryOptions,
         selectedStorageKey: params.selectedStorageKey,
         defaultNewLabel,
+        domainConfig,
       });
 
       if (!result.needsDialog) {
@@ -62,7 +63,7 @@ export const usePushWithAccountChoice = ({
 
       setOverwriteKey(result.defaultOverwriteKey);
       setNewLabel(result.suggestedNewLabel);
-      setStep('choose');
+      setStep(result.mode === 'firstPush' ? 'newLabel' : 'choose');
       setDialog({
         ...result,
         sourceUrl: params.sourceUrl,
@@ -91,12 +92,17 @@ export const usePushWithAccountChoice = ({
     if (!dialog) {
       return;
     }
+    const label = newLabel.trim();
+    if (dialog.mode === 'firstPush' && !label) {
+      return;
+    }
     setSaving(true);
     try {
-      const entryKey = createEntryKey(dialog.host);
-      const label = newLabel.trim() || dialog.suggestedNewLabel;
+      const entryKey =
+        dialog.mode === 'firstPush' ? dialog.defaultOverwriteKey : createEntryKey(dialog.host);
+      const resolvedLabel = label || dialog.suggestedNewLabel;
       await domainConfigStorage.updateItem(entryKey, {
-        label,
+        label: resolvedLabel,
         sourceUrl: dialog.sourceUrl,
         favIconUrl: dialog.favIconUrl,
         type: 'login',

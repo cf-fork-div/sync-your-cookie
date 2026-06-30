@@ -262,9 +262,16 @@ const Popup = () => {
           <PushAccountDialog
             open={Boolean(pushChoice.dialog)}
             step={pushChoice.step}
+            variant={pushChoice.dialog?.mode === 'firstPush' ? 'firstPush' : 'conflict'}
             labels={{
-              title: t('pushExistingAccountTitle'),
-              description: t('pushExistingAccountDesc'),
+              title:
+                pushChoice.dialog?.mode === 'firstPush'
+                  ? t('pushFirstTimeTitle')
+                  : t('pushExistingAccountTitle'),
+              description:
+                pushChoice.dialog?.mode === 'firstPush'
+                  ? t('pushFirstTimeDesc', { host: pushChoice.dialog.host })
+                  : t('pushExistingAccountDesc'),
               overwriteAccount: t('overwriteAccount', { label: '{{label}}' }),
               saveAsNewAccount: t('saveAsNewAccount'),
               accountLabel: t('accountLabel'),

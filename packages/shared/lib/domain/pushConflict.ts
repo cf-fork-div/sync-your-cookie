@@ -6,6 +6,8 @@ import { getHostFromStorageKey } from './entryKey';
 import type { HostEntryOption } from './hostEntries';
 import { inferEntryLabelFromCookies } from './hostEntries';
 
+export type PushConflictMode = 'conflict' | 'firstPush';
+
 export type PushConflictResult =
   | {
       needsDialog: false;
@@ -13,6 +15,7 @@ export type PushConflictResult =
     }
   | {
       needsDialog: true;
+      mode: PushConflictMode;
       host: string;
       overwriteOptions: HostEntryOption[];
       defaultOverwriteKey: string;
@@ -37,14 +40,29 @@ export const evaluatePushConflict = async (params: {
   entryOptions: HostEntryOption[];
   selectedStorageKey: string;
   defaultNewLabel: string;
+  domainConfig?: DomainConfig;
 }): Promise<PushConflictResult> => {
-  const { host, sourceUrl, cookieMap, entryOptions, selectedStorageKey, defaultNewLabel } = params;
+  const { host, sourceUrl, cookieMap, entryOptions, selectedStorageKey, defaultNewLabel, domainConfig } = params;
   const entriesWithData = getEntriesWithKvData(host, entryOptions, cookieMap);
 
   if (entriesWithData.length === 0) {
+    const targetKey = selectedStorageKey || host;
+    const existingLabel = domainConfig?.domainMap[targetKey]?.label?.trim();
+    if (existingLabel) {
+      return {
+        needsDialog: false,
+        targetKey,
+      };
+    }
+
+    const browserCookies = await getBrowserCookiesForHost(host, sourceUrl);
     return {
-      needsDialog: false,
-      targetKey: selectedStorageKey || host,
+      needsDialog: true,
+      mode: 'firstPush',
+      host,
+      overwriteOptions: [],
+      defaultOverwriteKey: targetKey,
+      suggestedNewLabel: inferEntryLabelFromCookies(browserCookies, defaultNewLabel),
     };
   }
 
@@ -68,6 +86,7 @@ export const evaluatePushConflict = async (params: {
 
   return {
     needsDialog: true,
+    mode: 'conflict',
     host,
     overwriteOptions: entriesWithData,
     defaultOverwriteKey,

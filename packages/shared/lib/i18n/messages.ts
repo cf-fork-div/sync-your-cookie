@@ -289,6 +289,8 @@ const enMessages = {
   pushExistingAccountTitle: 'This site already has saved account data',
   pushExistingAccountDesc:
     'Browser cookies differ from saved accounts. Overwrite an existing entry or save as a new account.',
+  pushFirstTimeTitle: 'Name this account',
+  pushFirstTimeDesc: 'Add a remark to identify this account on {{host}}.',
   overwriteAccount: 'Overwrite {{label}}',
   saveAsNewAccount: 'Save as new account',
   newAccountLabelPlaceholder: 'Account name (e.g. email)',
@@ -576,6 +578,8 @@ const zhCNMessages: Record<MessageKey, string> = {
   selectAccountHint: '选择要推送或拉取的已保存账户。',
   pushExistingAccountTitle: '该域名已有账号数据',
   pushExistingAccountDesc: '浏览器 Cookie 与已保存账户不同。可覆盖已有条目，或保存为新账户。',
+  pushFirstTimeTitle: '为此账户命名',
+  pushFirstTimeDesc: '为 {{host}} 添加备注，便于区分同一站点的多个账户。',
   overwriteAccount: '覆盖 {{label}}',
   saveAsNewAccount: '保存为新账户',
   newAccountLabelPlaceholder: '账户名称（如邮箱）',
