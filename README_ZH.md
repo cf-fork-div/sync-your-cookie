@@ -71,7 +71,7 @@ pnpm deploy:cloudflare
 
 部署后在 Cloudflare Dashboard 设置 `WEB_ACCESS_PASSWORD`，修改后立即生效，无需重新构建。直接访问 `https://你的域名/` 即可；可选设置 `WEB_BASE_PATH` 使用隐藏路径。完整说明：[deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md)。
 
-**Git CI（可选）：** 在 Cloudflare Workers 中连接本仓库。构建：`pnpm install && pnpm build:cloudflare-worker`。部署：`npx wrangler deploy --config deploy/cloudflare/wrangler.toml`。限制见 [Git 部署说明](./deploy/CLOUDFLARE.md#git-仓库连接部署可选)。
+**Git CI（可选）：** 在 Cloudflare Workers 中连接本仓库。构建：`pnpm install && pnpm build:cloudflare-worker`。部署：`node deploy/cloudflare/prepare-wrangler.mjs && npx wrangler deploy --config deploy/cloudflare/wrangler.toml`。限制见 [Git 部署说明](./deploy/CLOUDFLARE.md#git-仓库连接部署可选)。
 
 ### Privacy Policy
 

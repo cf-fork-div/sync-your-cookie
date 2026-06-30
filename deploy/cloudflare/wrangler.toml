@@ -1,4 +1,4 @@
-name = "sync-your-cookie-web"
+name = "sync-your-cookie"
 main = "src/worker.ts"
 compatibility_date = "2024-09-23"
 
@@ -14,8 +14,4 @@ run_worker_first = true
 
 # WEB_ACCESS_PASSWORD — set as encrypted secret via Dashboard or `wrangler secret put`
 
-# KV binding for datasource config + sync (id filled by deploy.mjs)
-[[kv_namespaces]]
-binding = "SYNC_KV"
-id = "00000000000000000000000000000000"
-preview_id = "00000000000000000000000000000000"
+# SYNC_KV binding is written by prepare-wrangler.mjs or deploy.mjs before deploy

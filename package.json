@@ -24,6 +24,7 @@
     "prettier": "turbo prettier",
     "build:cloudflare-worker": "node deploy/cloudflare/build-worker.mjs",
     "build:cloudflare-pages": "node deploy/cloudflare/build-worker.mjs",
+    "prepare:cloudflare-worker": "node deploy/cloudflare/prepare-wrangler.mjs",
     "deploy:cloudflare": "node deploy/cloudflare/deploy.mjs"
   },
   "type": "module",
