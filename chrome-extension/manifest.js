@@ -28,6 +28,10 @@ const manifest = Object.assign(
     description: '__MSG_extensionDescription__',
     permissions: ['cookies', 'activeTab', 'tabs', 'storage'].concat(sidePanelConfig.permissions),
     host_permissions: ['<all_urls>'],
+    options_ui: {
+      page: 'options/index.html',
+      open_in_tab: true,
+    },
     options_page: 'options/index.html',
     background: {
       service_worker: 'background.iife.js',

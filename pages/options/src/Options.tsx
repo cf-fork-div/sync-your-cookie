@@ -1,5 +1,7 @@
 import {
   ErrorFallback,
+  GITHUB_HOW_TO_USE_URL,
+  GITHUB_REPO_URL,
   LoadingFallback,
   useDocumentTitle,
   useI18n,
@@ -252,7 +254,7 @@ const Options = () => {
                     <Label htmlFor="token">{t('authorizationToken')}</Label>
                     <p className="flex items-center text-center text-xs">
                       <a
-                        href="https://github.com/jackluson/sync-your-cookie/blob/main/how-to-use.md"
+                        href={GITHUB_HOW_TO_USE_URL}
                         target="_blank"
                         className=" cursor-pointer underline mx-2"
                         rel="noreferrer">
@@ -354,25 +356,17 @@ const Options = () => {
       </AlertDialog>
 
       <div className="mt-2 text-sm">
-        {t('builtBy')}
-        <a
-          className="mx-0.5 font-bold text-primary "
-          target="_blank"
-          href="https://github.com/jackluson"
-          rel="noreferrer">
-          jackluson
-        </a>
-        . {t('sourceOnGitHub')}{' '}
+        {t('sourceOnGitHub')}{' '}
         <a
           className="font-bold inline-flex items-center "
-          href="https://github.com/jackluson/sync-your-cookie"
+          href={GITHUB_REPO_URL}
           target="_blank"
           rel="noopener noreferrer">
           GitHub
           <img
             src={chrome.runtime.getURL('popup/github.svg')}
             className="ml-1 h-4 w-4 overflow-hidden object-contain "
-            alt="logo"
+            alt="GitHub"
           />
         </a>
         .

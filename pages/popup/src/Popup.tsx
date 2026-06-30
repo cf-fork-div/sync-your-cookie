@@ -1,4 +1,16 @@
-import { extractDomainAndPort, ErrorFallback, LoadingFallback, useDocumentTitle, useI18n, useStorageSuspense, useTheme, withErrorBoundary, withSuspense } from '@sync-your-cookie/shared';
+import {
+  ErrorFallback,
+  extractDomainAndPort,
+  GITHUB_REPO_URL,
+  LoadingFallback,
+  openExtensionOptionsPage,
+  useDocumentTitle,
+  useI18n,
+  useStorageSuspense,
+  useTheme,
+  withErrorBoundary,
+  withSuspense,
+} from '@sync-your-cookie/shared';
 
 import { accountProfileStorage } from '@sync-your-cookie/storage/lib/accountProfileStorage';
 import { Button, Image, Spinner, Toaster } from '@sync-your-cookie/ui';
@@ -70,9 +82,10 @@ const Popup = () => {
           </div>
         </div>
         <Button
+          type="button"
           variant="ghost"
           onClick={() => {
-            chrome.runtime.openOptionsPage();
+            openExtensionOptionsPage();
           }}
           className="cursor-pointer text-sm mr-[-8px] ">
           <Settings size={20} />
@@ -175,17 +188,17 @@ const Popup = () => {
           <Copyright size={16} />
         </span>
         <a
-          className=" inline-flex items-center mx-1 text-sm underline "
-          href="https://github.com/jackluson"
+          className="inline-flex items-center mx-1 text-sm underline"
+          href={GITHUB_REPO_URL}
           target="_blank"
           rel="noopener noreferrer">
-          jackluson
+          cf-fork-div
         </a>
-        <a href="https://github.com/jackluson/sync-your-cookie" target="_blank" rel="noopener noreferrer">
+        <a href={GITHUB_REPO_URL} target="_blank" rel="noopener noreferrer">
           <img
             src={chrome.runtime.getURL('popup/github.svg')}
             className="h-4 w-4 overflow-hidden object-contain "
-            alt="logo"
+            alt="GitHub"
           />
         </a>
       </footer>

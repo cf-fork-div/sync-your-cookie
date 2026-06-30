@@ -9,6 +9,7 @@ import { domainConfigStorage } from '@sync-your-cookie/storage/lib/domainConfigS
 import { domainStatusStorage } from '@sync-your-cookie/storage/lib/domainStatusStorage';
 
 import { toast as Toast } from 'sonner';
+import { openExtensionOptionsPage } from '../constants';
 import { useI18n } from '../i18n/useI18n';
 import { useStorageSuspense } from './index';
 
@@ -40,7 +41,7 @@ export const catchHandler = (
       action: {
         label: t ? t('goToSettings') : 'go to settings',
         onClick: () => {
-          chrome.runtime.openOptionsPage();
+          openExtensionOptionsPage();
         },
       },
     });
