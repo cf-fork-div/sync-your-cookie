@@ -1,6 +1,10 @@
-
 ## How to use
-`Sync-Your-Cookie` uses Cloudflare [KV](https://developers.cloudflare.com/kv/) to store cookie data. Here is a tutorial on how to configure KV and Token:
+
+`Sync-Your-Cookie` uses Cloudflare [KV](https://developers.cloudflare.com/kv/) to store cookie data.
+
+> **Extension only:** The steps below configure KV for the Chrome extension. You do **not** need to deploy the Web Viewer unless you want a browser-based UI. For one-command KV + Worker deploy, see [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md).
+
+Manual setup — create a namespace, API token, and paste credentials into the extension Options page:
 
 ## Create Namespace
 

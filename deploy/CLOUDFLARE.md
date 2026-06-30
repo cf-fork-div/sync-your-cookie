@@ -2,7 +2,9 @@
 
 将 **Web Viewer**（`pages/web`）部署到 **Cloudflare Worker**（静态资源 + 运行时 API），并（可选）自动创建用于扩展同步 Cookie 的 **KV 命名空间**。
 
-> **English summary:** Run `pnpm deploy:cloudflare` for one-command deploy (KV + Worker + credentials output). Web password (`WEB_ACCESS_PASSWORD`) and path (`WEB_BASE_PATH`) are runtime Dashboard settings — no rebuild needed. Alternative: connect this repo to Cloudflare Workers Builds with build command `pnpm install && pnpm build:cloudflare-worker` and deploy `npx wrangler deploy --config deploy/cloudflare/wrangler.toml` (see [Git deploy](#git-仓库连接部署可选) for limitations).
+> **仅使用扩展？** 同步 Cookie 只需安装扩展并在 Options 填入 KV 凭据（见 [how-to-use.md](../how-to-use.md)），**不必**部署 Web Viewer。本文档面向需要浏览器端管理界面的用户。
+
+> **English summary:** Run `pnpm deploy:cloudflare` for one-command deploy (KV + Worker + credentials output). Web password (`WEB_ACCESS_PASSWORD`) and path (`WEB_BASE_PATH`) are runtime Dashboard settings — no rebuild needed. Alternative: connect this repo to Cloudflare Workers Builds with build `pnpm install && pnpm build:cloudflare-worker` and deploy `npx wrangler deploy --config deploy/cloudflare/wrangler.toml` (see [Git deploy](#git-仓库连接部署可选) for limitations).
 
 > **重要**：Web 登录密码与访问路径为 **Cloudflare 运行时配置**，修改后**立即生效**，**无需重新构建或重新部署**。部署命令**不要求**在 `.env` 中设置密码。
 
@@ -205,26 +207,14 @@ Chrome 扩展  →  api.cloudflare.com  (直连 KV REST API，不经 Worker)
 2. 在 Dashboard 设置 `WEB_ACCESS_PASSWORD` 与 `WEB_BASE_PATH`
 3. 从 `deploy/cloudflare/.env` 删除 `VITE_WEB_*`（本地 dev 可保留在 `pages/web/.env.local`）
 
-## 从 Cloudflare Pages 迁移
-
-若此前使用 Pages 部署，请改用 Worker：
-
-1. 运行 `pnpm deploy:cloudflare`（或 Git 连接 Worker 构建）
-2. 访问地址由 `*.pages.dev` 变为 `https://sync-your-cookie-web.<account>.workers.dev`
-3. 在 Worker 项目重新设置 `WEB_ACCESS_PASSWORD` / `WEB_BASE_PATH`（Secret 不随 Pages 自动迁移）
-4. 扩展 Options 中的 Account ID / Namespace ID / API Token **不变**
-
 ## 命令
 
 ```bash
 # 完整一键部署（KV + Worker + 凭据输出）
 pnpm deploy:cloudflare
 
-# 仅构建 Web 静态资源（Git Worker 构建用）
+# 构建 Web 静态资源（Git Worker CI 用）
 pnpm build:cloudflare-worker
-
-# 别名（向后兼容）
-pnpm build:cloudflare-pages
 
 # 仅构建与准备，不创建 KV、不部署 Worker
 pnpm deploy:cloudflare -- --dry-run
@@ -274,3 +264,6 @@ deploy/cloudflare/
 
 **Q: 再次一键部署会重复创建 KV 吗？**  
 不会。脚本读取 `.deploy-state.json` 或按名称查找已有命名空间。
+
+**Q: 以前用 Cloudflare Pages 部署怎么办？**  
+项目已迁移至 Worker。运行 `pnpm deploy:cloudflare` 或按上文 Git Worker 配置重新部署；访问地址变为 `https://sync-your-cookie-web.<account>.workers.dev`，需在 Worker 项目重新设置 `WEB_ACCESS_PASSWORD` / `WEB_BASE_PATH`。扩展 Options 中的 KV 凭据不变。

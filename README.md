@@ -61,19 +61,23 @@ Pushed Cookie on Cloudflare
 
 [How to use](./how-to-use.md)
 
-### Cloudflare Web Viewer (one-command deploy)
+### Extension only (no Web deploy)
 
-Deploy the Web Viewer to Cloudflare Worker and auto-create the KV namespace used by the extension. See [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md) for full details (Chinese).
+You only need the browser extension to sync cookies — **no Web Viewer deploy required**. Install the extension, set up a KV namespace and API token in Cloudflare ([how-to-use](./how-to-use.md)), and paste **Account ID / Namespace ID / API Token** into the extension Options page. The Web Viewer below is optional for managing cookies in a browser.
 
-Web login password (`WEB_ACCESS_PASSWORD`) and access path (`WEB_BASE_PATH`) are **runtime Cloudflare settings**: change them in the Dashboard and they take effect **immediately** — no rebuild required. A password is **not** required before deploy.
+### Cloudflare Web Viewer (optional)
+
+Deploy the Web Viewer to **Cloudflare Worker** (static assets + API). One command also creates the KV namespace and prints extension credentials:
 
 ```bash
 cp deploy/cloudflare/.env.example deploy/cloudflare/.env
-# Edit .env: set CLOUDFLARE_API_TOKEN (recommended); password can be set in Dashboard after deploy
+# Set CLOUDFLARE_API_TOKEN in .env (or use wrangler login)
 pnpm deploy:cloudflare
 ```
 
-**Alternative:** connect this repo to Cloudflare Workers (Git-based deploy). Build command: `pnpm install && pnpm build:cloudflare-worker`, deploy: `npx wrangler deploy --config deploy/cloudflare/wrangler.toml`. See [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md#git-仓库连接部署可选) for limitations (no auto KV creation, manual credentials).
+After deploy, set `WEB_ACCESS_PASSWORD` and `WEB_BASE_PATH` in the Cloudflare Dashboard — they take effect immediately, no rebuild. Full guide: [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md).
+
+**Git CI (optional):** connect the repo in Cloudflare Workers → Connect to Git. Build: `pnpm install && pnpm build:cloudflare-worker`. Deploy: `npx wrangler deploy --config deploy/cloudflare/wrangler.toml`. See [Git deploy notes](./deploy/CLOUDFLARE.md#git-仓库连接部署可选).
 
 ### TODO
 

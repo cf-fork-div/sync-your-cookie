@@ -55,19 +55,23 @@ Cloudflare 上传的 Cookie
 
 [How to use](./how-to-use.md)
 
-### Cloudflare 一键部署 Web Viewer
+### 仅使用扩展（无需部署 Web）
 
-详见 [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md)。一条命令部署 Web 查看器到 Cloudflare Worker，并自动创建 KV 命名空间、输出扩展 Options 所需凭据。
+同步 Cookie **只需安装浏览器扩展**，不必部署 Web Viewer。在 Cloudflare 创建 KV 命名空间与 API Token（见 [how-to-use](./how-to-use.md)），将 **Account ID / Namespace ID / API Token** 填入扩展 Options 即可。下方 Web Viewer 为可选，用于在浏览器中管理 Cookie。
 
-Web 登录密码（`WEB_ACCESS_PASSWORD`）与访问路径（`WEB_BASE_PATH`）为 **Cloudflare 运行时配置**：部署后可在 Dashboard 修改并**立即生效**，无需重新构建。部署本身**不要求**预先设置密码。
+### Cloudflare Web Viewer（可选）
+
+将 Web 查看器部署到 **Cloudflare Worker**（静态资源 + API）。一条命令还会自动创建 KV 命名空间并输出扩展凭据：
 
 ```bash
 cp deploy/cloudflare/.env.example deploy/cloudflare/.env
-# 编辑 .env：推荐设置 CLOUDFLARE_API_TOKEN；密码可在部署后于 Dashboard 配置
+# 在 .env 中设置 CLOUDFLARE_API_TOKEN（或使用 wrangler login）
 pnpm deploy:cloudflare
 ```
 
-**备选方案：** 在 Cloudflare Dashboard 连接本 Git 仓库进行 Worker 自动构建。构建命令：`pnpm install && pnpm build:cloudflare-worker`，部署命令：`npx wrangler deploy --config deploy/cloudflare/wrangler.toml`。限制说明见 [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md#git-仓库连接部署可选)（不会自动创建 KV、需手动配置凭据等）。
+部署后在 Cloudflare Dashboard 设置 `WEB_ACCESS_PASSWORD` 与 `WEB_BASE_PATH`，修改后立即生效，无需重新构建。完整说明：[deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md)。
+
+**Git CI（可选）：** 在 Cloudflare Workers 中连接本仓库。构建：`pnpm install && pnpm build:cloudflare-worker`。部署：`npx wrangler deploy --config deploy/cloudflare/wrangler.toml`。限制见 [Git 部署说明](./deploy/CLOUDFLARE.md#git-仓库连接部署可选)。
 
 ### Privacy Policy
 
