@@ -15,7 +15,7 @@
 
 **Sync Your Cookie** is a Chromium extension (Chrome, Edge, and compatible browsers) that syncs cookies and LocalStorage to **Cloudflare KV**. Share login sessions between devices without repeated sign-ins, manage multiple accounts per site, and optionally deploy a **Cloudflare Worker** backend with a password-protected web admin.
 
-> **Note:** GitHub Gist sync has been removed. Cloudflare KV is the only supported backend (direct API or Worker proxy).
+> **Note:** GitHub Gist sync has been removed. The only supported backend is a **Cloudflare Worker** (URL + password).
 
 ### Install
 
@@ -31,9 +31,7 @@ Build from source: see [Setup](#setup) and [Store publishing](./STORE_PUBLISH.md
 #### Sync & storage
 - Sync **cookies** and **LocalStorage** to Cloudflare KV (protobuf-encoded payload)
 - **Cross-browser sync** — same backend works on Chrome, Edge, and other Chromium browsers
-- **Two connection modes:**
-  - **Worker mode (recommended):** Server URL + access password → Worker `/api/sync/*`
-  - **Direct KV mode:** Account ID + Namespace ID + API Token → Cloudflare REST API
+- **Worker connection:** Server URL + access password → `/api/sync/*`
 - **Pull mirrors remote** — clears local cookies for the host before applying remote data
 - Per-site **Auto Push** and **Auto Pull** rules
 
@@ -54,59 +52,33 @@ Build from source: see [Setup](#setup) and [Store publishing](./STORE_PUBLISH.md
 - **i18n** — English and Simplified Chinese (`en`, `zh_CN`)
 - **Version display** — `v1.5.1` in popup footer and options page
 
-#### Optional Cloudflare Worker backend
-- One-command deploy: `pnpm deploy:cloudflare`
-- Static Web Viewer + sync API on a single Worker
-- Runtime-configurable login password (`WEB_ACCESS_PASSWORD`) — no rebuild needed
+#### Cloudflare Worker backend
 
-### Project Screenshots
+Connect this Git repo in Cloudflare to deploy the Worker (web admin + sync API). Extension login uses Worker URL + password. See [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md).
 
-Account Settings Page
+### Screenshots
 
-<img width="600" src="./screenshots/settings_v2.png" alt="account settings"/>
+Settings — sync server URL and access password
 
-Cookie Sync Popup Page
+<img width="600" src="./screenshots/settings.png" alt="Settings page"/>
 
-<img width="600" src="./screenshots/sync.png" alt="cookie sync popup"/>
+Popup — Push/Pull sync for the current tab
 
-Cookie Manager Sidebar Panel
+<img width="600" src="./screenshots/popup.png" alt="Popup sync"/>
 
-<img width="600" src="./screenshots/panel.png" alt="cookie manager sidebar panel"/>
+Popup — cookie list with view/edit mode
 
-Cookie Detail
+<img width="600" src="./screenshots/popup-cookie-editor.png" alt="Popup cookie editor"/>
 
-<img width="600" src="./screenshots/panel_item.png" alt="cookie manager sidebar panel"/>
+Side panel — site list with folder and type filters
 
-LocalStorage Detail
-
-<img width="600" src="./screenshots/panel_item_localStorage.png" alt="cookie manager sidebar panel"/>
-
-Pushed Cookie on Cloudflare
-
-<img width="600" src="./screenshots/key_value.png" alt="Pushed Cookie on Cloudflare"/>
+<img width="600" src="./screenshots/sidepanel-manager.png" alt="Side panel manager"/>
 
 ### Setup
 
-#### Extension only (direct KV)
-
-1. Install the extension from the store or load `dist/` after `pnpm build`.
-2. Create a Cloudflare KV namespace and API token — [how-to-use.md](./how-to-use.md).
-3. Open **Options** → paste **Account ID / Namespace ID / API Token** → Save.
-
-No Worker deploy required.
-
-#### Extension + Worker (recommended)
-
-1. Deploy the Worker backend:
-
-```bash
-cp deploy/cloudflare/.env.example deploy/cloudflare/.env
-# Set CLOUDFLARE_API_TOKEN in .env (or use wrangler login)
-pnpm deploy:cloudflare
-```
-
-2. Set `WEB_ACCESS_PASSWORD` in the Cloudflare Dashboard (see [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md)).
-3. In the extension popup, log in with **Server URL** (Worker URL) and **access password**.
+1. Install the extension from the store, or load `dist/` after `pnpm build`.
+2. Deploy the Worker via Git-connected Cloudflare Builds — [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md) — and set `WEB_ACCESS_PASSWORD`.
+3. Log in from the extension popup with **Server URL** + **access password** — [how-to-use.md](./how-to-use.md).
 
 #### Build from source
 
@@ -119,15 +91,13 @@ pnpm release:zip  # store-ready zip → dist/release/
 
 ### Usage
 
-1. **Log in** — Worker URL + password, or configure KV credentials in Options.
+1. **Log in** — Worker URL + password.
 2. **Push** — upload current tab cookies to remote (conflict dialog when data differs).
 3. **Pull** — download remote cookies; local cookies for that host are cleared first (mirror sync).
 4. **Open manager** — side panel for full cookie/LocalStorage management.
 5. **Web admin** (optional) — open your Worker URL in a browser for the same manager UI.
 
-Detailed KV setup: [how-to-use.md](./how-to-use.md)  
-Worker deploy guide: [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md)  
-Store publishing: [STORE_PUBLISH.md](./STORE_PUBLISH.md)
+Usage: [how-to-use.md](./how-to-use.md) · Worker deploy: [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md) · Store publishing: [STORE_PUBLISH.md](./STORE_PUBLISH.md)
 
 ### Changelog
 

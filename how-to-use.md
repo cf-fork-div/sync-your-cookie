@@ -1,98 +1,26 @@
-## How to use
+## 使用说明
 
-`Sync Your Cookie` uses Cloudflare [KV](https://developers.cloudflare.com/kv/) to store cookie data (cookies + LocalStorage, protobuf-encoded).
+`Sync Your Cookie` 将 Cookie 与 LocalStorage 同步到 Cloudflare [KV](https://developers.cloudflare.com/kv/)（protobuf 编码）。扩展通过已部署的 **Cloudflare Worker** 连接后端。
 
-> **Extension only:** You do **not** need to deploy the Web Viewer unless you want a browser-based admin UI.
+## 登录扩展
 
-## Connection modes
+1. 按 [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md) 部署 Worker 并设置 `WEB_ACCESS_PASSWORD`。
+2. 打开扩展弹窗或侧边栏，填写：
+   - **配置名** — 可选显示名
+   - **服务器 URL** — 如 `https://sync-your-cookie.your-account.workers.dev`（无尾斜杠）
+   - **访问密码** — 与 `WEB_ACCESS_PASSWORD` 相同
+3. 登录后即可 Push / Pull。扩展请求 Worker 的 `/api/sync/*` 接口。
 
-### Mode A — Worker sync (recommended)
+Web 管理端（同一 Worker URL）可在 Connect 表单查看底层 KV 数据源，通常无需手动配置。
 
-Best when you deploy the Cloudflare Worker backend (`pnpm deploy:cloudflare`).
+## Push / Pull
 
-1. Deploy Worker and set `WEB_ACCESS_PASSWORD` in the Cloudflare Dashboard — see [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md).
-2. Open the extension popup.
-3. Enter:
-   - **Profile name** — optional display name
-   - **Server URL** — e.g. `https://sync-your-cookie.your-account.workers.dev`
-   - **Access password** — same as `WEB_ACCESS_PASSWORD`
-4. Push / Pull as usual. The extension talks to `/api/sync/*` on your Worker.
+- **Push** — 上传当前标签页 Cookie；远程已有数据且不一致时弹出冲突对话框（覆盖或另存为新账号）。
+- **Pull** — 下载远程 Cookie；会先清除该 host 的本地 Cookie（镜像同步）。可在弹窗中为每条记录开启 **Auto Pull**。
+- **首次 Push** 需填写账号备注（标签）；v1.5.1+ 可在 Push 对话框设置 **文件夹** 与 **类型**（login / session / other）。
+- **同域名多账号** — 同一 host 下可保存多条带标签的记录。
 
-Admin can configure the underlying KV datasource once in the Web Viewer **Connect** form.
+## 参考
 
-### Mode B — Direct Cloudflare KV API
-
-Use when you only install the extension without deploying the Worker.
-
-Manual setup — create a namespace, API token, and paste credentials into the extension **Options** page:
-
-## Create Namespace
-
-![create_namespace](./screenshots/kv//create_namepace.png)
-
-Input
-![created_namespace](./screenshots/kv/input_name.png)
-
-Your NamespaceId
-![namespaceId](./screenshots/kv/namespaceId.png)
-
-## Your AccountId
-
-![your_account_id](./screenshots/kv//account-id.png)
-
-## Create Token
-
-1. Enter Profile Page
-
-![token_page](./screenshots/kv//create_token.png)
-
-2. Custom Permission
-
-![setting-up](./screenshots/kv//custom_token.png)
-
-3. Select KV Read and Write Permission
-
-![select-permission](./screenshots/kv/setting-permission.png)
-
-4. Confirm Create
-
-![confirm-create](./screenshots/kv/finish_create_token.png)
-
-5. Copy Token
-
-![copy-token](./screenshots/kv/copy_token.png)
-
-6. Your Token List
-
-![your-token-list](./screenshots/kv/created_token_list.png)
-
-7. Paste Your Account Info And Save
-
-![paste-and-save](./screenshots/kv/paste.png)
-
-8. Push Your Cookie
-
-![push-cookie](./screenshots/kv/push_cookie.png)
-
-9. Check Your Cookie
-
-The uploaded cookie is a protobuf-encoded string
-![check your cookie](./screenshots/kv/reload_page.png)
-
-## Multi-account on the same site
-
-- Each push can target a **labeled account** on the same host.
-- On **first push**, you will be asked for an account **label**.
-- If remote data differs, choose **overwrite** an existing entry or **save as new**.
-- Set **folder** and **type** (login / session / other) in the push dialog (v1.5.1+).
-
-## Pull behavior
-
-**Pull mirrors remote:** local cookies for that host are cleared before remote cookies are applied. Enable **Auto Pull** per entry in the popup switches.
-
-## Reference
-
-- [create-token](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/)
-- [account-owned-tokens](https://developers.cloudflare.com/fundamentals/api/get-started/account-owned-tokens/)
-- [Cloudflare deploy guide](./deploy/CLOUDFLARE.md)
-- [Changelog](./CHANGELOG.md)
+- [Cloudflare 部署指南](./deploy/CLOUDFLARE.md)
+- [更新日志](./CHANGELOG.md)

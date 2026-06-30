@@ -11,7 +11,7 @@
 
 **Sync Your Cookie** 是一款 Chromium 扩展（Chrome、Edge 及兼容浏览器），可将 Cookie 与 LocalStorage 同步到 **Cloudflare KV**。在不同设备间共享登录会话、为同一站点管理多个账号，并可选择部署 **Cloudflare Worker** 后端与密码保护的 Web 管理端。
 
-> **说明：** 已移除 GitHub Gist 同步，**仅支持 Cloudflare KV**（直连 API 或 Worker 代理）。
+> **说明：** 已移除 GitHub Gist 同步，**仅支持 Cloudflare Worker**（URL + 密码）后端。
 
 ### 安装
 
@@ -27,9 +27,7 @@
 #### 同步与存储
 - 同步 **Cookie** 与 **LocalStorage** 到 Cloudflare KV（protobuf 编码）
 - **跨浏览器同步** — 同一后端可在 Chrome、Edge 等 Chromium 浏览器间使用
-- **两种连接方式：**
-  - **Worker 模式（推荐）：** 服务器 URL + 访问密码 → Worker `/api/sync/*`
-  - **直连 KV 模式：** Account ID + Namespace ID + API Token → Cloudflare REST API
+- **Worker 连接：** 服务器 URL + 访问密码 → `/api/sync/*`
 - **Pull 镜像远程** — 应用远程数据前先清除该域名下的本地 Cookie
 - 按站点配置 **Auto Push** 与 **Auto Pull**
 
@@ -50,59 +48,33 @@
 - **国际化** — 英文与简体中文（`en`、`zh_CN`）
 - **版本显示** — 弹窗底部与 Options 页显示 `v1.5.1`
 
-#### 可选 Cloudflare Worker 后端
-- 一键部署：`pnpm deploy:cloudflare`
-- 单个 Worker 提供静态 Web Viewer + 同步 API
-- 登录密码（`WEB_ACCESS_PASSWORD`）可在 Dashboard 运行时修改，无需重新构建
+#### Cloudflare Worker 后端
 
-### 项目截图
+Git 连接 Cloudflare 部署 Worker（Web 管理端 + 同步 API），扩展用 Worker URL + 密码登录。部署见 [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md)。
 
-账号设置页面
+### 截图
 
-<img width="600" src="./screenshots/settings_v2.png" alt="account settings"/>
+设置 — 同步服务器 URL 与访问密码
 
-Cookie 同步页面
+<img width="600" src="./screenshots/settings.png" alt="设置页"/>
 
-<img width="600" src="./screenshots/sync.png" alt="cookie sync popup"/>
+弹窗 — 当前站点 Push/Pull 同步
 
-Cookie 管理侧边栏面板
+<img width="600" src="./screenshots/popup.png" alt="弹窗同步"/>
 
-<img width="600" src="./screenshots/panel.png" alt="cookie manager sidebar panel"/>
+弹窗 — Cookie 列表与查看/编辑切换
 
-Cookie 详情
+<img width="600" src="./screenshots/popup-cookie-editor.png" alt="弹窗 Cookie 编辑"/>
 
-<img width="600" src="./screenshots/panel_item.png" alt="cookie manager sidebar panel"/>
+侧边栏 — 站点列表与文件夹/类型筛选
 
-LocalStorage 详情
-
-<img width="600" src="./screenshots/panel_item_localStorage.png" alt="cookie manager sidebar panel"/>
-
-Cloudflare 上传的 Cookie
-
-<img width="600" src="./screenshots/key_value.png" alt="Pushed Cookie on Cloudflare"/>
+<img width="600" src="./screenshots/sidepanel-manager.png" alt="侧边栏管理器"/>
 
 ### 安装配置
 
-#### 仅扩展（直连 KV）
-
-1. 从商店安装，或 `pnpm build` 后加载 `dist/`。
-2. 在 Cloudflare 创建 KV 命名空间与 API Token — 见 [how-to-use.md](./how-to-use.md)。
-3. 打开 **Options** → 填入 **Account ID / Namespace ID / API Token** → 保存。
-
-无需部署 Worker。
-
-#### 扩展 + Worker（推荐）
-
-1. 部署 Worker：
-
-```bash
-cp deploy/cloudflare/.env.example deploy/cloudflare/.env
-# 在 .env 中设置 CLOUDFLARE_API_TOKEN（或使用 wrangler login）
-pnpm deploy:cloudflare
-```
-
-2. 在 Cloudflare Dashboard 设置 `WEB_ACCESS_PASSWORD`（见 [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md)）。
-3. 在扩展弹窗用 **服务器 URL**（Worker 地址）与 **访问密码** 登录。
+1. 从商店安装扩展，或 `pnpm build` 后加载 `dist/`。
+2. 按 [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md) 连接 Git 部署 Worker，设置 `WEB_ACCESS_PASSWORD`。
+3. 扩展弹窗用 Worker URL + 密码登录 — 见 [how-to-use.md](./how-to-use.md)。
 
 #### 从源码构建
 
@@ -115,15 +87,13 @@ pnpm release:zip  # 商店用 zip → dist/release/
 
 ### 使用指引
 
-1. **登录** — Worker URL + 密码，或在 Options 配置 KV 凭据。
+1. **登录** — Worker URL + 密码。
 2. **Push** — 上传当前标签页 Cookie（与远程不一致时弹出冲突对话框）。
 3. **Pull** — 下载远程 Cookie；会先清除该 host 本地 Cookie（镜像同步）。
 4. **打开管理器** — 侧边栏查看完整 Cookie/LocalStorage。
 5. **Web 管理端**（可选） — 浏览器打开 Worker URL，界面与侧边栏一致。
 
-详细 KV 配置：[how-to-use.md](./how-to-use.md)  
-Worker 部署：[deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md)  
-商店发布：[STORE_PUBLISH.md](./STORE_PUBLISH.md)
+使用说明：[how-to-use.md](./how-to-use.md) · Worker 部署：[deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md) · 商店发布：[STORE_PUBLISH.md](./STORE_PUBLISH.md)
 
 ### 更新日志
 
