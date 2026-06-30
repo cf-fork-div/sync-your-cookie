@@ -159,11 +159,17 @@ function saveState(state) {
 
 function updateWranglerBasePath(basePath) {
   let toml = readFileSync(WRANGLER_TOML, 'utf8');
-  const line = `WEB_BASE_PATH = "${basePath.replace(/"/g, '\\"')}"`;
-  if (/^WEB_BASE_PATH = .*$/m.test(toml)) {
-    toml = toml.replace(/^WEB_BASE_PATH = .*$/m, line);
-  } else {
-    toml = toml.replace(/^(\[vars\]\r?\n)/m, `$1${line}\n`);
+  if (basePath) {
+    const line = `WEB_BASE_PATH = "${basePath.replace(/"/g, '\\"')}"`;
+    if (/^WEB_BASE_PATH = .*$/m.test(toml)) {
+      toml = toml.replace(/^WEB_BASE_PATH = .*$/m, line);
+    } else if (/^\[vars\]/m.test(toml)) {
+      toml = toml.replace(/^(\[vars\]\r?\n)/m, `$1${line}\n`);
+    } else {
+      toml = `${toml.trimEnd()}\n\n[vars]\n${line}\n`;
+    }
+  } else if (/^WEB_BASE_PATH = .*$/m.test(toml)) {
+    toml = toml.replace(/^WEB_BASE_PATH = .*\r?\n/m, '');
   }
   writeFileSync(WRANGLER_TOML, toml, 'utf8');
 }
@@ -315,14 +321,15 @@ function maskToken(token) {
 
 function printSummary({ accountId, namespaceId, basePath, workerUrl, env }) {
   const token = env.CLOUDFLARE_API_TOKEN?.trim();
-  const viewerPath = basePath.startsWith('/') ? basePath : `/${basePath}`;
-  const normalizedPath = viewerPath.endsWith('/') ? viewerPath : `${viewerPath}/`;
+  const viewerUrl = basePath
+    ? `${workerUrl.replace(/\/$/, '')}/${basePath.replace(/^\/+|\/+$/g, '')}/`
+    : `${workerUrl.replace(/\/$/, '')}/`;
 
   console.log('\n========================================');
   console.log('  Sync Your Cookie — Cloudflare 部署完成');
   console.log('========================================\n');
   console.log('Web Viewer 地址:');
-  console.log(`  ${workerUrl.replace(/\/$/, '')}${normalizedPath}\n`);
+  console.log(`  ${viewerUrl}\n`);
   console.log('请填入扩展 Options 页面的凭据:\n');
   console.log(`  Account ID:    ${accountId}`);
   console.log(`  Namespace ID:  ${namespaceId}`);
@@ -334,9 +341,13 @@ function printSummary({ accountId, namespaceId, basePath, workerUrl, env }) {
     console.log('                 (部署时使用了 wrangler login，需在 Dashboard 手动创建 Token)\n');
   }
   console.log('Web Viewer 运行时配置（Cloudflare Dashboard 修改后立即生效，无需重新构建）:\n');
-  console.log('  WEB_ACCESS_PASSWORD  — 登录密码（Encrypted Secret）');
-  console.log('  WEB_BASE_PATH        — 访问路径，默认 my-cookie-vault\n');
-  console.log('  路径: Workers & Pages → sync-your-cookie-web → Settings → Variables and Secrets\n');
+  console.log('  WEB_ACCESS_PASSWORD  — 登录密码（Encrypted Secret，必填）');
+  if (basePath) {
+    console.log(`  WEB_BASE_PATH        — 当前自定义路径: ${basePath}`);
+  } else {
+    console.log('  WEB_BASE_PATH        — 可选，设置后隐藏于自定义路径（默认根路径 /）');
+  }
+  console.log('\n  路径: Workers & Pages → sync-your-cookie-web → Settings → Variables and Secrets\n');
   if (env.WEB_ACCESS_PASSWORD?.trim()) {
     console.log(`  当前 deploy/.env 中的 WEB_ACCESS_PASSWORD 已用于首次配置参考`);
     if (env.DEPLOY_RUNTIME_SECRETS !== '1') {
@@ -352,7 +363,10 @@ function printSummary({ accountId, namespaceId, basePath, workerUrl, env }) {
   console.log('\n需手动完成:');
   console.log('  • 首次授权: wrangler login 或设置 CLOUDFLARE_API_TOKEN');
   console.log('  • 若未设置 CLOUDFLARE_API_TOKEN，需在 Dashboard 创建 API Token 填入扩展');
-  console.log('  • 在 Dashboard 确认 WEB_ACCESS_PASSWORD / WEB_BASE_PATH');
+  console.log('  • 在 Dashboard 设置 WEB_ACCESS_PASSWORD');
+  if (basePath) {
+    console.log('  • 确认 WEB_BASE_PATH 自定义路径');
+  }
   console.log('  • 在扩展 Options 保存上述凭据\n');
   console.log('详细说明: deploy/CLOUDFLARE.md');
   console.log('========================================\n');
@@ -369,7 +383,7 @@ async function main() {
     fail('未找到 wrangler。请先运行 pnpm install。');
   }
 
-  const basePath = env.WEB_BASE_PATH?.trim() || 'my-cookie-vault';
+  const basePath = env.WEB_BASE_PATH?.trim()?.replace(/^\/+|\/+$/g, '') || null;
   updateWranglerBasePath(basePath);
 
   buildWeb();

@@ -40,9 +40,6 @@ export async function applyMiddleware(request: Request, env: WorkerEnv): Promise
     baseSegment !== null && (pathname === `/${baseSegment}` || pathname.startsWith(`/${baseSegment}/`));
 
   if (baseSegment) {
-    if (pathname === '/') {
-      return { pathname, response: new Response('Not Found', { status: 404 }) };
-    }
     if (pathname === `/${baseSegment}`) {
       return {
         pathname,

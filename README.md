@@ -75,7 +75,7 @@ cp deploy/cloudflare/.env.example deploy/cloudflare/.env
 pnpm deploy:cloudflare
 ```
 
-After deploy, set `WEB_ACCESS_PASSWORD` and `WEB_BASE_PATH` in the Cloudflare Dashboard — they take effect immediately, no rebuild. Full guide: [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md).
+After deploy, set `WEB_ACCESS_PASSWORD` in the Cloudflare Dashboard — it takes effect immediately, no rebuild. Open `https://your-domain/` directly. Optionally set `WEB_BASE_PATH` for a hidden path. Full guide: [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md).
 
 **Git CI (optional):** connect the repo in Cloudflare Workers → Connect to Git. Build: `pnpm install && pnpm build:cloudflare-worker`. Deploy: `npx wrangler deploy --config deploy/cloudflare/wrangler.toml`. See [Git deploy notes](./deploy/CLOUDFLARE.md#git-仓库连接部署可选).
 

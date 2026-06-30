@@ -9,7 +9,7 @@ not_found_handling = "single-page-application"
 run_worker_first = true
 
 # Runtime env (override in Cloudflare Dashboard without rebuild)
-[vars]
-WEB_BASE_PATH = "my-cookie-vault"
+# [vars]
+# WEB_BASE_PATH — optional custom URL path segment (omit to serve at /)
 
 # WEB_ACCESS_PASSWORD — set as encrypted secret via Dashboard or `wrangler secret put`

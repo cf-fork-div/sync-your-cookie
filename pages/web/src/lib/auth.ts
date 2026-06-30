@@ -1,3 +1,5 @@
+import { getDevViteBasePath, PRODUCTION_BASE_PATH, segmentToBasePathPrefix } from './basePath';
+
 export type SessionInfo = {
   authenticated: boolean;
   passwordConfigured: boolean;
@@ -56,8 +58,8 @@ export async function fetchSession(): Promise<SessionInfo> {
       authenticated: legacyDevIsAuthenticated(),
       passwordConfigured: getDevPassword() !== null,
       basePath: import.meta.env.VITE_WEB_BASE_PATH?.trim()
-        ? `/${import.meta.env.VITE_WEB_BASE_PATH.trim().replace(/^\/+|\/+$/g, '')}/`
-        : '/syc/',
+        ? segmentToBasePathPrefix(import.meta.env.VITE_WEB_BASE_PATH)
+        : getDevViteBasePath(undefined),
     };
   }
 
@@ -71,7 +73,7 @@ export async function fetchSession(): Promise<SessionInfo> {
     return {
       authenticated: false,
       passwordConfigured: false,
-      basePath: '/',
+      basePath: PRODUCTION_BASE_PATH,
     };
   }
 }

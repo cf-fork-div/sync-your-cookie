@@ -134,7 +134,7 @@ const enMessages = {
   accessPasswordNotConfigured:
     'Access password is not configured. Set WEB_ACCESS_PASSWORD in Cloudflare Worker (or VITE_WEB_ACCESS_PASSWORD for local dev).',
   devDefaultPasswordHint: 'Dev mode default password: dev (set VITE_WEB_ACCESS_PASSWORD in .env.local to override)',
-  webAccessPathHint: 'Access URL path: {{path}} (runtime: WEB_BASE_PATH in Cloudflare; dev: VITE_WEB_BASE_PATH)',
+  webAccessPathHint: 'Access at {{path}} (optional: set WEB_BASE_PATH in Cloudflare for a hidden path)',
   logout: 'Sign out',
   connectDataSource: 'Connect data source',
   connectDataSourceDesc:
@@ -325,7 +325,7 @@ const zhCNMessages: Record<MessageKey, string> = {
   accessPasswordNotConfigured:
     '未配置访问密码。请在 Cloudflare Worker 设置 WEB_ACCESS_PASSWORD（本地开发可用 VITE_WEB_ACCESS_PASSWORD）。',
   devDefaultPasswordHint: '开发模式默认密码：dev（可在 .env.local 中设置 VITE_WEB_ACCESS_PASSWORD 覆盖）',
-  webAccessPathHint: '访问路径：{{path}}（生产环境在 Cloudflare 设置 WEB_BASE_PATH；开发环境用 VITE_WEB_BASE_PATH）',
+  webAccessPathHint: '访问地址 {{path}}（可选：在 Cloudflare 设置 WEB_BASE_PATH 使用隐藏路径）',
   logout: '退出登录',
   connectDataSource: '连接数据源',
   connectDataSourceDesc:

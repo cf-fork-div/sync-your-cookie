@@ -4,27 +4,12 @@ import { resolve } from 'path';
 
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 
+import { getDevViteBasePath } from './src/lib/basePath';
 import { devWebApiPlugin } from './vite-plugin-dev-api';
 
 const rootDir = resolve(__dirname);
 
 const srcDir = resolve(rootDir, 'src');
-
-function normalizeWebBasePath(raw: string | undefined, isDev: boolean): string {
-  const trimmed = raw?.trim();
-
-  if (!trimmed) {
-    return isDev ? '/syc/' : '/';
-  }
-
-  let path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-
-  if (!path.endsWith('/')) {
-    path = `${path}/`;
-  }
-
-  return path;
-}
 
 function blockRootWhenCustomBase(base: string): Plugin {
   return {
@@ -57,7 +42,7 @@ export default defineConfig(({ mode }) => {
 
   const isDev = mode === 'development';
 
-  const base = normalizeWebBasePath(env.VITE_WEB_BASE_PATH, isDev);
+  const base = isDev ? getDevViteBasePath(env.VITE_WEB_BASE_PATH) : '/';
 
   if (!isDev && base === '/') {
     console.log('[web] Production build uses base /. Custom path is applied at runtime via WEB_BASE_PATH.');
