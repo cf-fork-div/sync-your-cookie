@@ -13,6 +13,7 @@ import {
   readCookiesMap,
   removeAndWriteCookies,
 } from './withCloudflare';
+import { buildPullCookieSetDetails, cookieMatchesHost, setCookieInBrowser } from './setDetails';
 
 export const readCookiesMapWithStatus = async (cloudflareInfo: AccountInfo) => {
   let cookieMap: Cookie | null = null;
@@ -60,10 +61,6 @@ export const pullCookies = async (isInit = false): Promise<Cookie> => {
     return Promise.reject(e);
   }
 };
-function extractPortRegex(host: string) {
-  const match = host.match(/:(\d+)$/);
-  return match ? match[1] : null;
-}
 export const pullAndSetCookies = async (activeTabUrl: string, host: string, isReload = true): Promise<Cookie> => {
   const cookieMap = await pullCookies();
   const cookieDetails = cookieMap?.domainCookieMap?.[host]?.cookies || [];
@@ -74,44 +71,11 @@ export const pullAndSetCookies = async (activeTabUrl: string, host: string, isRe
   } else {
     const cookiesPromiseList: Promise<unknown>[] = [];
     for (const cookie of cookieDetails) {
-      let removeWWWHost = host.replace('www.', '');
-      const port = extractPortRegex(removeWWWHost);
-      if (port) {
-        removeWWWHost = removeWWWHost.replace(':' + port, '');
+      if (!cookieMatchesHost(cookie, host)) {
+        continue;
       }
-
-      if (cookie.domain?.includes(removeWWWHost)) {
-        let url = activeTabUrl;
-        if (cookie.domain) {
-          const urlObj = new URL(activeTabUrl);
-          const protocol = activeTabUrl ? urlObj.protocol : 'http:';
-          const itemHost = cookie.domain.startsWith('.') ? cookie.domain.slice(1) : cookie.domain;
-          url = `${protocol}//${itemHost}`;
-        }
-        const cookieDetail: chrome.cookies.SetDetails = {
-          domain: cookie.domain.startsWith('.') || !url ? cookie.domain : undefined,
-          name: cookie.name ?? undefined,
-          url: url,
-          storeId: cookie.storeId ?? undefined,
-          value: cookie.value ?? undefined,
-          expirationDate: cookie.expirationDate ?? undefined,
-          path: cookie.path ?? undefined,
-          httpOnly: cookie.httpOnly ?? undefined,
-          secure: cookie.secure ?? undefined,
-          sameSite: (cookie.sameSite ?? undefined) as chrome.cookies.SameSiteStatus,
-        };
-        const promise = new Promise((resolve, reject) => {
-          try {
-            chrome.cookies.set(cookieDetail, res => {
-              resolve(res);
-            });
-          } catch (error) {
-            console.error('cookie set error', cookieDetail, error);
-            reject(error);
-          }
-        });
-        cookiesPromiseList.push(promise);
-      }
+      const cookieDetail = buildPullCookieSetDetails(cookie, activeTabUrl);
+      cookiesPromiseList.push(setCookieInBrowser(cookieDetail));
     }
 
     await sendMessage(
