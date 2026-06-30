@@ -61,6 +61,10 @@ class eventHandler {
         }
       } else {
         console.log("localStorage not match domain", result.domain);
+        sendResponse({
+          isOk: false,
+          msg: 'localStorage domain not match',
+        });
       }
 
     });
@@ -73,6 +77,9 @@ class eventHandler {
         try {
           const values = result.value;
           const setKey = result.onlyKey;
+          if (result.replace) {
+            localStorage.clear();
+          }
           if(setKey){
             const targetItem = values.find((item: any) => item.key === setKey);
             if(targetItem){
@@ -100,6 +107,10 @@ class eventHandler {
         }
       } else {
         console.log("localStorage not match domain", result.domain);
+        sendResponse({
+          isOk: false,
+          msg: 'localStorage domain not match',
+        });
       }
 
     });

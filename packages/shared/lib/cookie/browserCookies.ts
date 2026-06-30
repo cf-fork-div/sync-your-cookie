@@ -34,28 +34,55 @@ export const SAME_SITE_OPTIONS: chrome.cookies.SameSiteStatus[] = [
   'strict',
 ];
 
-export async function resolveDomainUrl(host: string): Promise<string> {
+export function normalizeCookieHost(host: string): string {
+  return host.replace(/^\./, '').replace(/:\d+$/, '').toLowerCase();
+}
+
+function hostMatchesUrl(normalizedHost: string, url: string): boolean {
+  if (!url.startsWith('http')) {
+    return false;
+  }
+  try {
+    const tabHost = normalizeCookieHost(new URL(url).hostname);
+    return tabHost === normalizedHost || tabHost.endsWith(`.${normalizedHost}`);
+  } catch {
+    return false;
+  }
+}
+
+export async function resolveDomainUrl(host: string, tabUrl?: string): Promise<string> {
   const domainConfig = await domainConfigStorage.get();
   const config = domainConfig?.domainMap?.[host];
   const sourceUrl = config?.sourceUrl;
   if (sourceUrl) {
     return sourceUrl;
   }
-  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+
+  const normalizedHost = normalizeCookieHost(host);
+
+  if (tabUrl && hostMatchesUrl(normalizedHost, tabUrl)) {
+    return tabUrl;
+  }
+
+  const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
   const activeTab = tabs[0];
-  if (activeTab?.url && activeTab.url.includes(host)) {
+  if (activeTab?.url && hostMatchesUrl(normalizedHost, activeTab.url)) {
     return activeTab.url;
   }
-  const cleanHost = host.startsWith('.') ? host.slice(1) : host;
-  return `https://${cleanHost}`;
+
+  return `https://${normalizedHost}`;
+}
+
+function browserCookieKey(cookie: chrome.cookies.Cookie): string {
+  return `${cookie.storeId ?? ''}|${cookie.domain}|${cookie.name}|${cookie.path}`;
 }
 
 export function toBrowserCookieItem(cookie: chrome.cookies.Cookie, index: number): BrowserCookieItem {
   return {
-    id: `${cookie.domain}_${cookie.name}_${index}`,
+    id: browserCookieKey(cookie) || `cookie_${index}`,
     domain: cookie.domain,
-    name: cookie.name,
-    value: cookie.value,
+    name: cookie.name ?? '',
+    value: cookie.value ?? '',
     path: cookie.path,
     expirationDate: cookie.expirationDate ?? null,
     session: cookie.session ?? null,
@@ -67,10 +94,20 @@ export function toBrowserCookieItem(cookie: chrome.cookies.Cookie, index: number
   };
 }
 
-export async function fetchBrowserCookies(host: string): Promise<BrowserCookieItem[]> {
-  const url = await resolveDomainUrl(host);
-  const cookies = await chrome.cookies.getAll({ url });
-  return cookies.map((cookie, index) => toBrowserCookieItem(cookie, index));
+export async function fetchBrowserCookies(host: string, tabUrl?: string): Promise<BrowserCookieItem[]> {
+  const url = await resolveDomainUrl(host, tabUrl);
+  const normalizedHost = normalizeCookieHost(host);
+  const [urlCookies, domainCookies] = await Promise.all([
+    chrome.cookies.getAll({ url }),
+    chrome.cookies.getAll({ domain: normalizedHost }),
+  ]);
+
+  const merged = new Map<string, chrome.cookies.Cookie>();
+  for (const cookie of [...urlCookies, ...domainCookies]) {
+    merged.set(browserCookieKey(cookie), cookie);
+  }
+
+  return Array.from(merged.values()).map((cookie, index) => toBrowserCookieItem(cookie, index));
 }
 
 export function buildCookieUrl(
@@ -177,9 +214,9 @@ export function formatExpiration(expirationDate?: number | null, session?: boole
   return new Date(expirationDate * 1000).toLocaleString();
 }
 
-export async function clearAllBrowserCookies(host: string): Promise<void> {
-  const url = await resolveDomainUrl(host);
-  const cookies = await fetchBrowserCookies(host);
+export async function clearAllBrowserCookies(host: string, tabUrl?: string): Promise<void> {
+  const url = await resolveDomainUrl(host, tabUrl);
+  const cookies = await fetchBrowserCookies(host, tabUrl);
   for (const cookie of cookies) {
     await removeBrowserCookie(cookie, url);
   }

@@ -7,6 +7,14 @@ import {
   useI18n,
 } from '@sync-your-cookie/shared';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Button,
   Input,
   Label,
@@ -33,10 +41,14 @@ type CookieEditorRowProps = {
   onRemove: (cookie: BrowserCookieItem) => Promise<void>;
 };
 
+const fieldInputClass = 'h-7 text-xs min-w-0 max-w-full';
+const fieldTextareaClass =
+  'flex min-h-[48px] w-full min-w-0 max-w-full rounded-md border border-input bg-background px-2 py-1 text-xs font-mono break-all overflow-x-hidden resize-y';
+
 const ReadOnlyField = ({ label, value }: { label: string; value: string }) => (
-  <div className="space-y-0.5">
+  <div className="min-w-0 space-y-0.5 overflow-hidden">
     <Label className="text-[11px] text-muted-foreground">{label}</Label>
-    <p className="text-xs font-mono break-all bg-muted/50 rounded px-2 py-1">{value || '-'}</p>
+    <p className="overflow-hidden break-all rounded bg-muted/50 px-2 py-1 font-mono text-xs">{value || '-'}</p>
   </div>
 );
 
@@ -92,7 +104,7 @@ export function CookieEditorRow({
   const boolLabel = (val?: boolean | null) => (val ? t('yes') : t('no'));
 
   return (
-    <div className="rounded-md border border-border bg-card/50 overflow-hidden">
+    <div className="max-w-full min-w-0 overflow-hidden rounded-md border border-border bg-card/50">
       <button
         type="button"
         className="flex w-full items-center gap-2 px-2 py-1.5 text-left hover:bg-muted/40"
@@ -100,42 +112,53 @@ export function CookieEditorRow({
         <span className="shrink-0 text-muted-foreground">
           {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-xs font-medium truncate">{cookie.name}</span>
+        <span className="min-w-0 flex-1 overflow-hidden">
+          <span className="block text-xs font-medium text-foreground truncate">{cookie.name || '-'}</span>
           {!expanded ? (
-            <span className="block text-[11px] text-muted-foreground truncate font-mono">{cookie.value}</span>
+            <>
+              <span
+                style={{ overflowWrap: 'anywhere' }}
+                className="block text-[11px] text-orange-600 dark:text-orange-400 line-clamp-2 font-mono bg-muted/50 rounded px-1 mt-0.5">
+                {cookie.value || '-'}
+              </span>
+              <span className="block text-[10px] text-muted-foreground truncate mt-0.5">
+                {cookie.domain}
+                {cookie.path ? ` · ${cookie.path}` : ''}
+              </span>
+            </>
           ) : null}
         </span>
       </button>
 
       {expanded ? (
-        <div className="space-y-2 border-t border-border/60 p-2">
-          <div className="space-y-0.5">
+        <div className="min-w-0 space-y-2 overflow-hidden border-t border-border/60 p-2">
+          <div className="min-w-0 space-y-0.5 overflow-hidden">
             <Label className="text-[11px]">{t('cookieName')}</Label>
-            <Input className="h-7 text-xs" value={form.name} disabled />
+            <Input className={fieldInputClass} value={form.name} disabled />
           </div>
-          <div className="space-y-0.5">
+          <div className="min-w-0 space-y-0.5 overflow-hidden">
             <Label className="text-[11px]">{t('cookieValue')}</Label>
             <textarea
-              className="flex min-h-[48px] w-full rounded-md border border-input bg-background px-2 py-1 text-xs font-mono"
+              className={fieldTextareaClass}
+              style={{ overflowWrap: 'anywhere' }}
               value={form.value}
               onChange={e => update({ value: e.target.value })}
             />
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-0.5">
+          <div className="grid min-w-0 grid-cols-2 gap-2">
+            <div className="min-w-0 space-y-0.5 overflow-hidden">
               <Label className="text-[11px]">{t('domain')}</Label>
-              <Input className="h-7 text-xs" value={form.domain} onChange={e => update({ domain: e.target.value })} />
+              <Input className={fieldInputClass} value={form.domain} onChange={e => update({ domain: e.target.value })} />
             </div>
-            <div className="space-y-0.5">
+            <div className="min-w-0 space-y-0.5 overflow-hidden">
               <Label className="text-[11px]">{t('cookiePath')}</Label>
-              <Input className="h-7 text-xs" value={form.path} onChange={e => update({ path: e.target.value })} />
+              <Input className={fieldInputClass} value={form.path} onChange={e => update({ path: e.target.value })} />
             </div>
           </div>
-          <div className="space-y-0.5">
+          <div className="min-w-0 space-y-0.5 overflow-hidden">
             <Label className="text-[11px]">{t('cookieExpires')}</Label>
             <Input
-              className="h-7 text-xs"
+              className={fieldInputClass}
               type="datetime-local"
               value={expirationInputValue}
               onChange={e => {
@@ -184,7 +207,7 @@ export function CookieEditorRow({
               </Label>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid min-w-0 grid-cols-2 gap-2">
             <ReadOnlyField label={t('hostOnly')} value={boolLabel(cookie.hostOnly)} />
             <ReadOnlyField label={t('sessionCookie')} value={boolLabel(cookie.session)} />
             <ReadOnlyField label={t('storeId')} value={cookie.storeId || '-'} />
@@ -212,34 +235,67 @@ export function CookieEditorRow({
 
 type CookieEditorSectionProps = {
   host: string;
+  tabUrl?: string;
   enabled: boolean;
 };
 
-export function CookieEditorSection({ host, enabled }: CookieEditorSectionProps) {
+export function CookieEditorSection({ host, tabUrl, enabled }: CookieEditorSectionProps) {
   const { t } = useI18n();
-  const { cookies, loading, domainUrl, refresh, handleSet, handleRemove } = usePopupBrowserCookies(host, enabled);
+  const { cookies, loading, domainUrl, refresh, handleSet, handleRemove, handleClearAll } = usePopupBrowserCookies(
+    host,
+    enabled,
+    tabUrl,
+  );
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [clearAllOpen, setClearAllOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   useEffect(() => {
     if (!enabled) {
       setExpandedId(null);
+      setClearAllOpen(false);
     }
   }, [enabled]);
+
+  const handleClearAllConfirm = async () => {
+    setClearing(true);
+    try {
+      await handleClearAll();
+      toast.success(t('clearAllSuccess'));
+      setClearAllOpen(false);
+      setExpandedId(null);
+    } catch {
+      toast.error(t('clearAllFailed'));
+    } finally {
+      setClearing(false);
+    }
+  };
 
   if (!enabled) {
     return null;
   }
 
   return (
-    <div className="w-full mt-2">
+    <div className="mt-2 w-full min-w-0 overflow-hidden">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs text-muted-foreground">{t('cookiesCount', { count: cookies.length })}</span>
-        <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => void refresh()} disabled={loading}>
-          <RotateCw size={12} className={cn('mr-1', loading && 'animate-spin')} />
-          {t('refresh')}
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-destructive hover:text-destructive"
+            disabled={loading || cookies.length === 0}
+            onClick={() => setClearAllOpen(true)}
+            title={t('clearAllCookies')}>
+            <Trash2 size={12} />
+          </Button>
+          <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => void refresh()} disabled={loading}>
+            <RotateCw size={12} className={cn('mr-1', loading && 'animate-spin')} />
+            {t('refresh')}
+          </Button>
+        </div>
       </div>
-      <div className="max-h-[280px] overflow-y-auto space-y-1.5 pr-0.5">
+      <div className="max-h-[280px] min-w-0 space-y-1.5 overflow-y-auto overflow-x-hidden pr-0.5">
         {loading && cookies.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-4">{t('loading')}</p>
         ) : cookies.length === 0 ? (
@@ -258,6 +314,24 @@ export function CookieEditorSection({ host, enabled }: CookieEditorSectionProps)
           ))
         )}
       </div>
+      <AlertDialog open={clearAllOpen} onOpenChange={setClearAllOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('clearAllCookies')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('clearAllCookiesConfirm', { count: cookies.length, host })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={clearing}>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Button variant="destructive" disabled={clearing} onClick={() => void handleClearAllConfirm()}>
+                {t('clearAllCookies')}
+              </Button>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

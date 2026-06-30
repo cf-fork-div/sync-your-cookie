@@ -15,9 +15,10 @@ import {
 
 import { accountProfileStorage, getActiveProfile } from '@sync-your-cookie/storage/lib/accountProfileStorage';
 import { cookieStorage } from '@sync-your-cookie/storage/lib/cookieStorage';
-import { Button, Image, Label, PushAccountDialog, DeleteAccountDialog, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Spinner, Switch, Toaster } from '@sync-your-cookie/ui';
+import { Button, Image, Label, PushAccountDialog, DeleteAccountDialog, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Spinner, Switch, SyncTooltip, Toaster } from '@sync-your-cookie/ui';
 import { CloudDownload, CloudUpload, Copyright, PanelRightOpen, RotateCw, Settings, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 import { AutoSwitch } from './components/AutoSwtich';
 import { AccountLoginGate } from './components/AccountLoginGate';
@@ -28,7 +29,7 @@ const Popup = () => {
   const { theme } = useTheme();
   const { t } = useI18n();
   useDocumentTitle('pageTitlePopup');
-  const { isAuthenticated } = useAccountAuth();
+  const { isAuthenticated, refreshConnection, refreshing } = useAccountAuth();
   const profileState = useStorageSuspense(accountProfileStorage);
   const cookieMap = useStorageSuspense(cookieStorage);
   const activeProfile = getActiveProfile(profileState);
@@ -98,21 +99,49 @@ const Popup = () => {
   }, []);
 
   const isPushingOrPulling = domainItemStatus.pushing || domainItemStatus.pulling;
+  const isBusy = isPushingOrPulling || pushing || refreshing;
+
+  const handleRefreshError = (err: unknown) => {
+    const code = err instanceof Error ? err.message : 'verify_failed';
+    if (code === 'missing_credentials') {
+      toast.warning(t('serverUrlPasswordRequired'));
+    } else if (code === 'wrong_password') {
+      toast.error(t('wrongPassword'));
+    } else if (code === 'datasource_not_configured') {
+      toast.error(t('datasourceNotConfigured'));
+    } else {
+      toast.error(t('verifyFailed', { message: code }));
+    }
+  };
+
+  const runWithRefresh = async (action?: () => void | Promise<void>, showSuccessOnRefreshOnly = false) => {
+    try {
+      await refreshConnection();
+      if (showSuccessOnRefreshOnly && !action) {
+        toast.success(t('refreshConnectionSuccess'));
+      }
+      if (action) {
+        await action();
+      }
+    } catch (err) {
+      handleRefreshError(err);
+    }
+  };
 
   const handleAndReload = () => {
-    handlePull(activeTabUrl, activeStorageKey, true);
+    void runWithRefresh(() => handlePull(activeTabUrl, activeStorageKey, true));
   };
 
   if (!isAuthenticated) {
     return (
-      <div className="min-w-[400px] bg-background">
+      <div className="w-[400px] min-w-[400px] max-w-[400px] overflow-hidden bg-background">
         <AccountLoginGate compact />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center min-w-[400px] justify-center bg-background ">
+    <div className="flex w-[400px] min-w-[400px] max-w-[400px] flex-col items-center justify-center overflow-hidden bg-background">
       <header className=" p-2 flex w-full justify-between items-center bg-card/50 shadow-md border-b border-border ">
         <div className="flex items-center">
           <img
@@ -129,17 +158,30 @@ const Popup = () => {
             ) : null}
           </div>
         </div>
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => {
-            openExtensionOptionsPage();
-          }}
-          className="cursor-pointer text-sm mr-[-8px] ">
-          <Settings size={20} />
-        </Button>
+        <div className="flex items-center gap-1">
+          <SyncTooltip title={t('refreshConnectionTooltip')}>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={isBusy}
+              aria-label={t('refreshConnection')}
+              onClick={() => void runWithRefresh(undefined, true)}
+              className="cursor-pointer text-sm">
+              <RotateCw size={20} className={refreshing ? 'animate-spin' : ''} />
+            </Button>
+          </SyncTooltip>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              openExtensionOptionsPage();
+            }}
+            className="cursor-pointer text-sm mr-[-8px] ">
+            <Settings size={20} />
+          </Button>
+        </div>
       </header>
-      <main className="p-4 ">
+      <main className="w-full min-w-0 overflow-hidden p-4">
         <Spinner show={false}>
           {domain ? (
             <div className="flex justify-center items-center mb-2  ">
@@ -179,9 +221,9 @@ const Popup = () => {
           </Button> */}
             <div className="flex items-center mb-2 ">
               <Button
-                disabled={!activeTabUrl || isPushingOrPulling || pushing}
+                disabled={!activeTabUrl || isBusy}
                 className=" mr-2 w-[160px] justify-start"
-                onClick={() => void requestPush(activeTabUrl, favIconUrl)}>
+                onClick={() => void runWithRefresh(() => requestPush(activeTabUrl, favIconUrl))}>
                 {domainItemStatus.pushing ? (
                   <RotateCw size={16} className="mr-2 animate-spin" />
                 ) : (
@@ -199,7 +241,7 @@ const Popup = () => {
 
             <div className="flex items-center mb-2 ">
               <Button
-                disabled={!activeTabUrl || isPushingOrPulling}
+                disabled={!activeTabUrl || isBusy}
                 className=" w-[160px] mr-2 justify-start"
                 onClick={() => handleAndReload()}>
                 {domainItemStatus?.pulling ? (
@@ -220,18 +262,21 @@ const Popup = () => {
 
             <Button
               className="mb-2 justify-start"
-              onClick={async () => {
-                chrome.windows.getCurrent(async currentWindow => {
-                  chrome.sidePanel
-                    .open({ windowId: currentWindow.id! })
-                    .then(() => {
-                      console.log('Side panel opened successfully');
-                    })
-                    .catch(error => {
-                      console.error('Error opening side panel:', error);
-                    });
-                });
-              }}>
+              disabled={isBusy}
+              onClick={() =>
+                void runWithRefresh(async () => {
+                  chrome.windows.getCurrent(async currentWindow => {
+                    chrome.sidePanel
+                      .open({ windowId: currentWindow.id! })
+                      .then(() => {
+                        console.log('Side panel opened successfully');
+                      })
+                      .catch(error => {
+                        console.error('Error opening side panel:', error);
+                      });
+                  });
+                })
+              }>
               <PanelRightOpen size={16} className="mr-2" />
               {t('openManager')}
             </Button>
@@ -240,14 +285,14 @@ const Popup = () => {
               <Button
                 variant="destructive"
                 className="mb-2 justify-start"
-                disabled={isPushingOrPulling || pushing || deletingAccount}
+                disabled={isBusy || deletingAccount}
                 onClick={() => setDeleteDialogOpen(true)}>
                 <Trash2 size={16} className="mr-2" />
                 {hasMultipleAccounts ? t('deleteAccount') : t('deleteDomain')}
               </Button>
             ) : null}
 
-            <div className="w-full mt-2 pt-3 border-t border-border">
+            <div className="mt-2 w-full min-w-0 overflow-hidden border-t border-border pt-3">
               <div className="flex items-center justify-between mb-1">
                 <Label htmlFor="cookie-editor-toggle" className="text-sm">
                   {t('viewEditCookies')}
@@ -260,7 +305,7 @@ const Popup = () => {
                 />
               </div>
               {cookieEditorEnabled && domain ? (
-                <CookieEditorSection host={domain} enabled={cookieEditorEnabled} />
+                <CookieEditorSection host={domain} tabUrl={activeTabUrl} enabled={cookieEditorEnabled} />
               ) : null}
             </div>
           </div>

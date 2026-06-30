@@ -1,4 +1,5 @@
 import {
+  clearAllBrowserCookies,
   cookieMatchesHost,
   fetchBrowserCookies,
   removeBrowserCookie,
@@ -9,7 +10,7 @@ import {
 } from '@sync-your-cookie/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-export const usePopupBrowserCookies = (host: string, enabled: boolean) => {
+export const usePopupBrowserCookies = (host: string, enabled: boolean, tabUrl?: string) => {
   const [cookies, setCookies] = useState<BrowserCookieItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [domainUrl, setDomainUrl] = useState('');
@@ -19,14 +20,14 @@ export const usePopupBrowserCookies = (host: string, enabled: boolean) => {
     if (!host || !enabled) return;
     setLoading(true);
     try {
-      const url = await resolveDomainUrl(host);
+      const url = await resolveDomainUrl(host, tabUrl);
       setDomainUrl(url);
-      const items = await fetchBrowserCookies(host);
+      const items = await fetchBrowserCookies(host, tabUrl);
       setCookies(items);
     } finally {
       setLoading(false);
     }
-  }, [host, enabled]);
+  }, [host, enabled, tabUrl]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -76,6 +77,11 @@ export const usePopupBrowserCookies = (host: string, enabled: boolean) => {
     await refresh();
   };
 
+  const handleClearAll = async () => {
+    await clearAllBrowserCookies(host, tabUrl);
+    await refresh();
+  };
+
   return {
     cookies,
     loading,
@@ -83,5 +89,6 @@ export const usePopupBrowserCookies = (host: string, enabled: boolean) => {
     refresh,
     handleSet,
     handleRemove,
+    handleClearAll,
   };
 };

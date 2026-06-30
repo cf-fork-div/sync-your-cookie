@@ -56,6 +56,8 @@ export type SetLocalStorageMessagePayload = {
   domain: string;
   value: ILocalStorageItem[];
   onlyKey?: string;
+  /** When true, clear origin localStorage before applying value (pull mirror). */
+  replace?: boolean;
 };
 
 export type MessageMap = {

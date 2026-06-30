@@ -14,6 +14,7 @@ import {
   readCookiesMap,
   removeAndWriteCookies,
 } from './withCloudflare';
+import { clearAllBrowserCookies } from './browserCookies';
 import { buildPullCookieSetDetails, cookieMatchesHost, setCookieInBrowser } from './setDetails';
 import { mergeEntryMetaIntoDomainConfig, mergeEntryMetaOnWrite } from '../domain/entryMetaSync';
 
@@ -76,48 +77,48 @@ export const pullAndSetCookies = async (activeTabUrl: string, host: string, isRe
   if (cookieDetails.length === 0 && localStorageItems.length === 0) {
     console.warn('no cookies to pull, push first please', host, cookieMap);
     throw new Error('No cookies to pull, push first please');
-  } else {
-    const cookiesPromiseList: Promise<unknown>[] = [];
-    for (const cookie of cookieDetails) {
-      if (!cookieMatchesHost(cookie, host)) {
-        continue;
-      }
-      const cookieDetail = buildPullCookieSetDetails(cookie, activeTabUrl);
-      cookiesPromiseList.push(setCookieInBrowser(cookieDetail));
-    }
+  }
 
-    await sendMessage(
-      {
-        type: MessageType.SetLocalStorage,
-        payload: {
-          domain: host,
-          value: localStorageItems,
-        },
+  const matchedCookies = cookieDetails.filter(cookie => cookieMatchesHost(cookie, host));
+  if (matchedCookies.length === 0 && localStorageItems.length === 0) {
+    console.warn('no matched cookies and localStorageItems to pull, push first please', host, cookieMap);
+    throw new Error('No matched cookies and localStorageItems to pull, push first please');
+  }
+
+  await clearAllBrowserCookies(host, activeTabUrl);
+
+  await sendMessage(
+    {
+      type: MessageType.SetLocalStorage,
+      payload: {
+        domain: host,
+        value: localStorageItems,
+        replace: true,
       },
-      true,
-    )
-      .then(res => {
-        console.log('set local storage', res);
-      })
-      .catch(err => {
-        console.error('set local storage error', err);
-      });
+    },
+    true,
+  );
 
-    if (cookiesPromiseList.length === 0 && localStorageItems.length === 0) {
-      console.warn('no matched cookies and localStorageItems to pull, push first please', host, cookieMap);
-      throw new Error('No matched cookies and localStorageItems to pull, push first please');
-    }
-    await Promise.allSettled(cookiesPromiseList);
-    if (isReload) {
-      chrome.tabs.query({}, function (tabs) {
-        tabs.forEach(function (tab) {
-          if (tab.url && tab.url.includes(host) && tab.id) {
-            console.log('tab', tab);
-            chrome.tabs.reload(tab.id);
-          }
-        });
+  const cookiesPromiseList = matchedCookies.map(cookie => {
+    const cookieDetail = buildPullCookieSetDetails(cookie, activeTabUrl);
+    return setCookieInBrowser(cookieDetail);
+  });
+  const cookieResults = await Promise.allSettled(cookiesPromiseList);
+  const failedCookies = cookieResults.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+  if (failedCookies.length > 0) {
+    console.error('failed to set cookies during pull', failedCookies);
+    throw new Error(`Failed to set ${failedCookies.length} cookie(s) during pull`);
+  }
+
+  if (isReload) {
+    chrome.tabs.query({}, function (tabs) {
+      tabs.forEach(function (tab) {
+        if (tab.url && tab.url.includes(host) && tab.id) {
+          console.log('tab', tab);
+          chrome.tabs.reload(tab.id);
+        }
       });
-    }
+    });
   }
   return cookieMap;
 };
