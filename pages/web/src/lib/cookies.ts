@@ -176,11 +176,12 @@ export async function loadSession(params: {
 
   const format = detectFormat(content, encryptionPassword);
 
-  const cookieMap = await parseRawContent(content, { encryptionPassword });
+  const parsed = await parseRawContent(content, { encryptionPassword });
 
-  if (!cookieMap.domainCookieMap || Object.keys(cookieMap.domainCookieMap).length === 0) {
-    throw new Error('未找到任何域名数据');
-  }
+  const cookieMap: ICookiesMap = {
+    ...parsed,
+    domainCookieMap: parsed.domainCookieMap ?? {},
+  };
 
   return {
     cookieMap,

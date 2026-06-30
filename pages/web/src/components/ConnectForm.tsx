@@ -52,14 +52,14 @@ export function ConnectForm({ onLoaded }: ConnectFormProps) {
           return;
         }
         const format = detectFormat(pasteContent, encryptionPassword || undefined);
-        const cookieMap = await parseRawContent(pasteContent, {
+        const parsed = await parseRawContent(pasteContent, {
           encryptionPassword: encryptionPassword || undefined,
         });
-        if (!cookieMap.domainCookieMap || Object.keys(cookieMap.domainCookieMap).length === 0) {
-          throw new Error(t('noDomainData'));
-        }
         onLoaded({
-          cookieMap,
+          cookieMap: {
+            ...parsed,
+            domainCookieMap: parsed.domainCookieMap ?? {},
+          },
           dataSource: { type: 'paste' },
           format,
           canWrite: false,

@@ -18,14 +18,18 @@ type DomainListProps = {
   selected: string;
 
   onSelect: (host: string) => void;
+
+  search?: string;
 };
 
-export function DomainList({ domains, selected, onSelect }: DomainListProps) {
+export function DomainList({ domains, selected, onSelect, search = '' }: DomainListProps) {
   const { t } = useI18n();
 
   if (domains.length === 0) {
+    const message = search.trim() ? t('noMatchingDomains') : t('emptyCookieData');
+
     return (
-      <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">{t('noMatchingDomains')}</div>
+      <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">{message}</div>
     );
   }
 

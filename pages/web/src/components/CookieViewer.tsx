@@ -121,7 +121,7 @@ export function CookieViewer({ session, onSessionChange, onDisconnect }: CookieV
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4 min-h-[60vh]">
-        <DomainList domains={domains} selected={activeDomain} onSelect={setSelectedDomain} />
+        <DomainList domains={domains} selected={activeDomain} onSelect={setSelectedDomain} search={search} />
 
         {activeData ? (
           <CookieDetail
@@ -137,8 +137,8 @@ export function CookieViewer({ session, onSessionChange, onDisconnect }: CookieV
             onDeleteDomain={() => actions.handleDeleteDomain(activeDomain)}
           />
         ) : (
-          <div className="rounded-lg border border-dashed border-border flex items-center justify-center text-muted-foreground">
-            {t('noData')}
+          <div className="rounded-lg border border-dashed border-border flex items-center justify-center p-6 text-center text-sm text-muted-foreground">
+            {domains.length === 0 && !search.trim() ? t('emptyCookieData') : t('noData')}
           </div>
         )}
       </div>
