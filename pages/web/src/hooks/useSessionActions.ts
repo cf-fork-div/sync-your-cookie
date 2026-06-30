@@ -5,6 +5,8 @@ import {
   removeCookie,
   removeDomain,
   removeLocalStorageItem,
+  updateEntryMeta,
+  type EntryMetaUpdate,
 } from '@src/lib/mutations';
 import type { ICookie, ICookiesMap } from '@sync-your-cookie/protobuf';
 import { useI18n } from '@sync-your-cookie/shared';
@@ -95,6 +97,14 @@ export function useSessionActions({ session, onSessionChange }: UseSessionAction
     [persist, session.cookieMap],
   );
 
+  const handleUpdateEntryMeta = useCallback(
+    async (storageKey: string, update: EntryMetaUpdate) => {
+      const nextMap = updateEntryMeta(session.cookieMap, storageKey, update);
+      await persist(nextMap);
+    },
+    [persist, session.cookieMap],
+  );
+
   return {
     saving,
     exportToClipboard,
@@ -103,5 +113,6 @@ export function useSessionActions({ session, onSessionChange }: UseSessionAction
     handleEditLocalStorage,
     handleDeleteLocalStorage,
     handleDeleteDomain,
+    handleUpdateEntryMeta,
   };
 }

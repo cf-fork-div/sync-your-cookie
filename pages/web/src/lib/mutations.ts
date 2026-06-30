@@ -1,6 +1,13 @@
 import type { FormatInfo } from '@src/lib/types';
 import type { ICookie, ICookiesMap } from '@sync-your-cookie/protobuf';
 import { isBase64Encrypted } from '@sync-your-cookie/protobuf';
+import type { DomainEntryRow } from '@sync-your-cookie/shared';
+
+export type EntryMetaUpdate = {
+  label?: string;
+  folder?: string;
+  type?: DomainEntryRow['type'];
+};
 
 export function getCookieId(cookie: ICookie): string {
   return `${cookie.domain}_${cookie.name}`;
@@ -68,6 +75,48 @@ export function editLocalStorageItem(map: ICookiesMap, domain: string, key: stri
   }
   domainData.localStorageItems = items;
   domainData.updateTime = Date.now();
+  next.updateTime = Date.now();
+  return next;
+}
+
+export function updateEntryMeta(map: ICookiesMap, storageKey: string, update: EntryMetaUpdate): ICookiesMap {
+  const next = cloneMap(map);
+  const entryMetaMap = { ...(next.entryMetaMap as Record<string, Record<string, string>> | undefined) };
+
+  const meta: Record<string, string> = { ...(entryMetaMap[storageKey] || {}) };
+
+  const label = update.label?.trim();
+  if (label) {
+    meta.label = label;
+  } else {
+    delete meta.label;
+  }
+
+  const folder = update.folder?.trim();
+  if (folder) {
+    meta.folder = folder;
+  } else {
+    delete meta.folder;
+  }
+
+  if (update.type === 'login' || update.type === 'session' || update.type === 'other') {
+    meta.type = update.type;
+  } else {
+    delete meta.type;
+  }
+
+  if (Object.keys(meta).length === 0) {
+    delete entryMetaMap[storageKey];
+  } else {
+    entryMetaMap[storageKey] = meta;
+  }
+
+  if (Object.keys(entryMetaMap).length === 0) {
+    delete next.entryMetaMap;
+  } else {
+    next.entryMetaMap = entryMetaMap;
+  }
+
   next.updateTime = Date.now();
   return next;
 }

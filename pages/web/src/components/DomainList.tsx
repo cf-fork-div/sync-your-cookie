@@ -1,3 +1,4 @@
+import { formatEntryTypeLabel } from '@src/lib/entryMeta';
 import { getDisplaySubtitle, getDisplayTitle, type DomainEntryRow, useI18n } from '@sync-your-cookie/shared';
 
 import { cn } from '@sync-your-cookie/ui';
@@ -56,7 +57,7 @@ export function DomainList({ entries, selected, onSelect, search = '' }: DomainL
                   </div>
                 </div>
 
-                <div className="mt-1 flex gap-3 text-xs text-muted-foreground pl-5">
+                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground pl-5">
                   <span>{item.cookieCount} cookies</span>
 
                   {item.localStorageCount > 0 && (
@@ -65,6 +66,14 @@ export function DomainList({ entries, selected, onSelect, search = '' }: DomainL
                       {item.localStorageCount} ls
                     </span>
                   )}
+
+                  <span>
+                    {t('folder')}: {item.folder || t('noFolder')}
+                  </span>
+
+                  <span>
+                    {t('entryType')}: {formatEntryTypeLabel(t, item.type)}
+                  </span>
                 </div>
               </button>
             </li>

@@ -1,6 +1,9 @@
+import { EntryMetaEditor } from '@src/components/EntryMetaEditor';
 import { copyText, formatCookieHeader } from '@src/lib/cookies';
+import { formatEntryTypeLabel } from '@src/lib/entryMeta';
+import type { EntryMetaUpdate } from '@src/lib/mutations';
 import type { ICookie, ICookiesMap, ILocalStorageItem } from '@sync-your-cookie/protobuf';
-import { useI18n } from '@sync-your-cookie/shared';
+import { type DomainEntryRow, useI18n } from '@sync-your-cookie/shared';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +29,9 @@ type CookieDetailProps = {
   storageKey: string;
   host: string;
   label?: string;
+  folder?: string;
+  type?: DomainEntryRow['type'];
+  folderOptions?: string[];
   accountsOnHost?: number;
   data: DomainCookieData;
   search: string;
@@ -36,6 +42,7 @@ type CookieDetailProps = {
   onEditLocalStorage: (key: string, value: string) => Promise<void>;
   onDeleteLocalStorage: (key: string) => Promise<void>;
   onDeleteDomain: () => Promise<void>;
+  onUpdateEntryMeta?: (update: EntryMetaUpdate) => Promise<void>;
 };
 
 type ViewTab = 'cookies' | 'localStorage';
@@ -290,9 +297,12 @@ function LocalStorageRow({
 }
 
 export function CookieDetail({
-  storageKey: _storageKey,
+  storageKey,
   host,
   label,
+  folder,
+  type,
+  folderOptions = [],
   accountsOnHost = 1,
   data,
   search,
@@ -303,6 +313,7 @@ export function CookieDetail({
   onEditLocalStorage,
   onDeleteLocalStorage,
   onDeleteDomain,
+  onUpdateEntryMeta,
 }: CookieDetailProps) {
   const { t } = useI18n();
   const [tab, setTab] = useState<ViewTab>('cookies');
@@ -362,6 +373,9 @@ export function CookieDetail({
           <h2 className="font-semibold text-base">{host}</h2>
           {label && <p className="text-sm text-muted-foreground">{label}</p>}
           <p className="text-xs text-muted-foreground mt-0.5">
+            {t('folder')}: {folder || t('noFolder')} · {t('entryType')}: {formatEntryTypeLabel(t, type)}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
             {cookies.length} cookies
             {localStorageItems.length > 0 ? ` · ${localStorageItems.length} localStorage` : ''}
             {data.userAgent ? ` · ${data.userAgent.slice(0, 40)}...` : ''}
@@ -399,6 +413,17 @@ export function CookieDetail({
           </AlertDialog>
         </div>
       </div>
+
+      {canWrite && onUpdateEntryMeta && (
+        <EntryMetaEditor
+          label={label || ''}
+          folder={folder}
+          type={type}
+          folders={folderOptions}
+          saving={saving}
+          onSave={onUpdateEntryMeta}
+        />
+      )}
 
       <div className="px-4 pt-3 flex gap-2 border-b border-border">
         <Button variant={tab === 'cookies' ? 'default' : 'ghost'} size="sm" onClick={() => setTab('cookies')}>

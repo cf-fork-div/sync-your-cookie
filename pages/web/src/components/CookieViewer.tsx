@@ -6,6 +6,7 @@ import { useSessionActions } from '@src/hooks/useSessionActions';
 
 import type { ViewerSession } from '@src/lib/types';
 
+import { collectFolderOptions } from '@src/lib/entryMeta';
 import {
   buildDomainEntryListFromCookieMap,
   countUniqueHosts,
@@ -71,6 +72,7 @@ export function CookieViewer({ session, onSessionChange, onDisconnect }: CookieV
   }, [activeStorageKey, cookieMap.domainCookieMap, entries]);
 
   const hostCount = countUniqueHosts(entries);
+  const folderOptions = useMemo(() => collectFolderOptions(entries), [entries]);
 
   return (
     <div className="space-y-4">
@@ -143,6 +145,9 @@ export function CookieViewer({ session, onSessionChange, onDisconnect }: CookieV
             storageKey={activeStorageKey}
             host={activeEntry.host}
             label={getDisplaySubtitle(activeEntry, entries, defaultLabel)}
+            folder={activeEntry.folder}
+            type={activeEntry.type}
+            folderOptions={folderOptions}
             accountsOnHost={getAccountsCountForHost(entries, activeEntry.host)}
             data={activeData}
             search={search}
@@ -153,6 +158,7 @@ export function CookieViewer({ session, onSessionChange, onDisconnect }: CookieV
             onEditLocalStorage={(key, value) => actions.handleEditLocalStorage(activeStorageKey, key, value)}
             onDeleteLocalStorage={key => actions.handleDeleteLocalStorage(activeStorageKey, key)}
             onDeleteDomain={() => actions.handleDeleteDomain(activeStorageKey)}
+            onUpdateEntryMeta={update => actions.handleUpdateEntryMeta(activeStorageKey, update)}
           />
         ) : (
           <div className="rounded-lg border border-dashed border-border flex items-center justify-center p-6 text-center text-sm text-muted-foreground">
