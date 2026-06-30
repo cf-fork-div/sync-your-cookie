@@ -715,13 +715,27 @@ const CookieTable = () => {
           cancel: t('cancel'),
           confirm: t('add'),
           back: t('back'),
+          entryMeta: {
+            folder: t('folder'),
+            entryType: t('entryType'),
+            noFolder: t('noFolder'),
+            allTypes: t('allTypes'),
+            typeLogin: t('typeLogin'),
+            typeSession: t('typeSession'),
+            typeOther: t('typeOther'),
+          },
         }}
-        overwriteOptions={pushChoice.dialog?.overwriteOptions || []}
+        overwriteOptions={pushChoice.overwriteOptionsWithMeta}
         overwriteKey={pushChoice.overwriteKey}
         newLabel={pushChoice.newLabel}
+        newFolder={pushChoice.newFolder}
+        newType={pushChoice.newType}
+        folderOptions={pushChoice.folderOptions}
         saving={pushChoice.saving}
         onOverwriteKeyChange={pushChoice.setOverwriteKey}
         onNewLabelChange={pushChoice.setNewLabel}
+        onNewFolderChange={pushChoice.setNewFolder}
+        onNewTypeChange={pushChoice.setNewType}
         onOverwrite={() => void pushChoice.confirmOverwrite()}
         onConfirmNew={() => void pushChoice.confirmSaveNew()}
         onSaveAsNew={() => pushChoice.setStep('newLabel')}

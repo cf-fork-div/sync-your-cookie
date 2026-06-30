@@ -1,6 +1,8 @@
 # Cloudflare 部署指南
 
-将 **Web Viewer**（`pages/web`）部署到 **Cloudflare Worker**（静态资源 + 运行时 API）。Worker 绑定 **SYNC_KV** 命名空间，用于 `/api/admin/datasource` 与 `/api/sync/*`；扩展仍可通过同一 KV 凭据直连 Cloudflare REST API 或使用 Worker 同步 API。
+将 **Web Viewer**（`pages/web`）部署到 **Cloudflare Worker**（静态资源 + 运行时 API）。Worker 绑定 **SYNC_KV** 命名空间，用于 `/api/admin/datasource` 与 `/api/sync/*`；扩展可通过 **Worker 模式**（服务器 URL + 访问密码 → `/api/sync/*`）或 **直连 KV**（Account ID / Namespace ID / API Token → Cloudflare REST API）同步数据。
+
+> **推荐流程：** 部署 Worker → 设置 `WEB_ACCESS_PASSWORD` → 扩展弹窗用 Worker URL + 密码登录。详见 [how-to-use.md](../how-to-use.md) 模式 A。
 
 > **仅使用扩展？** 同步 Cookie 只需安装扩展并在 Options 填入 KV 凭据（见 [how-to-use.md](../how-to-use.md)），**不必**部署 Web Viewer。本文档面向需要浏览器端管理界面的用户。
 

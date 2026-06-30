@@ -1,29 +1,59 @@
 <div align="center">
 <img src="chrome-extension/public/icon-128.png" alt="logo"/>
-<h1> Sync your cookie to Cloudflare KV</h1>
+<h1>Sync Your Cookie</h1>
+<p>将浏览器 Cookie 与 LocalStorage 同步到 Cloudflare KV — 跨设备、跨浏览器共享登录态。</p>
+
+![](https://img.shields.io/badge/version-1.5.1-blue)
+
 </div>
 
 [English](./README.md) | [中文](./README_ZH.md)
 
-`Sync your cookie` 是一个 Chrome 扩展程序，它可以帮助您将 Cookie 同步到 **Cloudflare KV**。它是一个有用的工具，用于在不同设备之间共享 Cookie，免去了登录流程的烦恼，此外也提供了 Cookie 管理面板查看、管理已经同步的 Cookie。
+**Sync Your Cookie** 是一款 Chromium 扩展（Chrome、Edge 及兼容浏览器），可将 Cookie 与 LocalStorage 同步到 **Cloudflare KV**。在不同设备间共享登录会话、为同一站点管理多个账号，并可选择部署 **Cloudflare Worker** 后端与密码保护的 Web 管理端。
+
+> **说明：** 已移除 GitHub Gist 同步，**仅支持 Cloudflare KV**（直连 API 或 Worker 代理）。
 
 ### 安装
 
-Chrome: [Sync Your Cookie](https://chromewebstore.google.com/detail/sync-your-cookie/bcegpckmgklcpcapnbigfdadedcneopf)
+| 商店 | 链接 |
+|------|------|
+| Chrome | [Sync Your Cookie](https://chromewebstore.google.com/detail/sync-your-cookie/bcegpckmgklcpcapnbigfdadedcneopf) |
+| Edge | [Sync Your Cookie](https://microsoftedge.microsoft.com/addons/detail/sync-your-cookie/ohlcghldllgnmkegocpcphdbbphikgfm) |
 
-Edge: [Sync Your Cookie](https://microsoftedge.microsoft.com/addons/detail/sync-your-cookie/ohlcghldllgnmkegocpcphdbbphikgfm)
+从源码构建：见 [安装配置](#安装配置) 与 [商店发布说明](./STORE_PUBLISH.md)。
 
 ### 功能
 
-- 支持同步 Cookie 到 **Cloudflare KV**（支持 LocalStorage）
-- 支持为不同站点配置 `Auto Merge` 和 `Auto Push` 规则
-- Cookie 数据经过 protobuf 编码传输
-- 提供管理面板，方便查看、复制、管理已同步的 Cookie 数据
-- **多账户配置（Account Profiles）** — 每个配置独立保存 Cloudflare 凭据与域名规则，可快速切换
-- **国际化（i18n）** — 扩展 UI 与 Web Viewer 支持英文（`en`）与简体中文（`zh_CN`）
-- **Web Viewer** — 可选的浏览器端查看器，可部署到 Cloudflare Worker（见下方）
+#### 同步与存储
+- 同步 **Cookie** 与 **LocalStorage** 到 Cloudflare KV（protobuf 编码）
+- **跨浏览器同步** — 同一后端可在 Chrome、Edge 等 Chromium 浏览器间使用
+- **两种连接方式：**
+  - **Worker 模式（推荐）：** 服务器 URL + 访问密码 → Worker `/api/sync/*`
+  - **直连 KV 模式：** Account ID + Namespace ID + API Token → Cloudflare REST API
+- **Pull 镜像远程** — 应用远程数据前先清除该域名下的本地 Cookie
+- 按站点配置 **Auto Push** 与 **Auto Pull**
 
-> **说明：** 已移除 GitHub Gist 同步，**仅支持 Cloudflare KV**。
+#### 多账号与元数据
+- **同域名多账号** — 同一 host 下多条记录，各自带标签
+- **文件夹与类型** — Bitwarden 风格文件夹；类型：login / session / other
+- **`entryMetaMap` 同步** — 标签、文件夹、类型随 Cookie 数据一并同步
+- **首次 Push** 需填写账号备注（无远程记录时）
+- **Push 冲突对话框** — 覆盖已有条目或另存为新账号
+
+#### 界面与管理
+- **Bitwarden 风格登录** — 弹窗/侧边栏输入配置名、服务器 URL、密码
+- **操作前自动刷新** — Push、Pull、打开管理器前先验证服务器连接
+- **弹窗 Cookie 查看/编辑** — 查看、编辑、删除或一键清空当前标签页 Cookie
+- **侧边栏管理器** — 完整 Cookie 与 LocalStorage 详情
+- **Web 管理端** — 可选 Worker 部署；界面与侧边栏对齐（搜索、文件夹/类型筛选）
+- **多账户配置（Account Profiles）** — 每套配置独立凭据与域名规则
+- **国际化** — 英文与简体中文（`en`、`zh_CN`）
+- **版本显示** — 弹窗底部与 Options 页显示 `v1.5.1`
+
+#### 可选 Cloudflare Worker 后端
+- 一键部署：`pnpm deploy:cloudflare`
+- 单个 Worker 提供静态 Web Viewer + 同步 API
+- 登录密码（`WEB_ACCESS_PASSWORD`）可在 Dashboard 运行时修改，无需重新构建
 
 ### 项目截图
 
@@ -51,17 +81,19 @@ Cloudflare 上传的 Cookie
 
 <img width="600" src="./screenshots/key_value.png" alt="Pushed Cookie on Cloudflare"/>
 
-### 使用指引
+### 安装配置
 
-[How to use](./how-to-use.md)
+#### 仅扩展（直连 KV）
 
-### 仅使用扩展（无需部署 Web）
+1. 从商店安装，或 `pnpm build` 后加载 `dist/`。
+2. 在 Cloudflare 创建 KV 命名空间与 API Token — 见 [how-to-use.md](./how-to-use.md)。
+3. 打开 **Options** → 填入 **Account ID / Namespace ID / API Token** → 保存。
 
-同步 Cookie **只需安装浏览器扩展**，不必部署 Web Viewer。在 Cloudflare 创建 KV 命名空间与 API Token（见 [how-to-use](./how-to-use.md)），将 **Account ID / Namespace ID / API Token** 填入扩展 Options 即可。下方 Web Viewer 为可选，用于在浏览器中管理 Cookie。
+无需部署 Worker。
 
-### Cloudflare Web Viewer（可选）
+#### 扩展 + Worker（推荐）
 
-将 Web 查看器部署到 **Cloudflare Worker**（静态资源 + API）。一条命令还会自动创建 KV 命名空间并输出扩展凭据：
+1. 部署 Worker：
 
 ```bash
 cp deploy/cloudflare/.env.example deploy/cloudflare/.env
@@ -69,9 +101,38 @@ cp deploy/cloudflare/.env.example deploy/cloudflare/.env
 pnpm deploy:cloudflare
 ```
 
-部署后在 Cloudflare Dashboard 设置 `WEB_ACCESS_PASSWORD`，修改后立即生效，无需重新构建。直接访问 `https://你的域名/` 即可；可选设置 `WEB_BASE_PATH` 使用隐藏路径。完整说明：[deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md)。
+2. 在 Cloudflare Dashboard 设置 `WEB_ACCESS_PASSWORD`（见 [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md)）。
+3. 在扩展弹窗用 **服务器 URL**（Worker 地址）与 **访问密码** 登录。
 
-**Git CI（可选）：** 在 Cloudflare Workers 中连接本仓库。构建：`pnpm install && pnpm build:cloudflare-worker`。部署：`node deploy/cloudflare/prepare-wrangler.mjs && npx wrangler deploy --config deploy/cloudflare/wrangler.toml`。限制见 [Git 部署说明](./deploy/CLOUDFLARE.md#git-仓库连接部署可选)。
+#### 从源码构建
+
+```bash
+pnpm install
+pnpm dev          # 开发模式（HMR）
+pnpm build        # 生产构建 → dist/
+pnpm release:zip  # 商店用 zip → dist/release/
+```
+
+### 使用指引
+
+1. **登录** — Worker URL + 密码，或在 Options 配置 KV 凭据。
+2. **Push** — 上传当前标签页 Cookie（与远程不一致时弹出冲突对话框）。
+3. **Pull** — 下载远程 Cookie；会先清除该 host 本地 Cookie（镜像同步）。
+4. **打开管理器** — 侧边栏查看完整 Cookie/LocalStorage。
+5. **Web 管理端**（可选） — 浏览器打开 Worker URL，界面与侧边栏一致。
+
+详细 KV 配置：[how-to-use.md](./how-to-use.md)  
+Worker 部署：[deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md)  
+商店发布：[STORE_PUBLISH.md](./STORE_PUBLISH.md)
+
+### 更新日志
+
+| 版本 | 要点 |
+|------|------|
+| **1.5.1** | Push 对话框支持文件夹/类型；entry meta UI 统一 |
+| **1.5.0** | Worker 同步后端、Bitwarden 风格登录、同域名多账号、Push 冲突、Pull 镜像、弹窗 Cookie 编辑、Web 管理端对齐 |
+
+完整记录：[CHANGELOG.md](./CHANGELOG.md)
 
 ### Privacy Policy
 
@@ -79,9 +140,9 @@ Please refer to [Privacy Policy](./private-policy.md) for more information.
 
 ### 赞赏
 
-如果你觉得这个项目对你有帮助，欢迎通过以下方式支持我：
+如果你觉得这个项目对你有帮助，欢迎通过以下方式支持：
 
-- 给项目点个 Star ⭐
+- 给项目点个 Star ⭐ — [github.com/jackluson/sync-your-cookie](https://github.com/jackluson/sync-your-cookie)
 - [通过 Ko-fi 赞助](https://ko-fi.com/jacklu) 💖
 - 通过 微信支付 赞助
   <div>

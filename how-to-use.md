@@ -1,10 +1,30 @@
 ## How to use
 
-`Sync-Your-Cookie` uses Cloudflare [KV](https://developers.cloudflare.com/kv/) to store cookie data.
+`Sync Your Cookie` uses Cloudflare [KV](https://developers.cloudflare.com/kv/) to store cookie data (cookies + LocalStorage, protobuf-encoded).
 
-> **Extension only:** The steps below configure KV for the Chrome extension. You do **not** need to deploy the Web Viewer unless you want a browser-based UI. For one-command KV + Worker deploy, see [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md).
+> **Extension only:** You do **not** need to deploy the Web Viewer unless you want a browser-based admin UI.
 
-Manual setup — create a namespace, API token, and paste credentials into the extension Options page:
+## Connection modes
+
+### Mode A — Worker sync (recommended)
+
+Best when you deploy the Cloudflare Worker backend (`pnpm deploy:cloudflare`).
+
+1. Deploy Worker and set `WEB_ACCESS_PASSWORD` in the Cloudflare Dashboard — see [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md).
+2. Open the extension popup.
+3. Enter:
+   - **Profile name** — optional display name
+   - **Server URL** — e.g. `https://sync-your-cookie.your-account.workers.dev`
+   - **Access password** — same as `WEB_ACCESS_PASSWORD`
+4. Push / Pull as usual. The extension talks to `/api/sync/*` on your Worker.
+
+Admin can configure the underlying KV datasource once in the Web Viewer **Connect** form.
+
+### Mode B — Direct Cloudflare KV API
+
+Use when you only install the extension without deploying the Worker.
+
+Manual setup — create a namespace, API token, and paste credentials into the extension **Options** page:
 
 ## Create Namespace
 
@@ -59,9 +79,20 @@ Your NamespaceId
 The uploaded cookie is a protobuf-encoded string
 ![check your cookie](./screenshots/kv/reload_page.png)
 
+## Multi-account on the same site
 
+- Each push can target a **labeled account** on the same host.
+- On **first push**, you will be asked for an account **label**.
+- If remote data differs, choose **overwrite** an existing entry or **save as new**.
+- Set **folder** and **type** (login / session / other) in the push dialog (v1.5.1+).
+
+## Pull behavior
+
+**Pull mirrors remote:** local cookies for that host are cleared before remote cookies are applied. Enable **Auto Pull** per entry in the popup switches.
 
 ## Reference
 
 - [create-token](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/)
 - [account-owned-tokens](https://developers.cloudflare.com/fundamentals/api/get-started/account-owned-tokens/)
+- [Cloudflare deploy guide](./deploy/CLOUDFLARE.md)
+- [Changelog](./CHANGELOG.md)

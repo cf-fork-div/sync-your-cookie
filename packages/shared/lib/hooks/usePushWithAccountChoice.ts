@@ -1,9 +1,12 @@
 import { createEntryKey } from '../domain/entryKey';
+import { collectFolderOptionsFromDomainConfig, formatAccountOptionSubtitle } from '../domain/domainEntries';
 import { listHostEntryOptions } from '../domain/hostEntries';
 import { evaluatePushConflict, type PushConflictResult } from '../domain/pushConflict';
 import type { ICookiesMap } from '@sync-your-cookie/protobuf';
+import type { CookieEntryType } from '@sync-your-cookie/storage/lib/domainConfigTypes';
 import { domainConfigStorage } from '@sync-your-cookie/storage/lib/domainConfigStorage';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useI18n } from '../i18n/useI18n';
 import { useStorageSuspense } from './useStorageSuspense';
 
 export type PushAccountDialogState = Extract<PushConflictResult, { needsDialog: true }> & {
@@ -24,18 +27,43 @@ export const usePushWithAccountChoice = ({
   onPush,
   onEntrySelected,
 }: UsePushWithAccountChoiceOptions) => {
+  const { t } = useI18n();
   const domainConfig = useStorageSuspense(domainConfigStorage);
   const [dialog, setDialog] = useState<PushAccountDialogState | null>(null);
   const [overwriteKey, setOverwriteKey] = useState('');
   const [newLabel, setNewLabel] = useState('');
+  const [newFolder, setNewFolder] = useState('');
+  const [newType, setNewType] = useState<CookieEntryType | ''>('');
   const [step, setStep] = useState<'choose' | 'newLabel'>('choose');
   const [saving, setSaving] = useState(false);
+
+  const folderOptions = useMemo(() => collectFolderOptionsFromDomainConfig(domainConfig), [domainConfig]);
+
+  const overwriteOptionsWithMeta = useMemo(() => {
+    if (!dialog?.overwriteOptions.length) {
+      return [];
+    }
+    return dialog.overwriteOptions.map(entry => ({
+      storageKey: entry.storageKey,
+      label: entry.label,
+      folder: entry.folder,
+      type: entry.type,
+      subtitle: formatAccountOptionSubtitle(entry, t),
+    }));
+  }, [dialog?.overwriteOptions, t]);
+
+  const resetNewEntryFields = useCallback(() => {
+    setNewLabel('');
+    setNewFolder('');
+    setNewType('');
+  }, []);
 
   const closeDialog = useCallback(() => {
     setDialog(null);
     setStep('choose');
     setSaving(false);
-  }, []);
+    resetNewEntryFields();
+  }, [resetNewEntryFields]);
 
   const requestPush = useCallback(
     async (params: {
@@ -63,6 +91,8 @@ export const usePushWithAccountChoice = ({
 
       setOverwriteKey(result.defaultOverwriteKey);
       setNewLabel(result.suggestedNewLabel);
+      setNewFolder('');
+      setNewType('');
       setStep(result.mode === 'firstPush' ? 'newLabel' : 'choose');
       setDialog({
         ...result,
@@ -101,11 +131,16 @@ export const usePushWithAccountChoice = ({
       const entryKey =
         dialog.mode === 'firstPush' ? dialog.defaultOverwriteKey : createEntryKey(dialog.host);
       const resolvedLabel = label || dialog.suggestedNewLabel;
+      const folder = newFolder.trim();
+      if (folder) {
+        await domainConfigStorage.ensureFolder(folder);
+      }
       await domainConfigStorage.updateItem(entryKey, {
         label: resolvedLabel,
+        ...(folder ? { folder } : {}),
+        ...(newType ? { type: newType } : {}),
         sourceUrl: dialog.sourceUrl,
         favIconUrl: dialog.favIconUrl,
-        type: 'login',
       });
       await domainConfigStorage.setLastSelectedEntry(dialog.host, entryKey);
       await onPush(entryKey, dialog.sourceUrl, dialog.favIconUrl);
@@ -114,7 +149,7 @@ export const usePushWithAccountChoice = ({
     } finally {
       setSaving(false);
     }
-  }, [closeDialog, dialog, newLabel, onEntrySelected, onPush]);
+  }, [closeDialog, dialog, newFolder, newLabel, newType, onEntrySelected, onPush]);
 
   return {
     dialog,
@@ -124,6 +159,12 @@ export const usePushWithAccountChoice = ({
     setOverwriteKey,
     newLabel,
     setNewLabel,
+    newFolder,
+    setNewFolder,
+    newType,
+    setNewType,
+    folderOptions,
+    overwriteOptionsWithMeta,
     saving,
     requestPush,
     confirmOverwrite,

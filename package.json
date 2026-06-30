@@ -1,6 +1,6 @@
 {
   "name": "sync-your-cookie",
-  "version": "1.4.2",
+  "version": "1.5.1",
   "description": "sync your cookie extension monorepo",
   "license": "MIT",
   "repository": {
@@ -17,6 +17,7 @@
     "dev": "cross-env __DEV__=true turbo run dev --concurrency 25",
     "dev:firefox": "cross-env __DEV__=true __FIREFOX__=true turbo dev --concurrency 20",
     "zip": "pnpm build && pnpm -F zipper zip",
+    "release:zip": "pnpm zip && node deploy/release-zip.mjs",
     "test": "turbo test",
     "type-check": "turbo type-check",
     "lint": "turbo lint",

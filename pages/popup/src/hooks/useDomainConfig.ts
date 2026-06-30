@@ -1,6 +1,6 @@
 import { useCookieAction, useHostEntrySelection, useI18n, usePushWithAccountChoice, useStorageSuspense } from '@sync-your-cookie/shared';
 import { cookieStorage } from '@sync-your-cookie/storage/lib/cookieStorage';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 export const useDomainConfig = () => {
@@ -9,6 +9,10 @@ export const useDomainConfig = () => {
   const cookieMap = useStorageSuspense(cookieStorage);
   const { entries, selectedStorageKey, setSelectedStorageKey, hasMultipleAccounts } = useHostEntrySelection(domain);
   const activeStorageKey = selectedStorageKey || domain;
+  const activeEntry = useMemo(
+    () => entries.find(entry => entry.storageKey === activeStorageKey),
+    [entries, activeStorageKey],
+  );
   const cookieAction = useCookieAction(activeStorageKey, toast);
 
   const pushChoice = usePushWithAccountChoice({
@@ -36,6 +40,7 @@ export const useDomainConfig = () => {
     domain,
     setDomain,
     activeStorageKey,
+    activeEntry,
     entryOptions: entries,
     hasMultipleAccounts,
     setSelectedStorageKey,

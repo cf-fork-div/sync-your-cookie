@@ -1,5 +1,5 @@
 import type { ICookiesMap } from '@sync-your-cookie/protobuf';
-import type { DomainConfig } from '@sync-your-cookie/storage/lib/domainConfigTypes';
+import type { CookieEntryType, DomainConfig } from '@sync-your-cookie/storage/lib/domainConfigTypes';
 import { getHostFromStorageKey, listEntryKeysForHost, parseEntryKey } from './entryKey';
 
 export type HostEntryOption = {
@@ -7,6 +7,8 @@ export type HostEntryOption = {
   host: string;
   entryId?: string;
   label: string;
+  folder?: string;
+  type?: CookieEntryType;
 };
 
 const IDENTITY_COOKIE_NAMES = [
@@ -74,7 +76,8 @@ export const listHostEntryOptions = (
 
   return [...storageKeys]
     .map(storageKey => {
-      const configLabel = domainConfig.domainMap[storageKey]?.label?.trim();
+      const config = domainConfig.domainMap[storageKey];
+      const configLabel = config?.label?.trim();
       const cookies = cookieMap?.domainCookieMap?.[storageKey]?.cookies ?? undefined;
       const fallbackLabel = inferEntryLabelFromCookies(cookies, defaultLabel);
       return {
@@ -82,6 +85,8 @@ export const listHostEntryOptions = (
         host,
         entryId: parseEntryKey(storageKey).entryId,
         label: configLabel || fallbackLabel,
+        folder: config?.folder,
+        type: config?.type,
       };
     })
     .sort((a, b) => a.label.localeCompare(b.label));

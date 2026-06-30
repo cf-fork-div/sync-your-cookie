@@ -15,6 +15,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui';
+import { EntryMetaFields, type EntryMetaFieldLabels } from '../EntryMetaFields';
+
+type CookieEntryType = 'login' | 'session' | 'other';
 
 export type PushAccountDialogLabels = {
   title: string;
@@ -26,11 +29,15 @@ export type PushAccountDialogLabels = {
   cancel: string;
   confirm: string;
   back: string;
+  entryMeta: EntryMetaFieldLabels;
 };
 
 export type PushAccountDialogEntry = {
   storageKey: string;
   label: string;
+  folder?: string;
+  type?: CookieEntryType;
+  subtitle?: string;
 };
 
 export type PushAccountDialogProps = {
@@ -41,15 +48,29 @@ export type PushAccountDialogProps = {
   overwriteOptions: PushAccountDialogEntry[];
   overwriteKey: string;
   newLabel: string;
+  newFolder: string;
+  newType: CookieEntryType | '';
+  folderOptions: string[];
   saving?: boolean;
   onOverwriteKeyChange: (storageKey: string) => void;
   onNewLabelChange: (label: string) => void;
+  onNewFolderChange: (folder: string) => void;
+  onNewTypeChange: (type: CookieEntryType | '') => void;
   onOverwrite: () => void;
   onConfirmNew: () => void;
   onSaveAsNew: () => void;
   onBack: () => void;
   onClose: () => void;
 };
+
+function AccountOptionContent({ entry }: { entry: PushAccountDialogEntry }) {
+  return (
+    <div className="flex flex-col items-start py-0.5">
+      <span>{entry.label}</span>
+      {entry.subtitle ? <span className="text-xs text-muted-foreground font-normal">{entry.subtitle}</span> : null}
+    </div>
+  );
+}
 
 export function PushAccountDialog({
   open,
@@ -59,9 +80,14 @@ export function PushAccountDialog({
   overwriteOptions,
   overwriteKey,
   newLabel,
+  newFolder,
+  newType,
+  folderOptions,
   saving = false,
   onOverwriteKeyChange,
   onNewLabelChange,
+  onNewFolderChange,
+  onNewTypeChange,
   onOverwrite,
   onConfirmNew,
   onSaveAsNew,
@@ -83,13 +109,26 @@ export function PushAccountDialog({
         </AlertDialogHeader>
 
         {showNewLabelStep ? (
-          <div className="space-y-2 py-2">
-            <Label htmlFor="push-new-account-label">{labels.accountLabel}</Label>
-            <Input
-              id="push-new-account-label"
-              value={newLabel}
-              onChange={event => onNewLabelChange(event.target.value)}
-              placeholder={labels.newAccountLabelPlaceholder}
+          <div className="space-y-3 py-2">
+            <div className="space-y-1">
+              <Label htmlFor="push-new-account-label">{labels.accountLabel}</Label>
+              <Input
+                id="push-new-account-label"
+                value={newLabel}
+                onChange={event => onNewLabelChange(event.target.value)}
+                placeholder={labels.newAccountLabelPlaceholder}
+              />
+            </div>
+            <EntryMetaFields
+              folder={newFolder}
+              type={newType}
+              folderOptions={folderOptions}
+              labels={labels.entryMeta}
+              onFolderChange={onNewFolderChange}
+              onTypeChange={onNewTypeChange}
+              folderInputId="push-new-account-folder"
+              typeSelectId="push-new-account-type"
+              datalistId="push-new-account-folder-suggestions"
             />
           </div>
         ) : (
@@ -104,7 +143,7 @@ export function PushAccountDialog({
                   <SelectContent>
                     {overwriteOptions.map(entry => (
                       <SelectItem key={entry.storageKey} value={entry.storageKey}>
-                        {entry.label}
+                        <AccountOptionContent entry={entry} />
                       </SelectItem>
                     ))}
                   </SelectContent>

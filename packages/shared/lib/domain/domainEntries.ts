@@ -1,8 +1,11 @@
+import type { MessageKey } from '../i18n/messages';
 import type { ICookiesMap } from '@sync-your-cookie/protobuf';
 import type { CookieEntryType, DomainConfig, DomainItemConfig } from '@sync-your-cookie/storage/lib/domainConfigTypes';
 import { getHostFromStorageKey, parseEntryKey } from './entryKey';
 import { entryMetaMapToDomainConfig, getEntryLabel } from './entryMetaSync';
-import { inferEntryLabelFromCookies } from './hostEntries';
+import { inferEntryLabelFromCookies, type HostEntryOption } from './hostEntries';
+
+type TranslateFn = (key: MessageKey) => string;
 
 export type DomainEntryRow = {
   id: string;
@@ -90,6 +93,67 @@ export const getDisplaySubtitle = (
     return undefined;
   }
   return row.label;
+};
+
+export const formatEntryTypeLabel = (t: TranslateFn, type?: CookieEntryType): string => {
+  if (type === 'login') {
+    return t('typeLogin');
+  }
+  if (type === 'session') {
+    return t('typeSession');
+  }
+  if (type === 'other') {
+    return t('typeOther');
+  }
+  return '-';
+};
+
+export const collectFolderOptionsFromDomainConfig = (domainConfig: DomainConfig): string[] => {
+  const fromConfig = domainConfig.folders || [];
+  const fromEntries = Object.values(domainConfig.domainMap)
+    .map(config => config.folder?.trim())
+    .filter(Boolean) as string[];
+  return [...new Set([...fromConfig, ...fromEntries])].sort();
+};
+
+export const shouldShowAccountMeta = (
+  entry: Pick<HostEntryOption, 'host' | 'label' | 'folder' | 'type'>,
+  entries: Pick<HostEntryOption, 'host'>[],
+  defaultLabel: string,
+): boolean => {
+  if (entries.filter(item => item.host === entry.host).length > 1) {
+    return true;
+  }
+  if (entry.folder || entry.type) {
+    return true;
+  }
+  const label = entry.label.trim();
+  return Boolean(label && label !== defaultLabel && label !== entry.host);
+};
+
+export const formatAccountMetaLine = (
+  entry: Pick<HostEntryOption, 'label' | 'folder' | 'type'>,
+  t: TranslateFn,
+  defaultLabel: string,
+): string => {
+  const label = entry.label || defaultLabel;
+  const folder = entry.folder?.trim() || t('noFolder');
+  const type = entry.type ? formatEntryTypeLabel(t, entry.type) : '-';
+  return `${label} · ${folder} · ${type}`;
+};
+
+export const formatAccountOptionSubtitle = (
+  entry: Pick<HostEntryOption, 'folder' | 'type'>,
+  t: TranslateFn,
+): string | undefined => {
+  const parts: string[] = [];
+  if (entry.folder?.trim()) {
+    parts.push(`${t('folder')}: ${entry.folder.trim()}`);
+  }
+  if (entry.type) {
+    parts.push(`${t('entryType')}: ${formatEntryTypeLabel(t, entry.type)}`);
+  }
+  return parts.length > 0 ? parts.join(' · ') : undefined;
 };
 
 export { getEntryLabel };

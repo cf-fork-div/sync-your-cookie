@@ -1,9 +1,13 @@
 import {
   ErrorFallback,
   extractDomainAndPort,
+  formatAccountMetaLine,
+  formatAccountOptionSubtitle,
   GITHUB_REPO_URL,
+  getExtensionVersion,
   LoadingFallback,
   openExtensionOptionsPage,
+  shouldShowAccountMeta,
   useDocumentTitle,
   useI18n,
   useStorageSuspense,
@@ -43,6 +47,7 @@ const Popup = () => {
     domain,
     setDomain,
     activeStorageKey,
+    activeEntry,
     entryOptions,
     hasMultipleAccounts,
     setSelectedStorageKey,
@@ -59,9 +64,18 @@ const Popup = () => {
   const [cookieEditorEnabled, setCookieEditorEnabled] = useState(false);
 
   const activeEntryLabel = useMemo(
-    () => entryOptions.find(entry => entry.storageKey === activeStorageKey)?.label || t('defaultAccount'),
-    [entryOptions, activeStorageKey, t],
+    () => activeEntry?.label || t('defaultAccount'),
+    [activeEntry, t],
   );
+
+  const defaultAccountLabel = t('defaultAccount');
+  const showAccountMeta = Boolean(
+    activeEntry && shouldShowAccountMeta(activeEntry, entryOptions, defaultAccountLabel),
+  );
+  const activeAccountMetaLine = activeEntry
+    ? formatAccountMetaLine(activeEntry, t, defaultAccountLabel)
+    : '';
+  const activeAccountSubtitle = activeEntry ? formatAccountOptionSubtitle(activeEntry, t) : undefined;
 
   const hasKvEntry = Boolean(cookieMap?.domainCookieMap?.[activeStorageKey]);
 
@@ -184,9 +198,14 @@ const Popup = () => {
       <main className="w-full min-w-0 overflow-hidden p-4">
         <Spinner show={false}>
           {domain ? (
-            <div className="flex justify-center items-center mb-2  ">
-              <Image src={favIconUrl} />
-              <h3 className="text-center whitespace-nowrap text-xl text-primary font-bold">{domain}</h3>
+            <div className="flex flex-col items-center mb-2">
+              <div className="flex justify-center items-center">
+                <Image src={favIconUrl} />
+                <h3 className="text-center whitespace-nowrap text-xl text-primary font-bold">{domain}</h3>
+              </div>
+              {showAccountMeta ? (
+                <p className="text-center text-xs text-muted-foreground mt-1 px-2">{activeAccountMetaLine}</p>
+              ) : null}
             </div>
           ) : null}
 
@@ -204,14 +223,24 @@ const Popup = () => {
                   <SelectValue placeholder={t('selectAccount')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {entryOptions.map(entry => (
-                    <SelectItem key={entry.storageKey} value={entry.storageKey}>
-                      {entry.label}
-                    </SelectItem>
-                  ))}
+                  {entryOptions.map(entry => {
+                    const subtitle = formatAccountOptionSubtitle(entry, t);
+                    return (
+                      <SelectItem key={entry.storageKey} value={entry.storageKey}>
+                        <div className="flex flex-col items-start py-0.5">
+                          <span>{entry.label}</span>
+                          {subtitle ? (
+                            <span className="text-xs text-muted-foreground font-normal">{subtitle}</span>
+                          ) : null}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
-              <p className="text-[11px] text-muted-foreground mt-1">{t('selectAccountHint')}</p>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                {activeAccountSubtitle || t('selectAccountHint')}
+              </p>
             </div>
           ) : null}
 
@@ -343,13 +372,27 @@ const Popup = () => {
               cancel: t('cancel'),
               confirm: t('add'),
               back: t('back'),
+              entryMeta: {
+                folder: t('folder'),
+                entryType: t('entryType'),
+                noFolder: t('noFolder'),
+                allTypes: t('allTypes'),
+                typeLogin: t('typeLogin'),
+                typeSession: t('typeSession'),
+                typeOther: t('typeOther'),
+              },
             }}
-            overwriteOptions={pushChoice.dialog?.overwriteOptions || []}
+            overwriteOptions={pushChoice.overwriteOptionsWithMeta}
             overwriteKey={pushChoice.overwriteKey}
             newLabel={pushChoice.newLabel}
+            newFolder={pushChoice.newFolder}
+            newType={pushChoice.newType}
+            folderOptions={pushChoice.folderOptions}
             saving={pushChoice.saving}
             onOverwriteKeyChange={pushChoice.setOverwriteKey}
             onNewLabelChange={pushChoice.setNewLabel}
+            onNewFolderChange={pushChoice.setNewFolder}
+            onNewTypeChange={pushChoice.setNewType}
             onOverwrite={() => void pushChoice.confirmOverwrite()}
             onConfirmNew={() => void pushChoice.confirmSaveNew()}
             onSaveAsNew={() => pushChoice.setStep('newLabel')}
@@ -382,7 +425,7 @@ const Popup = () => {
           href={GITHUB_REPO_URL}
           target="_blank"
           rel="noopener noreferrer">
-          cf-fork-div
+          sync-your-cookie
         </a>
         <a href={GITHUB_REPO_URL} target="_blank" rel="noopener noreferrer">
           <img
@@ -391,6 +434,7 @@ const Popup = () => {
             alt="GitHub"
           />
         </a>
+        <span className="ml-2 text-xs text-muted-foreground">v{getExtensionVersion()}</span>
       </footer>
     </div>
   );

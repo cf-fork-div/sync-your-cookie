@@ -1,4 +1,8 @@
-export const GITHUB_REPO_URL = 'https://github.com/cf-fork-div/sync-your-cookie';
+export const GITHUB_REPO_URL = 'https://github.com/jackluson/sync-your-cookie';
+
+export function getExtensionVersion(): string {
+  return chrome.runtime.getManifest().version;
+}
 export const GITHUB_HOW_TO_USE_URL = `${GITHUB_REPO_URL}/blob/main/how-to-use.md`;
 export const OPTIONS_PAGE_PATH = 'options/index.html';
 
