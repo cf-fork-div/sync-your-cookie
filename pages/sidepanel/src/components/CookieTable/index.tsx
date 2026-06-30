@@ -37,8 +37,12 @@ import { domainStatusStorage } from '@sync-your-cookie/storage/lib/domainStatusS
 import { settingsStorage } from '@sync-your-cookie/storage/lib/settingsStorage';
 
 import type { ColumnDef } from '@sync-your-cookie/ui';
+import { useState } from 'react';
 import { useAction } from './hooks/useAction';
+import { LiveBrowserTab } from './LiveBrowserTab';
 import { SearchInput } from './SearchInput';
+
+type CookieViewTab = 'live' | 'kv';
 export type CookieItem = {
   id: string;
   host: string;
@@ -50,6 +54,7 @@ export type CookieItem = {
 
 const CookieTable = () => {
   const { t } = useI18n();
+  const [cookieViewTab, setCookieViewTab] = useState<CookieViewTab>('live');
   const domainConfig = useStorageSuspense(domainConfigStorage);
   const domainStatus = useStorageSuspense(domainStatusStorage);
 
@@ -326,10 +331,21 @@ const CookieTable = () => {
   const handlePressChange = (pressed: boolean) => {
     setLocalStorageMode(pressed);
   };
+  const kvCookies = cookieMap?.domainCookieMap?.[selectedDomain]?.cookies || [];
+  const handleDomainPush = async () => {
+    await handleAndCheckPushCookie({
+      id: selectedDomain,
+      host: selectedDomain,
+      sourceUrl: selectedRow?.sourceUrl,
+      favIconUrl: selectedRow?.favIconUrl,
+      autoPush: selectedRow?.autoPush ?? false,
+      autoPull: selectedRow?.autoPull ?? false,
+    });
+  };
   const renderTable = () => {
     return (
       <div className="flex flex-col h-full ">
-        <div className="flex justify-between px-4 mb-4 ">
+        <div className="flex justify-between px-4 mb-2 ">
           <div className="flex items-center ">
             <Button
               variant="outline"
@@ -350,7 +366,7 @@ const CookieTable = () => {
               {selectedDomain}
             </a>
           </div>
-          {hasLocalStorage ? (
+          {cookieViewTab === 'kv' && hasLocalStorage ? (
             <SyncTooltip title={t('toggleLocalStorageView')}>
               <Toggle pressed={localStorageMode} onPressedChange={handlePressChange} className="ml-6" variant="outline">
                 <Database size={16} className="h-4 w-4" />
@@ -358,11 +374,32 @@ const CookieTable = () => {
             </SyncTooltip>
           ) : null}
         </div>
+        <div className="px-4 mb-2 flex gap-2 border-b pb-2">
+          <Button
+            variant={cookieViewTab === 'live' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setCookieViewTab('live')}>
+            {t('liveBrowser')}
+          </Button>
+          <Button
+            variant={cookieViewTab === 'kv' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setCookieViewTab('kv')}>
+            {t('syncedKv')} ({kvCookies.length})
+          </Button>
+        </div>
         <div className="mb-1 px-4">
           <SearchInput onEnter={handleSearch} />
         </div>
-        <div className="flex-1 pl-4 pr-2 mt-4 overflow-auto">
-          {localStorageMode ? (
+        <div className="flex-1 pl-4 pr-2 mt-2 overflow-auto">
+          {cookieViewTab === 'live' ? (
+            <LiveBrowserTab
+              host={selectedDomain}
+              kvCookies={kvCookies}
+              onPush={handleDomainPush}
+              searchStr={currentSearchStr}
+            />
+          ) : localStorageMode ? (
             <DataTable columns={showLocalStorageColumns as any} data={localStorageItems} />
           ) : (
             <DataTable columns={showCookiesColumns} data={cookieList} />
