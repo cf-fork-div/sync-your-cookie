@@ -1,7 +1,8 @@
-import { fetchDatasourceStatus, fetchKvViaServer, saveDatasourceConfig } from '@src/lib/datasource';
+import { fetchDatasourceStatus, saveDatasourceConfig } from '@src/lib/datasource';
 import { mapApiErrorCode } from '@src/lib/api';
-import { parseRawContent } from '@src/lib/cookies';
+import { loadSession, parseRawContent } from '@src/lib/cookies';
 import { detectFormat } from '@src/lib/mutations';
+import type { DatasourceStatus } from '@src/lib/datasource';
 import type { ViewerSession } from '@src/lib/types';
 import { useI18n } from '@sync-your-cookie/shared';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from '@sync-your-cookie/ui';
@@ -15,11 +16,29 @@ type ConnectFormProps = {
   onLoaded: (session: ViewerSession) => void;
 };
 
+function serverManagedSession(status: DatasourceStatus, encryptionPassword?: string): Promise<ViewerSession> {
+  const storageKey = status.storageKey || 'sync-your-cookie';
+  return loadSession({
+    dataSource: {
+      type: 'cloudflare',
+      accountId: status.accountId || '',
+      namespaceId: status.namespaceId || '',
+      token: '',
+      storageKey,
+      useProxy: true,
+      serverManaged: true,
+    },
+    encryptionPassword,
+  });
+}
+
 export function ConnectForm({ onLoaded }: ConnectFormProps) {
   const { t } = useI18n();
   const [tab, setTab] = useState<SourceTab>('cloudflare');
   const [loading, setLoading] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState(true);
+  const [autoLoading, setAutoLoading] = useState(false);
+  const [autoLoadFailed, setAutoLoadFailed] = useState(false);
   const [savedConfigured, setSavedConfigured] = useState(false);
   const [tokenMasked, setTokenMasked] = useState<string | undefined>();
 
@@ -33,59 +52,87 @@ export function ConnectForm({ onLoaded }: ConnectFormProps) {
 
   useEffect(() => {
     let cancelled = false;
-    void fetchDatasourceStatus()
-      .then(status => {
+
+    async function init() {
+      try {
+        const status = await fetchDatasourceStatus();
         if (cancelled) {
           return;
         }
+
         if (!status.configured) {
+          setLoadingStatus(false);
           return;
         }
+
         setSavedConfigured(true);
         setAccountId(status.accountId || '');
         setNamespaceId(status.namespaceId || '');
         setStorageKey(status.storageKey || 'sync-your-cookie');
         setTokenMasked(status.tokenMasked);
-      })
-      .catch(error => {
+
+        setAutoLoading(true);
+        try {
+          const session = await serverManagedSession(status);
+          if (cancelled) {
+            return;
+          }
+          onLoaded(session);
+        } catch (error) {
+          if (cancelled) {
+            return;
+          }
+          setAutoLoadFailed(true);
+          const message = error instanceof Error ? mapApiErrorCode(error.message, t) : t('loadFailed');
+          toast.error(message);
+        } finally {
+          if (!cancelled) {
+            setAutoLoading(false);
+            setLoadingStatus(false);
+          }
+        }
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
         const message = error instanceof Error ? mapApiErrorCode(error.message, t) : t('loadFailed');
         toast.error(message);
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoadingStatus(false);
-        }
-      });
+        setLoadingStatus(false);
+      }
+    }
+
+    void init();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [onLoaded, t]);
 
   const handleSubmit = async () => {
     setLoading(true);
     try {
       if (tab === 'cloudflare') {
-        if (!accountId.trim() || !namespaceId.trim() || !token.trim()) {
+        if (!accountId.trim() || !namespaceId.trim()) {
           toast.warning(t('fillCloudflareConfig'));
           return;
         }
+        if (!savedConfigured && !token.trim()) {
+          toast.warning(t('fillCloudflareConfig'));
+          return;
+        }
+
         const key = storageKey.trim() || 'sync-your-cookie';
-        await saveDatasourceConfig({
-          accountId: accountId.trim(),
-          namespaceId: namespaceId.trim(),
-          token: token.trim(),
-          storageKey: key,
-        });
-        const content = await fetchKvViaServer(key);
-        const format = detectFormat(content, encryptionPassword || undefined);
-        const parsed = await parseRawContent(content, {
-          encryptionPassword: encryptionPassword || undefined,
-        });
-        onLoaded({
-          cookieMap: {
-            ...parsed,
-            domainCookieMap: parsed.domainCookieMap ?? {},
-          },
+        if (token.trim()) {
+          await saveDatasourceConfig({
+            accountId: accountId.trim(),
+            namespaceId: namespaceId.trim(),
+            token: token.trim(),
+            storageKey: key,
+          });
+          setSavedConfigured(true);
+          setAutoLoadFailed(false);
+        }
+
+        const session = await loadSession({
           dataSource: {
             type: 'cloudflare',
             accountId: accountId.trim(),
@@ -95,9 +142,9 @@ export function ConnectForm({ onLoaded }: ConnectFormProps) {
             useProxy: true,
             serverManaged: true,
           },
-          format,
-          canWrite: true,
+          encryptionPassword: encryptionPassword || undefined,
         });
+        onLoaded(session);
       } else {
         if (!pasteContent.trim()) {
           toast.warning(t('pasteKvContent'));
@@ -132,6 +179,17 @@ export function ConnectForm({ onLoaded }: ConnectFormProps) {
     { id: 'paste', label: t('pasteContent'), icon: <ClipboardPaste size={16} /> },
   ];
 
+  if (loadingStatus || autoLoading) {
+    return (
+      <Card className="max-w-2xl mx-auto">
+        <CardContent className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
+          <Loader2 size={20} className="animate-spin" />
+          {t('loadingSavedConfig')}
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="max-w-2xl mx-auto">
       <CardHeader>
@@ -157,7 +215,7 @@ export function ConnectForm({ onLoaded }: ConnectFormProps) {
         {tab === 'cloudflare' && (
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground">{t('adminDatasourceHint')}</p>
-            {savedConfigured && (
+            {savedConfigured && autoLoadFailed && (
               <p className="text-xs text-muted-foreground rounded-md border border-border bg-muted/40 px-3 py-2">
                 {tokenMasked
                   ? `${t('apiToken')} ${t('savedOnServer')} (${tokenMasked}). ${t('reenterTokenToLoad')}`
@@ -170,7 +228,6 @@ export function ConnectForm({ onLoaded }: ConnectFormProps) {
                 id="accountId"
                 value={accountId}
                 onChange={e => setAccountId(e.target.value)}
-                disabled={loadingStatus}
               />
             </div>
             <div className="space-y-2">
@@ -179,7 +236,6 @@ export function ConnectForm({ onLoaded }: ConnectFormProps) {
                 id="namespaceId"
                 value={namespaceId}
                 onChange={e => setNamespaceId(e.target.value)}
-                disabled={loadingStatus}
               />
             </div>
             <div className="space-y-2">
@@ -189,13 +245,7 @@ export function ConnectForm({ onLoaded }: ConnectFormProps) {
                 type="password"
                 value={token}
                 onChange={e => setToken(e.target.value)}
-                placeholder={
-                  loadingStatus
-                    ? t('loading')
-                    : savedConfigured
-                      ? t('reenterApiTokenPlaceholder')
-                      : undefined
-                }
+                placeholder={savedConfigured ? t('reenterApiTokenPlaceholder') : undefined}
               />
             </div>
             <div className="space-y-2">
@@ -230,7 +280,7 @@ export function ConnectForm({ onLoaded }: ConnectFormProps) {
           />
         </div>
 
-        <Button className="w-full" onClick={handleSubmit} disabled={loading || loadingStatus}>
+        <Button className="w-full" onClick={handleSubmit} disabled={loading}>
           {loading ? <Loader2 size={16} className="mr-2 animate-spin" /> : null}
           {t('loadCookieData')}
         </Button>
