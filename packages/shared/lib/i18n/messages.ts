@@ -305,6 +305,9 @@ const enMessages = {
   no: 'No',
   editEntryMeta: 'Edit entry',
   saveEntryMeta: 'Save',
+  viewEditCookies: 'View/Edit Cookies',
+  cookiesCount: '{{count}} cookies',
+  noCookiesForHost: 'No cookies for this site',
 } as const;
 
 const zhCNMessages: Record<MessageKey, string> = {
@@ -594,6 +597,9 @@ const zhCNMessages: Record<MessageKey, string> = {
   no: '否',
   editEntryMeta: '编辑条目',
   saveEntryMeta: '保存',
+  viewEditCookies: '查看编辑 Cookie',
+  cookiesCount: '{{count}} 个 Cookie',
+  noCookiesForHost: '该站点暂无 Cookie',
 };
 
 export const messages = {

@@ -1,24 +1,22 @@
-import { cookieMatchesHost } from '@sync-your-cookie/shared';
-import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  BrowserCookieItem,
-  CookieFormData,
-  clearAllBrowserCookies,
+  cookieMatchesHost,
   fetchBrowserCookies,
   removeBrowserCookie,
   resolveDomainUrl,
   setBrowserCookie,
-} from '../../../lib/browserCookies';
-import { parseCookieImport } from '../../../lib/cookieFormats';
+  type BrowserCookieItem,
+  type CookieFormData,
+} from '@sync-your-cookie/shared';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-export const useLiveBrowserCookies = (host: string) => {
+export const usePopupBrowserCookies = (host: string, enabled: boolean) => {
   const [cookies, setCookies] = useState<BrowserCookieItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [domainUrl, setDomainUrl] = useState('');
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!host) return;
+    if (!host || !enabled) return;
     setLoading(true);
     try {
       const url = await resolveDomainUrl(host);
@@ -28,14 +26,15 @@ export const useLiveBrowserCookies = (host: string) => {
     } finally {
       setLoading(false);
     }
-  }, [host]);
+  }, [host, enabled]);
 
   useEffect(() => {
+    if (!enabled) return;
     refresh();
-  }, [refresh]);
+  }, [refresh, enabled]);
 
   useEffect(() => {
-    if (!host) return;
+    if (!host || !enabled) return;
 
     const scheduleRefresh = () => {
       if (refreshTimerRef.current) {
@@ -60,39 +59,20 @@ export const useLiveBrowserCookies = (host: string) => {
         clearTimeout(refreshTimerRef.current);
       }
     };
-  }, [host, refresh]);
+  }, [host, enabled, refresh]);
 
-  const handleSet = async (form: CookieFormData) => {
+  const handleSet = async (cookie: BrowserCookieItem, form: CookieFormData) => {
+    const identityChanged =
+      form.name !== cookie.name || form.domain !== cookie.domain || form.path !== (cookie.path || '/');
+    if (identityChanged) {
+      await removeBrowserCookie(cookie, domainUrl);
+    }
     await setBrowserCookie(form);
     await refresh();
   };
 
   const handleRemove = async (cookie: BrowserCookieItem) => {
     await removeBrowserCookie(cookie, domainUrl);
-    await refresh();
-  };
-
-  const handleClearAll = async () => {
-    await clearAllBrowserCookies(host);
-    await refresh();
-  };
-
-  const handleImport = async (text: string, defaultUrl: string, defaultDomain: string) => {
-    const items = parseCookieImport(text, defaultDomain);
-    for (const item of items) {
-      if (!item.name) continue;
-      await setBrowserCookie({
-        name: item.name,
-        value: item.value ?? '',
-        domain: item.domain ?? defaultDomain,
-        path: item.path ?? '/',
-        expirationDate: item.expirationDate ?? null,
-        secure: item.secure ?? false,
-        httpOnly: item.httpOnly ?? false,
-        sameSite: item.sameSite ?? 'unspecified',
-        url: defaultUrl,
-      });
-    }
     await refresh();
   };
 
@@ -103,7 +83,5 @@ export const useLiveBrowserCookies = (host: string) => {
     refresh,
     handleSet,
     handleRemove,
-    handleClearAll,
-    handleImport,
   };
 };

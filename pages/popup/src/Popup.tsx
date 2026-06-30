@@ -15,12 +15,13 @@ import {
 
 import { accountProfileStorage, getActiveProfile } from '@sync-your-cookie/storage/lib/accountProfileStorage';
 import { cookieStorage } from '@sync-your-cookie/storage/lib/cookieStorage';
-import { Button, Image, Label, PushAccountDialog, DeleteAccountDialog, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Spinner, Toaster } from '@sync-your-cookie/ui';
+import { Button, Image, Label, PushAccountDialog, DeleteAccountDialog, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Spinner, Switch, Toaster } from '@sync-your-cookie/ui';
 import { CloudDownload, CloudUpload, Copyright, PanelRightOpen, RotateCw, Settings, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import { AutoSwitch } from './components/AutoSwtich';
 import { AccountLoginGate } from './components/AccountLoginGate';
+import { CookieEditorSection } from './components/CookieEditorSection';
 import { useDomainConfig } from './hooks/useDomainConfig';
 
 const Popup = () => {
@@ -54,6 +55,7 @@ const Popup = () => {
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [cookieEditorEnabled, setCookieEditorEnabled] = useState(false);
 
   const activeEntryLabel = useMemo(
     () => entryOptions.find(entry => entry.storageKey === activeStorageKey)?.label || t('defaultAccount'),
@@ -244,6 +246,23 @@ const Popup = () => {
                 {hasMultipleAccounts ? t('deleteAccount') : t('deleteDomain')}
               </Button>
             ) : null}
+
+            <div className="w-full mt-2 pt-3 border-t border-border">
+              <div className="flex items-center justify-between mb-1">
+                <Label htmlFor="cookie-editor-toggle" className="text-sm">
+                  {t('viewEditCookies')}
+                </Label>
+                <Switch
+                  id="cookie-editor-toggle"
+                  checked={cookieEditorEnabled}
+                  disabled={!activeTabUrl}
+                  onCheckedChange={setCookieEditorEnabled}
+                />
+              </div>
+              {cookieEditorEnabled && domain ? (
+                <CookieEditorSection host={domain} enabled={cookieEditorEnabled} />
+              ) : null}
+            </div>
           </div>
           <DeleteAccountDialog
             open={deleteDialogOpen}
