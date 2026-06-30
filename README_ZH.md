@@ -21,7 +21,7 @@ Edge: [Sync Your Cookie](https://microsoftedge.microsoft.com/addons/detail/sync-
 - 提供管理面板，方便查看、复制、管理已同步的 Cookie 数据
 - **多账户配置（Account Profiles）** — 每个配置独立保存 Cloudflare 凭据与域名规则，可快速切换
 - **国际化（i18n）** — 扩展 UI 与 Web Viewer 支持英文（`en`）与简体中文（`zh_CN`）
-- **Web Viewer** — 可选的浏览器端查看器，可部署到 Cloudflare Pages（见下方）
+- **Web Viewer** — 可选的浏览器端查看器，可部署到 Cloudflare Worker（见下方）
 
 > **说明：** 已移除 GitHub Gist 同步，**仅支持 Cloudflare KV**。
 
@@ -57,7 +57,7 @@ Cloudflare 上传的 Cookie
 
 ### Cloudflare 一键部署 Web Viewer
 
-详见 [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md)。一条命令部署 Web 查看器到 Cloudflare Pages，并自动创建 KV 命名空间、输出扩展 Options 所需凭据。
+详见 [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md)。一条命令部署 Web 查看器到 Cloudflare Worker，并自动创建 KV 命名空间、输出扩展 Options 所需凭据。
 
 Web 登录密码（`WEB_ACCESS_PASSWORD`）与访问路径（`WEB_BASE_PATH`）为 **Cloudflare 运行时配置**：部署后可在 Dashboard 修改并**立即生效**，无需重新构建。部署本身**不要求**预先设置密码。
 
@@ -67,7 +67,7 @@ cp deploy/cloudflare/.env.example deploy/cloudflare/.env
 pnpm deploy:cloudflare
 ```
 
-**备选方案：** 在 Cloudflare Dashboard 连接本 Git 仓库进行 Pages 自动构建。构建命令：`pnpm install && pnpm build:cloudflare-pages`，输出目录：`dist/web`。限制说明见 [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md#git-仓库连接部署可选)（不会自动创建 KV、需手动配置凭据等）。
+**备选方案：** 在 Cloudflare Dashboard 连接本 Git 仓库进行 Worker 自动构建。构建命令：`pnpm install && pnpm build:cloudflare-worker`，部署命令：`npx wrangler deploy --config deploy/cloudflare/wrangler.toml`。限制说明见 [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md#git-仓库连接部署可选)（不会自动创建 KV、需手动配置凭据等）。
 
 ### Privacy Policy
 

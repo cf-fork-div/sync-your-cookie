@@ -4,13 +4,9 @@ const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 async function signSession(password: string): Promise<string> {
   const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(password),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  );
+  const key = await crypto.subtle.importKey('raw', encoder.encode(password), { name: 'HMAC', hash: 'SHA-256' }, false, [
+    'sign',
+  ]);
   const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(SESSION_SALT));
   const bytes = new Uint8Array(signature);
   let binary = '';

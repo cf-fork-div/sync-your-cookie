@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * One-command Cloudflare Pages deploy for sync-your-cookie web viewer.
+ * One-command Cloudflare Worker deploy for sync-your-cookie web viewer.
  *
  * Usage:
  *   pnpm deploy:cloudflare
@@ -10,7 +10,7 @@
  * Config: deploy/cloudflare/.env or env vars (see .env.example).
  */
 import { execSync } from 'node:child_process';
-import { cpSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -21,7 +21,7 @@ const DIST_WEB = join(ROOT, 'dist/web');
 const STATE_FILE = join(DEPLOY_DIR, '.deploy-state.json');
 const WRANGLER_TOML = join(DEPLOY_DIR, 'wrangler.toml');
 const KV_NAMESPACE_NAME = 'SYNC_YOUR_COOKIE';
-const PAGES_PROJECT = 'sync-your-cookie-web';
+const WORKER_NAME = 'sync-your-cookie-web';
 
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
@@ -289,29 +289,21 @@ function pushRuntimeSecrets(env) {
     return;
   }
 
-  log('推送 WEB_ACCESS_PASSWORD 到 Cloudflare Pages（加密 Secret）...');
-  runWrangler(`pages secret put WEB_ACCESS_PASSWORD --project-name ${PAGES_PROJECT}`, {
+  log('推送 WEB_ACCESS_PASSWORD 到 Cloudflare Worker（加密 Secret）...');
+  runWrangler('secret put WEB_ACCESS_PASSWORD', {
     cwd: DEPLOY_DIR,
     stdinSilent: true,
     input: `${password}\n`,
   });
 }
 
-function copyPagesFunctions() {
-  const src = join(DEPLOY_DIR, 'functions');
-  const dest = join(DIST_WEB, 'functions');
-  rmSync(dest, { recursive: true, force: true });
-  cpSync(src, dest, { recursive: true });
-  log('已复制 Pages Functions（/api 认证 + /cf-api 代理 + 中间件）');
-}
-
-function deployPages() {
-  log(`部署到 Cloudflare Pages 项目: ${PAGES_PROJECT}`);
+function deployWorker() {
+  log(`部署到 Cloudflare Worker: ${WORKER_NAME}`);
   const wrangler = wranglerCmd();
   const cmd =
     process.platform === 'win32'
-      ? `"${wrangler}" pages deploy --project-name ${PAGES_PROJECT} --commit-dirty=true`
-      : `${wrangler} pages deploy --project-name ${PAGES_PROJECT} --commit-dirty=true`;
+      ? `"${wrangler}" deploy --config wrangler.toml`
+      : `${wrangler} deploy --config wrangler.toml`;
   const out = execSync(cmd, {
     cwd: DEPLOY_DIR,
     encoding: 'utf8',
@@ -321,8 +313,10 @@ function deployPages() {
   if (out) {
     process.stdout.write(out);
   }
-  const urlMatch = out.match(/https:\/\/[^\s]+\.pages\.dev[^\s]*/);
-  return urlMatch?.[0] ?? `https://${PAGES_PROJECT}.pages.dev`;
+  const urlMatch =
+    out.match(/https:\/\/[^\s]+\.workers\.dev[^\s]*/) ??
+    out.match(/Published sync-your-cookie-web[^\n]*\n[^\n]*(https:\/\/[^\s]+)/);
+  return urlMatch?.[0] ?? `https://${WORKER_NAME}.${process.env.CF_ACCOUNT_SUBDOMAIN ?? 'workers'}.dev`;
 }
 
 function maskToken(token) {
@@ -332,7 +326,7 @@ function maskToken(token) {
   return `${token.slice(0, 4)}…${token.slice(-4)}`;
 }
 
-function printSummary({ accountId, namespaceId, basePath, pagesUrl, env }) {
+function printSummary({ accountId, namespaceId, basePath, workerUrl, env }) {
   const token = env.CLOUDFLARE_API_TOKEN?.trim();
   const viewerPath = basePath.startsWith('/') ? basePath : `/${basePath}`;
   const normalizedPath = viewerPath.endsWith('/') ? viewerPath : `${viewerPath}/`;
@@ -341,7 +335,7 @@ function printSummary({ accountId, namespaceId, basePath, pagesUrl, env }) {
   console.log('  Sync Your Cookie — Cloudflare 部署完成');
   console.log('========================================\n');
   console.log('Web Viewer 地址:');
-  console.log(`  ${pagesUrl.replace(/\/$/, '')}${normalizedPath}\n`);
+  console.log(`  ${workerUrl.replace(/\/$/, '')}${normalizedPath}\n`);
   console.log('请填入扩展 Options 页面的凭据:\n');
   console.log(`  Account ID:    ${accountId}`);
   console.log(`  Namespace ID:  ${namespaceId}`);
@@ -355,7 +349,7 @@ function printSummary({ accountId, namespaceId, basePath, pagesUrl, env }) {
   console.log('Web Viewer 运行时配置（Cloudflare Dashboard 修改后立即生效，无需重新构建）:\n');
   console.log('  WEB_ACCESS_PASSWORD  — 登录密码（Encrypted Secret）');
   console.log('  WEB_BASE_PATH        — 访问路径，默认 my-cookie-vault\n');
-  console.log('  路径: Pages → sync-your-cookie-web → Settings → Environment variables\n');
+  console.log('  路径: Workers & Pages → sync-your-cookie-web → Settings → Variables and Secrets\n');
   if (env.WEB_ACCESS_PASSWORD?.trim()) {
     console.log(`  当前 deploy/.env 中的 WEB_ACCESS_PASSWORD 已用于首次配置参考`);
     if (env.DEPLOY_RUNTIME_SECRETS !== '1') {
@@ -366,7 +360,7 @@ function printSummary({ accountId, namespaceId, basePath, pagesUrl, env }) {
   }
   console.log('自动化项:');
   console.log('  ✓ KV 命名空间创建/复用');
-  console.log('  ✓ Pages 部署 + 运行时认证 + /cf-api 反向代理');
+  console.log('  ✓ Worker 部署 + 运行时认证 + /cf-api 反向代理');
   console.log('  ✓ Account ID / Namespace ID 输出');
   console.log('\n需手动完成:');
   console.log('  • 首次授权: wrangler login 或设置 CLOUDFLARE_API_TOKEN');
@@ -392,20 +386,19 @@ async function main() {
   updateWranglerBasePath(basePath);
 
   buildWeb();
-  copyPagesFunctions();
 
   const accountId = await resolveAccountId(env);
   const namespaceId = await ensureKvNamespace(env, accountId);
 
-  let pagesUrl = `https://${PAGES_PROJECT}.pages.dev`;
+  let workerUrl = `https://${WORKER_NAME}.workers.dev`;
   if (!dryRun) {
     pushRuntimeSecrets(env);
-    pagesUrl = deployPages();
+    workerUrl = deployWorker();
   } else {
-    log('dry-run: 跳过 Pages 部署');
+    log('dry-run: 跳过 Worker 部署');
   }
 
-  printSummary({ accountId, namespaceId, basePath, pagesUrl, env });
+  printSummary({ accountId, namespaceId, basePath, workerUrl, env });
 }
 
 main().catch(err => {

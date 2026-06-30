@@ -1,15 +1,15 @@
-export interface PagesEnv {
+export interface WorkerEnv {
   WEB_ACCESS_PASSWORD?: string;
   WEB_BASE_PATH?: string;
 }
 
-export function getWebAccessPassword(env: PagesEnv): string | null {
+export function getWebAccessPassword(env: WorkerEnv): string | null {
   const password = env.WEB_ACCESS_PASSWORD?.trim();
   return password || null;
 }
 
 /** Normalize to URL segment without slashes, e.g. `my-cookie-vault` */
-export function getWebBasePathSegment(env: PagesEnv): string | null {
+export function getWebBasePathSegment(env: WorkerEnv): string | null {
   const raw = env.WEB_BASE_PATH?.trim();
   if (!raw || raw === '/') {
     return null;
@@ -18,7 +18,7 @@ export function getWebBasePathSegment(env: PagesEnv): string | null {
 }
 
 /** Prefix with leading/trailing slashes, e.g. `/my-cookie-vault/` */
-export function getWebBasePathPrefix(env: PagesEnv): string {
+export function getWebBasePathPrefix(env: WorkerEnv): string {
   const segment = getWebBasePathSegment(env);
   if (!segment) {
     return '/';

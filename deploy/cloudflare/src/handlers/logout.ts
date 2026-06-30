@@ -1,12 +1,12 @@
-import { createLogoutCookie, isSecureRequest } from '../lib/session';
 import { jsonResponse } from '../lib/response';
+import { createLogoutCookie, isSecureRequest } from '../lib/session';
 
-export const onRequestPost: PagesFunction = async context => {
-  if (context.request.method !== 'POST') {
+export async function handleLogout(request: Request): Promise<Response> {
+  if (request.method !== 'POST') {
     return jsonResponse({ ok: false, error: 'method_not_allowed' }, { status: 405 });
   }
 
-  const secure = isSecureRequest(context.request);
+  const secure = isSecureRequest(request);
   const setCookie = createLogoutCookie(secure);
   return jsonResponse(
     { ok: true },
@@ -17,4 +17,4 @@ export const onRequestPost: PagesFunction = async context => {
       },
     },
   );
-};
+}

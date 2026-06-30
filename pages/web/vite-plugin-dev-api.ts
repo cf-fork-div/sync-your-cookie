@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin } from 'vite';
-import { getWebAccessPassword, getWebBasePathPrefix } from '../../deploy/cloudflare/functions/lib/env';
-import { createLogoutCookie, createSessionCookie, isValidSession } from '../../deploy/cloudflare/functions/lib/session';
+import { getWebAccessPassword, getWebBasePathPrefix } from '../../deploy/cloudflare/src/lib/env';
+import { createLogoutCookie, createSessionCookie, isValidSession } from '../../deploy/cloudflare/src/lib/session';
 
 type DevEnv = {
   WEB_ACCESS_PASSWORD?: string;

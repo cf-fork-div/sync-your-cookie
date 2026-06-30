@@ -22,7 +22,8 @@
     "lint": "turbo lint",
     "lint:fix": "turbo lint:fix",
     "prettier": "turbo prettier",
-    "build:cloudflare-pages": "node deploy/cloudflare/build-pages.mjs",
+    "build:cloudflare-worker": "node deploy/cloudflare/build-worker.mjs",
+    "build:cloudflare-pages": "node deploy/cloudflare/build-worker.mjs",
     "deploy:cloudflare": "node deploy/cloudflare/deploy.mjs"
   },
   "type": "module",

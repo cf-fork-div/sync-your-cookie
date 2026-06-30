@@ -27,7 +27,7 @@ Edge: [Sync Your Cookie](https://microsoftedge.microsoft.com/addons/detail/sync-
 - Management panel to view, copy, and manage synced cookie data
 - **Multi-account profiles** — separate Cloudflare credentials and domain rules per profile
 - **i18n** — English and Simplified Chinese (`en`, `zh_CN`) in the extension UI and Web Viewer
-- **Web Viewer** — optional browser-based viewer deployed to Cloudflare Pages (see below)
+- **Web Viewer** — optional browser-based viewer deployed to Cloudflare Worker (see below)
 
 > **Note:** GitHub Gist sync has been removed. Cloudflare KV is the only supported backend.
 
@@ -63,7 +63,7 @@ Pushed Cookie on Cloudflare
 
 ### Cloudflare Web Viewer (one-command deploy)
 
-Deploy the Web Viewer to Cloudflare Pages and auto-create the KV namespace used by the extension. See [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md) for full details (Chinese).
+Deploy the Web Viewer to Cloudflare Worker and auto-create the KV namespace used by the extension. See [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md) for full details (Chinese).
 
 Web login password (`WEB_ACCESS_PASSWORD`) and access path (`WEB_BASE_PATH`) are **runtime Cloudflare settings**: change them in the Dashboard and they take effect **immediately** — no rebuild required. A password is **not** required before deploy.
 
@@ -73,7 +73,7 @@ cp deploy/cloudflare/.env.example deploy/cloudflare/.env
 pnpm deploy:cloudflare
 ```
 
-**Alternative:** connect this repo to Cloudflare Pages (Git-based deploy). Build command: `pnpm install && pnpm build:cloudflare-pages`, output directory: `dist/web`. See [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md#git-仓库连接部署可选) for limitations (no auto KV creation, manual credentials).
+**Alternative:** connect this repo to Cloudflare Workers (Git-based deploy). Build command: `pnpm install && pnpm build:cloudflare-worker`, deploy: `npx wrangler deploy --config deploy/cloudflare/wrangler.toml`. See [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md#git-仓库连接部署可选) for limitations (no auto KV creation, manual credentials).
 
 ### TODO
 

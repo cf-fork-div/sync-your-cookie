@@ -2,8 +2,7 @@
  * Proxy Cloudflare REST API to avoid browser CORS on the static web viewer.
  * Browser calls /cf-api/client/v4/... with Authorization header; this forwards to api.cloudflare.com.
  */
-export const onRequest: PagesFunction = async context => {
-  const request = context.request;
+export async function handleCfApi(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const apiPath = url.pathname.replace(/^\/cf-api/, '') || '/';
   const targetUrl = `https://api.cloudflare.com${apiPath}${url.search}`;
@@ -28,4 +27,4 @@ export const onRequest: PagesFunction = async context => {
   }
 
   return fetch(targetUrl, init);
-};
+}

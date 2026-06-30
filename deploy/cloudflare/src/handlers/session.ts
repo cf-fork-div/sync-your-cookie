@@ -1,9 +1,8 @@
-import { getWebAccessPassword, getWebBasePathPrefix } from '../lib/env';
-import { isValidSession } from '../lib/session';
+import { getWebAccessPassword, getWebBasePathPrefix, type WorkerEnv } from '../lib/env';
 import { jsonResponse } from '../lib/response';
+import { isValidSession } from '../lib/session';
 
-export const onRequestGet: PagesFunction = async context => {
-  const env = context.env as { WEB_ACCESS_PASSWORD?: string; WEB_BASE_PATH?: string };
+export async function handleSession(request: Request, env: WorkerEnv): Promise<Response> {
   const configuredPassword = getWebAccessPassword(env);
   const basePath = getWebBasePathPrefix(env);
 
@@ -15,10 +14,10 @@ export const onRequestGet: PagesFunction = async context => {
     });
   }
 
-  const authenticated = await isValidSession(context.request, configuredPassword);
+  const authenticated = await isValidSession(request, configuredPassword);
   return jsonResponse({
     authenticated,
     passwordConfigured: true,
     basePath,
   });
-};
+}
