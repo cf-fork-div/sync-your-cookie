@@ -20,6 +20,7 @@ import {
   log,
   mergeEnv,
   prepareWranglerConfig,
+  pushRuntimeSecrets,
   runWranglerCapture,
   seedDatasourceConfigIfNeeded,
   updateWranglerBasePath,
@@ -80,29 +81,8 @@ function buildWeb() {
   }
 }
 
-function pushRuntimeSecrets(env) {
-  if (env.DEPLOY_RUNTIME_SECRETS !== '1') {
-    log('跳过 wrangler secret 推送（可在 Dashboard 修改 WEB_ACCESS_PASSWORD，或设置 DEPLOY_RUNTIME_SECRETS=1）');
-    return;
-  }
-
-  const password = env.WEB_ACCESS_PASSWORD?.trim();
-  if (!password) {
-    log('未设置 WEB_ACCESS_PASSWORD，跳过 secret 推送');
-    return;
-  }
-
-  if (dryRun) {
-    log('dry-run: 跳过 WEB_ACCESS_PASSWORD secret 推送');
-    return;
-  }
-
-  log('推送 WEB_ACCESS_PASSWORD 到 Cloudflare Worker（加密 Secret）...');
-  runWrangler('secret put WEB_ACCESS_PASSWORD', {
-    cwd: DEPLOY_DIR,
-    stdinSilent: true,
-    input: `${password}\n`,
-  });
+function pushRuntimeSecretsForDeploy(env) {
+  pushRuntimeSecrets(env, { dryRun, mode: 'opt-in' });
 }
 
 function deployWorker() {
@@ -220,7 +200,7 @@ async function main() {
 
   let workerUrl = `https://${WORKER_NAME}.workers.dev`;
   if (!dryRun) {
-    pushRuntimeSecrets(env);
+    pushRuntimeSecretsForDeploy(env);
     workerUrl = deployWorker();
     await seedDatasourceConfigIfNeeded(env, accountId, namespaceId, { dryRun: false });
   } else {

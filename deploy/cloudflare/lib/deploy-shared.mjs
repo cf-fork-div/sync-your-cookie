@@ -1,4 +1,5 @@
 import { execSync } from 'node:child_process';
+import { platform } from 'node:process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -40,8 +41,53 @@ export function wranglerCmd() {
 
 export function runWranglerCapture(args, opts = {}) {
   const wrangler = wranglerCmd();
-  const cmd = process.platform === 'win32' ? `"${wrangler}" ${args}` : `${wrangler} ${args}`;
+  const cmd = platform === 'win32' ? `"${wrangler}" ${args}` : `${wrangler} ${args}`;
   return runCapture(cmd, opts);
+}
+
+function runWranglerStdin(args, input, opts = {}) {
+  const wrangler = wranglerCmd();
+  const cmd = platform === 'win32' ? `"${wrangler}" ${args}` : `${wrangler} ${args}`;
+  execSync(cmd, {
+    cwd: opts.cwd ?? DEPLOY_DIR,
+    encoding: 'utf8',
+    stdio: ['pipe', 'inherit', 'inherit'],
+    input,
+    env: { ...process.env, ...opts.env },
+  });
+}
+
+/**
+ * Push WEB_ACCESS_PASSWORD to the Worker as an encrypted secret.
+ *
+ * @param {'opt-in'|'auto'} mode
+ *   - opt-in: only when DEPLOY_RUNTIME_SECRETS=1 (local deploy.mjs)
+ *   - auto: when WEB_ACCESS_PASSWORD is set (Git CI prepare-wrangler / Build secret)
+ */
+export function pushRuntimeSecrets(env, { dryRun = false, mode = 'opt-in' } = {}) {
+  if (mode === 'opt-in' && env.DEPLOY_RUNTIME_SECRETS !== '1') {
+    log('跳过 wrangler secret 推送（可在 Dashboard 修改 WEB_ACCESS_PASSWORD，或设置 DEPLOY_RUNTIME_SECRETS=1）');
+    return false;
+  }
+
+  const password = env.WEB_ACCESS_PASSWORD?.trim();
+  if (!password) {
+    if (mode === 'auto' && env.WORKERS_CI === '1') {
+      log('Git CI 未注入 WEB_ACCESS_PASSWORD；请在 Builds → Build variables 添加 Secret，或在 Worker → Variables and Secrets 设置');
+    } else {
+      log('未设置 WEB_ACCESS_PASSWORD，跳过 secret 推送');
+    }
+    return false;
+  }
+
+  if (dryRun) {
+    log('dry-run: 跳过 WEB_ACCESS_PASSWORD secret 推送');
+    return false;
+  }
+
+  log('推送 WEB_ACCESS_PASSWORD 到 Cloudflare Worker（加密 Secret）...');
+  runWranglerStdin('secret put WEB_ACCESS_PASSWORD', `${password}\n`, { cwd: DEPLOY_DIR });
+  return true;
 }
 
 function loadDotEnv(filePath) {

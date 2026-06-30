@@ -10,6 +10,8 @@
  * Optional env:
  *   SYNC_KV_NAMESPACE_ID — bind this namespace directly (skips lookup/create)
  *   DEPLOY_ALLOW_KV_CREATE=1 — allow auto-create when no namespace found (Git CI default: off)
+ *   WEB_ACCESS_PASSWORD — if set (e.g. Builds → Build variables Secret), auto `wrangler secret put`
+ *   WEB_BASE_PATH — optional runtime path segment written to wrangler.toml [vars]
  *   CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID — same as deploy.mjs
  */
 import {
@@ -18,8 +20,10 @@ import {
   log,
   mergeEnv,
   prepareWranglerConfig,
+  pushRuntimeSecrets,
   runWranglerCapture,
   seedDatasourceConfigIfNeeded,
+  updateWranglerBasePath,
 } from './lib/deploy-shared.mjs';
 
 const dryRun = process.argv.includes('--dry-run');
@@ -35,6 +39,13 @@ async function main() {
   }
 
   const { accountId, namespaceId } = await prepareWranglerConfig(env, { dryRun });
+
+  const basePath = env.WEB_BASE_PATH?.trim()?.replace(/^\/+|\/+$/g, '') || null;
+  if (!dryRun) {
+    updateWranglerBasePath(basePath);
+  }
+
+  pushRuntimeSecrets(env, { dryRun, mode: 'auto' });
 
   if (!dryRun && (env.DEPLOY_SEED_DATASOURCE === '1' || env.DEPLOY_SEED_DATASOURCE === 'force')) {
     await seedDatasourceConfigIfNeeded(env, accountId, namespaceId, { dryRun: false });
