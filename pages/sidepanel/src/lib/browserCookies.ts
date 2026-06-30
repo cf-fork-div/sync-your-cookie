@@ -73,22 +73,47 @@ export async function fetchBrowserCookies(host: string): Promise<BrowserCookieIt
   return cookies.map((cookie, index) => toBrowserCookieItem(cookie, index));
 }
 
+export function buildCookieUrl(
+  cookie: Pick<BrowserCookieItem, 'domain' | 'path' | 'secure' | 'name'>,
+  fallbackUrl: string,
+): string {
+  const fallback = new URL(fallbackUrl);
+  const isHostPrefixed = cookie.name.startsWith('__Host-');
+  const protocol = cookie.secure || isHostPrefixed ? 'https:' : fallback.protocol;
+  const host = cookie.domain.startsWith('.') ? cookie.domain.slice(1) : cookie.domain;
+  const path = isHostPrefixed ? '/' : cookie.path || '/';
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${protocol}//${host || fallback.hostname}${normalizedPath}`;
+}
+
 export function buildSetDetails(form: CookieFormData): chrome.cookies.SetDetails {
-  const itemHost = form.domain.startsWith('.') ? form.domain.slice(1) : form.domain;
+  const isHostPrefixed = form.name.startsWith('__Host-');
+  const isSecurePrefixed = form.name.startsWith('__Secure-');
   const urlObj = new URL(form.url);
-  const href = `${urlObj.protocol}//${itemHost || urlObj.hostname}`;
-  return {
+  const path = isHostPrefixed ? '/' : form.path || '/';
+  const secure = isHostPrefixed || isSecurePrefixed ? true : form.secure;
+  const itemHost = form.domain.startsWith('.') ? form.domain.slice(1) : form.domain;
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const protocol = secure ? 'https:' : urlObj.protocol;
+  const href = `${protocol}//${itemHost || urlObj.hostname}${normalizedPath}`;
+
+  const details: chrome.cookies.SetDetails = {
     url: href,
     name: form.name,
     value: form.value,
-    domain: form.domain.startsWith('.') || !form.url ? form.domain : undefined,
-    path: form.path || '/',
+    path,
     expirationDate: form.expirationDate ?? undefined,
-    secure: form.secure,
+    secure,
     httpOnly: form.httpOnly,
     sameSite: form.sameSite,
     storeId: undefined,
   };
+
+  if (!isHostPrefixed && form.domain.startsWith('.')) {
+    details.domain = form.domain;
+  }
+
+  return details;
 }
 
 export async function setBrowserCookie(form: CookieFormData): Promise<void> {
@@ -109,13 +134,14 @@ export async function setBrowserCookie(form: CookieFormData): Promise<void> {
 }
 
 export async function removeBrowserCookie(
-  cookie: Pick<BrowserCookieItem, 'name' | 'domain' | 'path' | 'storeId'>,
+  cookie: Pick<BrowserCookieItem, 'name' | 'domain' | 'path' | 'secure' | 'storeId'>,
   url: string,
 ): Promise<void> {
+  const removeUrl = buildCookieUrl(cookie, url);
   return new Promise((resolve, reject) => {
     chrome.cookies.remove(
       {
-        url,
+        url: removeUrl,
         name: cookie.name,
         storeId: cookie.storeId ?? undefined,
       },
@@ -149,6 +175,22 @@ export function formatExpiration(expirationDate?: number | null, session?: boole
     return 'Session';
   }
   return new Date(expirationDate * 1000).toLocaleString();
+}
+
+export function cookieMatchesHost(cookie: chrome.cookies.Cookie, host: string): boolean {
+  const normalizedHost = host.replace(/^\./, '').toLowerCase();
+  const cookieDomain = cookie.domain.replace(/^\./, '').toLowerCase();
+  if (cookieDomain === normalizedHost) return true;
+  if (cookie.hostOnly) return false;
+  return normalizedHost === cookieDomain || normalizedHost.endsWith(`.${cookieDomain}`);
+}
+
+export async function clearAllBrowserCookies(host: string): Promise<void> {
+  const url = await resolveDomainUrl(host);
+  const cookies = await fetchBrowserCookies(host);
+  for (const cookie of cookies) {
+    await removeBrowserCookie(cookie, url);
+  }
 }
 
 export function parseImportedCookies(json: string): Partial<CookieFormData>[] {

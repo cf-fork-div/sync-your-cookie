@@ -1,18 +1,21 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   BrowserCookieItem,
   CookieFormData,
+  clearAllBrowserCookies,
+  cookieMatchesHost,
   fetchBrowserCookies,
-  parseImportedCookies,
   removeBrowserCookie,
   resolveDomainUrl,
   setBrowserCookie,
 } from '../../../lib/browserCookies';
+import { parseCookieImport } from '../../../lib/cookieFormats';
 
 export const useLiveBrowserCookies = (host: string) => {
   const [cookies, setCookies] = useState<BrowserCookieItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [domainUrl, setDomainUrl] = useState('');
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refresh = useCallback(async () => {
     if (!host) return;
@@ -31,6 +34,34 @@ export const useLiveBrowserCookies = (host: string) => {
     refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    if (!host) return;
+
+    const scheduleRefresh = () => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
+      refreshTimerRef.current = setTimeout(() => {
+        refreshTimerRef.current = null;
+        refresh();
+      }, 200);
+    };
+
+    const onChanged = (changeInfo: chrome.cookies.CookieChangeInfo) => {
+      if (cookieMatchesHost(changeInfo.cookie, host)) {
+        scheduleRefresh();
+      }
+    };
+
+    chrome.cookies.onChanged.addListener(onChanged);
+    return () => {
+      chrome.cookies.onChanged.removeListener(onChanged);
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
+    };
+  }, [host, refresh]);
+
   const handleSet = async (form: CookieFormData) => {
     await setBrowserCookie(form);
     await refresh();
@@ -41,14 +72,19 @@ export const useLiveBrowserCookies = (host: string) => {
     await refresh();
   };
 
-  const handleImport = async (json: string, defaultUrl: string) => {
-    const items = parseImportedCookies(json);
+  const handleClearAll = async () => {
+    await clearAllBrowserCookies(host);
+    await refresh();
+  };
+
+  const handleImport = async (text: string, defaultUrl: string, defaultDomain: string) => {
+    const items = parseCookieImport(text, defaultDomain);
     for (const item of items) {
-      if (!item.name || !item.domain) continue;
+      if (!item.name) continue;
       await setBrowserCookie({
         name: item.name,
         value: item.value ?? '',
-        domain: item.domain,
+        domain: item.domain ?? defaultDomain,
         path: item.path ?? '/',
         expirationDate: item.expirationDate ?? null,
         secure: item.secure ?? false,
@@ -67,6 +103,7 @@ export const useLiveBrowserCookies = (host: string) => {
     refresh,
     handleSet,
     handleRemove,
+    handleClearAll,
     handleImport,
   };
 };

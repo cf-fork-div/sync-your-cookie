@@ -1,5 +1,13 @@
 import { removeCookieItemUsingMessage, useI18n } from '@sync-your-cookie/shared';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Button,
   DataTable,
   DropdownMenu,
@@ -9,11 +17,25 @@ import {
   DropdownMenuTrigger,
   type ColumnDef,
 } from '@sync-your-cookie/ui';
-import { Braces, CloudUpload, Ellipsis, PencilLine, Plus, RotateCw, Trash2, Upload } from 'lucide-react';
+import {
+  Braces,
+  Check,
+  ClipboardList,
+  CloudUpload,
+  Copy,
+  Ellipsis,
+  FileText,
+  PencilLine,
+  Plus,
+  RotateCw,
+  Trash2,
+  Upload,
+} from 'lucide-react';
 import { useRef, useState, type ChangeEvent } from 'react';
 import { toast } from 'sonner';
 import type { BrowserCookieItem, CookieFormData } from '../../lib/browserCookies';
 import { formatExpiration } from '../../lib/browserCookies';
+import { serializeHeaderString, serializeNetscape } from '../../lib/cookieFormats';
 import { CookieFormDialog } from './CookieFormDialog';
 import { DeleteCookieDialog, type DeleteTarget } from './DeleteCookieDialog';
 import { useLiveBrowserCookies } from './hooks/useLiveBrowserCookies';
@@ -25,12 +47,38 @@ type LiveBrowserTabProps = {
   searchStr: string;
 };
 
+type ExportFormat = 'json' | 'netscape' | 'header';
+
+function CopyValueButton({ value }: { value: string }) {
+  const { t } = useI18n();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      toast.success(t('copiedValue'));
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      toast.error(t('copyFailed'));
+    }
+  };
+
+  return (
+    <Button variant="ghost" size="sm" className="h-7 w-7 shrink-0 p-0" onClick={handleCopy} title={t('copyValue')}>
+      {copied ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
+    </Button>
+  );
+}
+
 export function LiveBrowserTab({ host, kvCookies, onPush, searchStr }: LiveBrowserTabProps) {
   const { t } = useI18n();
-  const { cookies, loading, domainUrl, refresh, handleSet, handleRemove, handleImport } = useLiveBrowserCookies(host);
+  const { cookies, loading, domainUrl, refresh, handleSet, handleRemove, handleClearAll, handleImport } =
+    useLiveBrowserCookies(host);
   const [formOpen, setFormOpen] = useState(false);
   const [editCookie, setEditCookie] = useState<BrowserCookieItem | null>(null);
   const [deleteCookie, setDeleteCookie] = useState<BrowserCookieItem | null>(null);
+  const [clearAllOpen, setClearAllOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
 
@@ -85,16 +133,29 @@ export function LiveBrowserTab({ host, kvCookies, onPush, searchStr }: LiveBrows
     }
   };
 
-  const handleExport = () => {
+  const copyExportText = (text: string, successKey: 'copiedJson' | 'copiedNetscape' | 'copiedCookieHeader') => {
+    navigator.clipboard?.writeText(text).then(
+      () => toast.success(t(successKey)),
+      () => toast.error(t('copyFailed')),
+    );
+  };
+
+  const handleExport = (format: ExportFormat) => {
     if (cookies.length === 0) {
       toast.warning(t('noCookiesToCopy'));
       return;
     }
-    const json = JSON.stringify(cookies, null, 2);
-    navigator.clipboard?.writeText(json).then(
-      () => toast.success(t('copiedJson')),
-      () => toast.error(t('copyFailed')),
-    );
+    switch (format) {
+      case 'json':
+        copyExportText(JSON.stringify(cookies, null, 2), 'copiedJson');
+        break;
+      case 'netscape':
+        copyExportText(serializeNetscape(cookies), 'copiedNetscape');
+        break;
+      case 'header':
+        copyExportText(serializeHeaderString(cookies), 'copiedCookieHeader');
+        break;
+    }
   };
 
   const handleImportFile = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -102,12 +163,25 @@ export function LiveBrowserTab({ host, kvCookies, onPush, searchStr }: LiveBrows
     if (!file) return;
     try {
       const text = await file.text();
-      await handleImport(text, domainUrl);
+      await handleImport(text, domainUrl, host);
       toast.success(t('importSuccess'));
     } catch {
       toast.error(t('importFailed'));
     }
     e.target.value = '';
+  };
+
+  const handleClearAllConfirm = async () => {
+    setSaving(true);
+    try {
+      await handleClearAll();
+      toast.success(t('clearAllSuccess'));
+      setClearAllOpen(false);
+    } catch {
+      toast.error(t('clearAllFailed'));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const columns: ColumnDef<BrowserCookieItem>[] = [
@@ -124,11 +198,14 @@ export function LiveBrowserTab({ host, kvCookies, onPush, searchStr }: LiveBrows
       accessorKey: 'value',
       header: t('cookieValue'),
       cell: ({ row }) => (
-        <p
-          style={{ overflowWrap: 'anywhere' }}
-          className="min-w-[80px] max-h-[120px] overflow-auto text-sm text-orange-600 bg-muted/60 rounded px-1 py-0.5 font-mono">
-          {row.original.value}
-        </p>
+        <div className="flex items-start gap-1 min-w-[80px]">
+          <p
+            style={{ overflowWrap: 'anywhere' }}
+            className="flex-1 max-h-[120px] overflow-auto text-sm text-orange-600 bg-muted/60 rounded px-1 py-0.5 font-mono">
+            {row.original.value}
+          </p>
+          <CopyValueButton value={row.original.value} />
+        </div>
       ),
     },
     {
@@ -203,20 +280,58 @@ export function LiveBrowserTab({ host, kvCookies, onPush, searchStr }: LiveBrows
           <RotateCw size={14} className={`mr-1 ${loading ? 'animate-spin' : ''}`} />
           {t('refresh')}
         </Button>
-        <Button variant="outline" size="sm" onClick={handleExport}>
-          <Braces size={14} className="mr-1" />
-          {t('exportJson')}
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <Braces size={14} className="mr-1" />
+              {t('exportCookies')}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem className="cursor-pointer" onClick={() => handleExport('json')}>
+              <Braces size={16} className="mr-2 h-4 w-4" />
+              {t('exportJson')}
+            </DropdownMenuItem>
+            <DropdownMenuItem className="cursor-pointer" onClick={() => handleExport('netscape')}>
+              <FileText size={16} className="mr-2 h-4 w-4" />
+              {t('exportNetscape')}
+            </DropdownMenuItem>
+            <DropdownMenuItem className="cursor-pointer" onClick={() => handleExport('header')}>
+              <ClipboardList size={16} className="mr-2 h-4 w-4" />
+              {t('exportHeader')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button variant="outline" size="sm" onClick={() => importRef.current?.click()}>
           <Upload size={14} className="mr-1" />
-          {t('importJson')}
+          {t('importCookies')}
         </Button>
-        <input ref={importRef} type="file" accept=".json,application/json" className="hidden" onChange={handleImportFile} />
+        <input
+          ref={importRef}
+          type="file"
+          accept=".json,.txt,text/plain,application/json"
+          className="hidden"
+          onChange={handleImportFile}
+        />
         <Button variant="outline" size="sm" onClick={onPush}>
           <CloudUpload size={14} className="mr-1" />
           {t('push')}
         </Button>
-        <Button size="sm" onClick={() => { setEditCookie(null); setFormOpen(true); }}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-destructive hover:text-destructive"
+          disabled={cookies.length === 0}
+          onClick={() => setClearAllOpen(true)}>
+          <Trash2 size={14} className="mr-1" />
+          {t('clearAllCookies')}
+        </Button>
+        <Button
+          size="sm"
+          onClick={() => {
+            setEditCookie(null);
+            setFormOpen(true);
+          }}>
           <Plus size={14} className="mr-1" />
           {t('addCookie')}
         </Button>
@@ -226,7 +341,10 @@ export function LiveBrowserTab({ host, kvCookies, onPush, searchStr }: LiveBrows
       </div>
       <CookieFormDialog
         open={formOpen}
-        onClose={() => { setFormOpen(false); setEditCookie(null); }}
+        onClose={() => {
+          setFormOpen(false);
+          setEditCookie(null);
+        }}
         onSave={handleSave}
         onSaveAndPush={handleSaveAndPush}
         initial={editCookie}
@@ -242,6 +360,24 @@ export function LiveBrowserTab({ host, kvCookies, onPush, searchStr }: LiveBrows
         hasKvEntry={deleteCookie ? hasKvEntry(deleteCookie) : false}
         saving={saving}
       />
+      <AlertDialog open={clearAllOpen} onOpenChange={setClearAllOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('clearAllCookies')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('clearAllCookiesConfirm', { count: cookies.length, host })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Button variant="destructive" disabled={saving} onClick={handleClearAllConfirm}>
+                {t('clearAllCookies')}
+              </Button>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
