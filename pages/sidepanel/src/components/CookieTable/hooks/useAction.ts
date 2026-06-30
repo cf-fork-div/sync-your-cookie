@@ -25,10 +25,10 @@ export const useAction = (cookie: Cookie) => {
   }, [selectedDomain]);
 
   const cookieAction = useCookieAction(selectedDomain, toast);
-  const handleDelete = async (cookie: CookieItem) => {
+  const handleDelete = async (cookie: CookieItem): Promise<boolean> => {
     try {
       setLoading(true);
-      await cookieAction.handleRemove(cookie.storageKey);
+      return await cookieAction.handleRemove(cookie.storageKey);
     } finally {
       setLoading(false);
     }

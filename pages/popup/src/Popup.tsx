@@ -14,9 +14,10 @@ import {
 } from '@sync-your-cookie/shared';
 
 import { accountProfileStorage, getActiveProfile } from '@sync-your-cookie/storage/lib/accountProfileStorage';
-import { Button, Image, Label, PushAccountDialog, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Spinner, Toaster } from '@sync-your-cookie/ui';
-import { CloudDownload, CloudUpload, Copyright, PanelRightOpen, RotateCw, Settings } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { cookieStorage } from '@sync-your-cookie/storage/lib/cookieStorage';
+import { Button, Image, Label, PushAccountDialog, DeleteAccountDialog, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Spinner, Toaster } from '@sync-your-cookie/ui';
+import { CloudDownload, CloudUpload, Copyright, PanelRightOpen, RotateCw, Settings, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { AutoSwitch } from './components/AutoSwtich';
 import { AccountLoginGate } from './components/AccountLoginGate';
@@ -28,6 +29,7 @@ const Popup = () => {
   useDocumentTitle('pageTitlePopup');
   const { isAuthenticated } = useAccountAuth();
   const profileState = useStorageSuspense(accountProfileStorage);
+  const cookieMap = useStorageSuspense(cookieStorage);
   const activeProfile = getActiveProfile(profileState);
   const [activeTabUrl, setActiveTabUrl] = useState('');
   const [favIconUrl, setFavIconUrl] = useState('');
@@ -47,7 +49,37 @@ const Popup = () => {
     domainItemConfig,
     domainItemStatus,
     handlePull,
+    handleRemove,
   } = useDomainConfig();
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
+  const activeEntryLabel = useMemo(
+    () => entryOptions.find(entry => entry.storageKey === activeStorageKey)?.label || t('defaultAccount'),
+    [entryOptions, activeStorageKey, t],
+  );
+
+  const hasKvEntry = Boolean(cookieMap?.domainCookieMap?.[activeStorageKey]);
+
+  const confirmDeleteAccount = async (): Promise<boolean> => {
+    if (!activeStorageKey || !hasKvEntry) {
+      return false;
+    }
+    setDeletingAccount(true);
+    try {
+      const ok = await handleRemove(activeStorageKey);
+      if (ok && hasMultipleAccounts) {
+        const remaining = entryOptions.filter(entry => entry.storageKey !== activeStorageKey);
+        if (remaining.length > 0) {
+          await setSelectedStorageKey(remaining[0]!.storageKey);
+        }
+      }
+      return ok;
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
 
   useEffect(() => {
     chrome.tabs.query({ active: true, lastFocusedWindow: true }, async function (tabs) {
@@ -188,9 +220,6 @@ const Popup = () => {
               className="mb-2 justify-start"
               onClick={async () => {
                 chrome.windows.getCurrent(async currentWindow => {
-                  // const res = await chrome.sidePanel.getOptions({
-                  //   tabId: currentWindow.id,
-                  // });
                   chrome.sidePanel
                     .open({ windowId: currentWindow.id! })
                     .then(() => {
@@ -204,7 +233,32 @@ const Popup = () => {
               <PanelRightOpen size={16} className="mr-2" />
               {t('openManager')}
             </Button>
+
+            {hasKvEntry ? (
+              <Button
+                variant="destructive"
+                className="mb-2 justify-start"
+                disabled={isPushingOrPulling || pushing || deletingAccount}
+                onClick={() => setDeleteDialogOpen(true)}>
+                <Trash2 size={16} className="mr-2" />
+                {hasMultipleAccounts ? t('deleteAccount') : t('deleteDomain')}
+              </Button>
+            ) : null}
           </div>
+          <DeleteAccountDialog
+            open={deleteDialogOpen}
+            onOpenChange={setDeleteDialogOpen}
+            labels={{
+              title: hasMultipleAccounts ? t('deleteAccount') : t('deleteDomain'),
+              description: hasMultipleAccounts
+                ? t('deleteAccountConfirm', { host: domain, label: activeEntryLabel })
+                : t('deleteDomainConfirm', { host: domain }),
+              cancel: t('cancel'),
+              confirm: t('delete'),
+            }}
+            saving={deletingAccount}
+            onConfirm={confirmDeleteAccount}
+          />
           <PushAccountDialog
             open={Boolean(pushChoice.dialog)}
             step={pushChoice.step}

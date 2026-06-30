@@ -96,23 +96,22 @@ export const useCookieAction = (host: string, toast: typeof Toast) => {
       });
   };
 
-  const handleRemove = async (selectedDomain = host) => {
-    return removeCookieUsingMessage({
-      domain: selectedDomain,
-    })
-      .then(async res => {
-        console.log('res', res);
-        if (res.isOk) {
-          toast.success(res.msg || t('success'));
-          await domainConfigStorage.removeItem(selectedDomain);
-        } else {
-          toast.error(res.msg || t('removedFail'));
-        }
-        console.log('res', res);
-      })
-      .catch(err => {
-        catchHandler(err, 'remove', toast, t);
+  const handleRemove = async (selectedDomain = host): Promise<boolean> => {
+    try {
+      const res = await removeCookieUsingMessage({
+        domain: selectedDomain,
       });
+      if (res.isOk) {
+        toast.success(res.msg || t('accountDeleted'));
+        await domainConfigStorage.removeItem(selectedDomain);
+        return true;
+      }
+      toast.error(res.msg || t('removedFail'));
+      return false;
+    } catch (err) {
+      catchHandler(err, 'remove', toast, t);
+      return false;
+    }
   };
 
   return {

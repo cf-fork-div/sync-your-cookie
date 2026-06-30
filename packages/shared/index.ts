@@ -15,3 +15,5 @@ export * from './lib/domain/entryKey';
 export * from './lib/domain/hostEntries';
 export * from './lib/domain/cookieCompare';
 export * from './lib/domain/pushConflict';
+export * from './lib/domain/entryMetaSync';
+export * from './lib/domain/domainEntries';

@@ -14,6 +14,7 @@ import {
   Input,
   Label,
   PushAccountDialog,
+  DeleteAccountDialog,
   Select,
   SelectContent,
   SelectItem,
@@ -80,6 +81,8 @@ const CookieTable = () => {
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [addAccountOpen, setAddAccountOpen] = useState(false);
   const [newAccountLabel, setNewAccountLabel] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<CookieItem | null>(null);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const domainConfig = useStorageSuspense(domainConfigStorage);
   const domainStatus = useStorageSuspense(domainStatusStorage);
 
@@ -262,6 +265,44 @@ const CookieTable = () => {
   const handleSelectAccountEntry = async (storageKey: string) => {
     setSelectedDomain(storageKey);
     await domainConfigStorage.setLastSelectedEntry(getHostFromStorageKey(storageKey), storageKey);
+  };
+
+  const confirmDeleteAccount = async (): Promise<boolean> => {
+    if (!deleteTarget) {
+      return false;
+    }
+    setDeletingAccount(true);
+    try {
+      const deletedKey = deleteTarget.storageKey;
+      const deletedHost = deleteTarget.host;
+      const wasViewingDeleted = selectedDomain === deletedKey;
+      const ok = await handleDelete(deleteTarget);
+      if (!ok) {
+        return false;
+      }
+      setDeleteTarget(null);
+      if (wasViewingDeleted) {
+        const remaining = allEntries.filter(entry => entry.storageKey !== deletedKey);
+        const sameHostEntries = remaining.filter(entry => entry.host === deletedHost);
+        if (sameHostEntries.length > 0) {
+          const nextKey = sameHostEntries[0]!.storageKey;
+          setSelectedDomain(nextKey);
+          await domainConfigStorage.setLastSelectedEntry(deletedHost, nextKey);
+        } else {
+          handleBack();
+        }
+      }
+      return true;
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
+
+  const getDeleteAccountLabel = (row: CookieItem) =>
+    row.label !== t('defaultAccount') ? row.label : row.host;
+
+  const openDeleteAccountDialog = (row: CookieItem) => {
+    setDeleteTarget(row);
   };
 
   const columns: ColumnDef<CookieItem>[] = [
@@ -475,14 +516,14 @@ const CookieTable = () => {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 disabled={domainStatus.pushing}
-                className="cursor-pointer"
-                onClick={() => handleDelete(row.original)}>
+                className="cursor-pointer text-destructive focus:text-destructive"
+                onClick={() => openDeleteAccountDialog(row.original)}>
                 {itemStatus.pulling ? (
                   <RotateCw size={16} className=" h-4 w-4 mr-2 animate-spin" />
                 ) : (
                   <Trash size={16} className="mr-2 h-4 w-4" />
                 )}
-                {t('delete')}
+                {getAccountsCountForHost(allEntries, row.original.host) > 1 ? t('deleteAccount') : t('delete')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -555,6 +596,27 @@ const CookieTable = () => {
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setAddAccountOpen(true)}>
               {t('addAccount')}
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={domainStatus.pushing || deletingAccount}
+              onClick={() =>
+                openDeleteAccountDialog({
+                  id: selectedDomain,
+                  storageKey: selectedDomain,
+                  host: selectedHost,
+                  label: selectedLabel,
+                  sourceUrl: selectedRow?.sourceUrl,
+                  favIconUrl: selectedRow?.favIconUrl,
+                  autoPush: selectedRow?.autoPush ?? false,
+                  autoPull: selectedRow?.autoPull ?? false,
+                  createTime: 0,
+                  cookieCount: kvCookies.length,
+                })
+              }>
+              <Trash size={14} className="mr-1.5" />
+              {accountsOnHost > 1 ? t('deleteAccount') : t('deleteDomain')}
             </Button>
             {cookieViewTab === 'kv' && hasLocalStorage ? (
               <SyncTooltip title={t('toggleLocalStorageView')}>
@@ -658,6 +720,29 @@ const CookieTable = () => {
         onSaveAsNew={() => pushChoice.setStep('newLabel')}
         onBack={() => pushChoice.setStep('choose')}
         onClose={pushChoice.closeDialog}
+      />
+      <DeleteAccountDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={open => {
+          if (!open) {
+            setDeleteTarget(null);
+          }
+        }}
+        labels={{
+          title: deleteTarget && getAccountsCountForHost(allEntries, deleteTarget.host) > 1 ? t('deleteAccount') : t('deleteDomain'),
+          description: deleteTarget
+            ? getAccountsCountForHost(allEntries, deleteTarget.host) > 1
+              ? t('deleteAccountConfirm', {
+                  host: deleteTarget.host,
+                  label: getDeleteAccountLabel(deleteTarget),
+                })
+              : t('deleteDomainConfirm', { host: deleteTarget.host })
+            : '',
+          cancel: t('cancel'),
+          confirm: t('delete'),
+        }}
+        saving={deletingAccount}
+        onConfirm={confirmDeleteAccount}
       />
       <div className="space-y-4 p-4 ">
         <div>

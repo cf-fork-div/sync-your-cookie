@@ -42,10 +42,13 @@ export function removeCookie(map: ICookiesMap, domain: string, cookie: ICookie):
   return next;
 }
 
-export function removeDomain(map: ICookiesMap, domain: string): ICookiesMap {
+export function removeDomain(map: ICookiesMap, storageKey: string): ICookiesMap {
   const next = cloneMap(map);
   if (next.domainCookieMap) {
-    delete next.domainCookieMap[domain];
+    delete next.domainCookieMap[storageKey];
+  }
+  if (next.entryMetaMap) {
+    delete next.entryMetaMap[storageKey];
   }
   next.updateTime = Date.now();
   return next;

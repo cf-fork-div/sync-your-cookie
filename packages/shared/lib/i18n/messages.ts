@@ -235,6 +235,14 @@ const enMessages = {
   copyCookieHeader: 'Copy Cookie header',
   copyJson: 'Copy JSON',
   deleteDomain: 'Delete domain',
+  deleteAccount: 'Delete account',
+  deleteAccountConfirm:
+    'Delete account "{{label}}" for {{host}}? All synced cookies and localStorage for this entry will be removed. This cannot be undone.',
+  deleteDomainConfirm:
+    'Delete all cookies and localStorage for {{host}}? This cannot be undone.',
+  accountDeleted: 'Account deleted',
+  entryCount: '{{count}} entries',
+  hostCount: '{{count}} sites',
   cancel: 'Cancel',
 
   // Account profiles
@@ -518,6 +526,13 @@ const zhCNMessages: Record<MessageKey, string> = {
   copyCookieHeader: '复制 Cookie 头',
   copyJson: '复制 JSON',
   deleteDomain: '删除域名',
+  deleteAccount: '删除账户',
+  deleteAccountConfirm:
+    '确定删除 {{host}} 的账户「{{label}}」吗？该条目下所有已同步的 Cookie 和 LocalStorage 将被移除，此操作不可撤销。',
+  deleteDomainConfirm: '确定删除 {{host}} 下的全部 Cookie 和 LocalStorage 吗？此操作不可撤销。',
+  accountDeleted: '账户已删除',
+  entryCount: '{{count}} 个条目',
+  hostCount: '{{count}} 个站点',
   cancel: '取消',
 
   accountProfile: '账户配置',

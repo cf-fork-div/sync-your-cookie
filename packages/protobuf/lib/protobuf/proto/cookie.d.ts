@@ -381,6 +381,115 @@ export class DomainCookie implements IDomainCookie {
     public static getTypeUrl(typeUrlPrefix?: string): string;
 }
 
+/** Properties of a DomainEntryMeta. */
+export interface IDomainEntryMeta {
+
+    /** DomainEntryMeta label */
+    label?: (string|null);
+
+    /** DomainEntryMeta folder */
+    folder?: (string|null);
+
+    /** DomainEntryMeta type */
+    type?: (string|null);
+}
+
+/** Synced display metadata for a domain entry (storage key). */
+export class DomainEntryMeta implements IDomainEntryMeta {
+
+    /**
+     * Constructs a new DomainEntryMeta.
+     * @param [properties] Properties to set
+     */
+    constructor(properties?: IDomainEntryMeta);
+
+    /** DomainEntryMeta label. */
+    public label: string;
+
+    /** DomainEntryMeta folder. */
+    public folder: string;
+
+    /** DomainEntryMeta type. */
+    public type: string;
+
+    /**
+     * Creates a new DomainEntryMeta instance using the specified properties.
+     * @param [properties] Properties to set
+     * @returns DomainEntryMeta instance
+     */
+    public static create(properties?: IDomainEntryMeta): DomainEntryMeta;
+
+    /**
+     * Encodes the specified DomainEntryMeta message. Does not implicitly {@link DomainEntryMeta.verify|verify} messages.
+     * @param message DomainEntryMeta message or plain object to encode
+     * @param [writer] Writer to encode to
+     * @returns Writer
+     */
+    public static encode(message: IDomainEntryMeta, writer?: $protobuf.Writer): $protobuf.Writer;
+
+    /**
+     * Encodes the specified DomainEntryMeta message, length delimited. Does not implicitly {@link DomainEntryMeta.verify|verify} messages.
+     * @param message DomainEntryMeta message or plain object to encode
+     * @param [writer] Writer to encode to
+     * @returns Writer
+     */
+    public static encodeDelimited(message: IDomainEntryMeta, writer?: $protobuf.Writer): $protobuf.Writer;
+
+    /**
+     * Decodes a DomainEntryMeta message from the specified reader or buffer.
+     * @param reader Reader or buffer to decode from
+     * @param [length] Message length if known beforehand
+     * @returns DomainEntryMeta
+     * @throws {Error} If the payload is not a reader or valid buffer
+     * @throws {$protobuf.util.ProtocolError} If required fields are missing
+     */
+    public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): DomainEntryMeta;
+
+    /**
+     * Decodes a DomainEntryMeta message from the specified reader or buffer, length delimited.
+     * @param reader Reader or buffer to decode from
+     * @returns DomainEntryMeta
+     * @throws {Error} If the payload is not a reader or valid buffer
+     * @throws {$protobuf.util.ProtocolError} If required fields are missing
+     */
+    public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): DomainEntryMeta;
+
+    /**
+     * Verifies a DomainEntryMeta message.
+     * @param message Plain object to verify
+     * @returns `null` if valid, otherwise the reason why it is not
+     */
+    public static verify(message: { [k: string]: any }): (string|null);
+
+    /**
+     * Creates a DomainEntryMeta message from a plain object. Also converts values to their respective internal types.
+     * @param object Plain object
+     * @returns DomainEntryMeta
+     */
+    public static fromObject(object: { [k: string]: any }): DomainEntryMeta;
+
+    /**
+     * Creates a plain object from a DomainEntryMeta message. Also converts values to other types if specified.
+     * @param message DomainEntryMeta
+     * @param [options] Conversion options
+     * @returns Plain object
+     */
+    public static toObject(message: DomainEntryMeta, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+    /**
+     * Converts this DomainEntryMeta to JSON.
+     * @returns JSON object
+     */
+    public toJSON(): { [k: string]: any };
+
+    /**
+     * Gets the default type url for DomainEntryMeta
+     * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+     * @returns The default type url
+     */
+    public static getTypeUrl(typeUrlPrefix?: string): string;
+}
+
 /** Properties of a CookiesMap. */
 export interface ICookiesMap {
 
@@ -392,6 +501,9 @@ export interface ICookiesMap {
 
     /** CookiesMap domainCookieMap */
     domainCookieMap?: ({ [k: string]: IDomainCookie }|null);
+
+    /** CookiesMap entryMetaMap */
+    entryMetaMap?: ({ [k: string]: IDomainEntryMeta }|null);
 }
 
 /** Represents a CookiesMap. */
@@ -411,6 +523,9 @@ export class CookiesMap implements ICookiesMap {
 
     /** CookiesMap domainCookieMap. */
     public domainCookieMap: { [k: string]: IDomainCookie };
+
+    /** CookiesMap entryMetaMap. */
+    public entryMetaMap: { [k: string]: IDomainEntryMeta };
 
     /**
      * Creates a new CookiesMap instance using the specified properties.

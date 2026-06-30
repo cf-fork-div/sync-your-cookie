@@ -1,5 +1,6 @@
 import { ICookie, ICookiesMap, ILocalStorageItem } from '@sync-your-cookie/protobuf';
 import { Cookie, cookieStorage } from '@sync-your-cookie/storage/lib/cookieStorage';
+import { accountProfileStorage, getActiveProfileDomainConfig } from '@sync-your-cookie/storage/lib/accountProfileStorage';
 import { domainStatusStorage } from '@sync-your-cookie/storage/lib/domainStatusStorage';
 
 import { AccountInfo, accountStorage } from '@sync-your-cookie/storage/lib/accountStorage';
@@ -14,6 +15,7 @@ import {
   removeAndWriteCookies,
 } from './withCloudflare';
 import { buildPullCookieSetDetails, cookieMatchesHost, setCookieInBrowser } from './setDetails';
+import { mergeEntryMetaIntoDomainConfig, mergeEntryMetaOnWrite } from '../domain/entryMetaSync';
 
 export const readCookiesMapWithStatus = async (cloudflareInfo: AccountInfo) => {
   let cookieMap: Cookie | null = null;
@@ -49,6 +51,12 @@ export const pullCookies = async (isInit = false): Promise<Cookie> => {
     });
     const cookieMap = await readCookiesMapWithStatus(cloudflareInfo);
     const res = await cookieStorage.update(cookieMap, isInit);
+    if (cookieMap.entryMetaMap && Object.keys(cookieMap.entryMetaMap).length > 0) {
+      await accountProfileStorage.ensureMigrated();
+      await accountProfileStorage.updateActiveProfileDomainConfig(current =>
+        mergeEntryMetaIntoDomainConfig(current, cookieMap.entryMetaMap),
+      );
+    }
     await domainStatusStorage.update({
       pulling: false,
     });
@@ -118,7 +126,10 @@ export type PushCookiesResponse = WriteResponse;
 
 const checkSuccessAndUpdate = async (res: WriteResponse, cookieMap: ICookiesMap) => {
   if (res.success) {
-    await cookieStorage.update(cookieMap);
+    await accountProfileStorage.ensureMigrated();
+    const domainConfig = getActiveProfileDomainConfig(await accountProfileStorage.get());
+    const withMeta = mergeEntryMetaOnWrite(cookieMap, cookieMap, domainConfig);
+    await cookieStorage.update(withMeta);
   }
 };
 

@@ -23,7 +23,10 @@ import { toast } from 'sonner';
 type DomainCookieData = NonNullable<ICookiesMap['domainCookieMap']>[string];
 
 type CookieDetailProps = {
-  domain: string;
+  storageKey: string;
+  host: string;
+  label?: string;
+  accountsOnHost?: number;
   data: DomainCookieData;
   search: string;
   canWrite: boolean;
@@ -287,7 +290,10 @@ function LocalStorageRow({
 }
 
 export function CookieDetail({
-  domain,
+  storageKey: _storageKey,
+  host,
+  label,
+  accountsOnHost = 1,
   data,
   search,
   canWrite,
@@ -300,6 +306,12 @@ export function CookieDetail({
 }: CookieDetailProps) {
   const { t } = useI18n();
   const [tab, setTab] = useState<ViewTab>('cookies');
+  const isMultiAccount = accountsOnHost > 1;
+  const deleteLabel = isMultiAccount ? t('deleteAccount') : t('deleteDomain');
+  const deleteTitle = isMultiAccount ? t('deleteAccount') : t('deleteDomain');
+  const deleteDescription = isMultiAccount
+    ? t('deleteAccountConfirm', { host, label: label || t('defaultAccount') })
+    : t('deleteDomainConfirm', { host });
 
   const cookies = useMemo(() => {
     const list = data.cookies || [];
@@ -316,7 +328,7 @@ export function CookieDetail({
   }, [data.localStorageItems, search]);
 
   const handleCopyAllHeader = async () => {
-    const text = formatCookieHeader(domain, data.cookies || []);
+    const text = formatCookieHeader(host, data.cookies || []);
     if (!text) {
       toast.warning(t('noCookiesToCopy'));
       return;
@@ -347,7 +359,8 @@ export function CookieDetail({
     <div className="rounded-lg border border-border bg-card overflow-hidden flex flex-col min-h-[60vh]">
       <div className="px-4 py-3 border-b border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="font-semibold text-base">{domain}</h2>
+          <h2 className="font-semibold text-base">{host}</h2>
+          {label && <p className="text-sm text-muted-foreground">{label}</p>}
           <p className="text-xs text-muted-foreground mt-0.5">
             {cookies.length} cookies
             {localStorageItems.length > 0 ? ` · ${localStorageItems.length} localStorage` : ''}
@@ -367,15 +380,15 @@ export function CookieDetail({
             <AlertDialogTrigger asChild>
               <Button variant="destructive" size="sm" disabled={saving}>
                 <Trash2 size={14} className="mr-1.5" />
-                {t('deleteDomain')}
+                {deleteLabel}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>删除整个域名</AlertDialogTitle>
+                <AlertDialogTitle>{deleteTitle}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  确定删除 <strong>{domain}</strong> 下的全部 Cookie 和 LocalStorage 吗？
-                  {canWrite ? t('deleteSyncToCloud') : t('deleteExportNoteShort')}
+                  {deleteDescription}
+                  {canWrite ? ` ${t('deleteSyncToCloud')}` : ` ${t('deleteExportNoteShort')}`}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

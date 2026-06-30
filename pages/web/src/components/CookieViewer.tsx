@@ -6,7 +6,13 @@ import { useSessionActions } from '@src/hooks/useSessionActions';
 
 import type { ViewerSession } from '@src/lib/types';
 
-import { useI18n } from '@sync-your-cookie/shared';
+import {
+  buildDomainEntryListFromCookieMap,
+  countUniqueHosts,
+  getAccountsCountForHost,
+  getDisplaySubtitle,
+  useI18n,
+} from '@sync-your-cookie/shared';
 
 import { Button, Input } from '@sync-your-cookie/ui';
 
@@ -25,7 +31,7 @@ type CookieViewerProps = {
 export function CookieViewer({ session, onSessionChange, onDisconnect }: CookieViewerProps) {
   const { t } = useI18n();
 
-  const [selectedDomain, setSelectedDomain] = useState('');
+  const [selectedStorageKey, setSelectedStorageKey] = useState('');
 
   const [search, setSearch] = useState('');
 
@@ -33,39 +39,38 @@ export function CookieViewer({ session, onSessionChange, onDisconnect }: CookieV
 
   const actions = useSessionActions({ session, onSessionChange });
 
-  const domains = useMemo(() => {
-    const entries = Object.entries(cookieMap.domainCookieMap || {}).map(([host, value]) => ({
-      host,
+  const defaultLabel = t('defaultAccount');
 
-      cookieCount: value.cookies?.length || 0,
+  const entries = useMemo(() => {
+    const rows = buildDomainEntryListFromCookieMap(cookieMap, defaultLabel);
 
-      localStorageCount: value.localStorageItems?.length || 0,
+    if (!search.trim()) {
+      return rows;
+    }
 
-      updateTime: value.updateTime || 0,
-    }));
+    const q = search.trim().toLowerCase();
 
-    return entries
+    return rows.filter(
+      item =>
+        item.host.toLowerCase().includes(q) ||
+        item.label.toLowerCase().includes(q) ||
+        item.storageKey.toLowerCase().includes(q),
+    );
+  }, [cookieMap, defaultLabel, search]);
 
-      .filter(item => {
-        if (!search.trim()) return true;
+  const activeStorageKey = selectedStorageKey || entries[0]?.storageKey || '';
 
-        const q = search.trim().toLowerCase();
+  const activeEntry = entries.find(item => item.storageKey === activeStorageKey);
 
-        return item.host.toLowerCase().includes(q);
-      })
-
-      .sort((a, b) => b.updateTime - a.updateTime);
-  }, [cookieMap, search]);
-
-  const activeDomain = selectedDomain || domains[0]?.host || '';
-
-  const activeData = activeDomain ? cookieMap.domainCookieMap?.[activeDomain] : undefined;
+  const activeData = activeStorageKey ? cookieMap.domainCookieMap?.[activeStorageKey] : undefined;
 
   useEffect(() => {
-    if (activeDomain && !cookieMap.domainCookieMap?.[activeDomain]) {
-      setSelectedDomain(domains[0]?.host || '');
+    if (activeStorageKey && !cookieMap.domainCookieMap?.[activeStorageKey]) {
+      setSelectedStorageKey(entries[0]?.storageKey || '');
     }
-  }, [activeDomain, cookieMap.domainCookieMap, domains]);
+  }, [activeStorageKey, cookieMap.domainCookieMap, entries]);
+
+  const hostCount = countUniqueHosts(entries);
 
   return (
     <div className="space-y-4">
@@ -94,7 +99,12 @@ export function CookieViewer({ session, onSessionChange, onDisconnect }: CookieV
         </div>
 
         <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
-          <span>{t('domainCount', { count: domains.length })}</span>
+          <span>{t('entryCount', { count: entries.length })}</span>
+          {hostCount !== entries.length && (
+            <span className="text-muted-foreground/80">
+              ({t('hostCount', { count: hostCount })})
+            </span>
+          )}
 
           {actions.saving && (
             <span className="inline-flex items-center gap-1 text-primary">
@@ -121,24 +131,32 @@ export function CookieViewer({ session, onSessionChange, onDisconnect }: CookieV
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4 min-h-[60vh]">
-        <DomainList domains={domains} selected={activeDomain} onSelect={setSelectedDomain} search={search} />
+        <DomainList
+          entries={entries}
+          selected={activeStorageKey}
+          onSelect={setSelectedStorageKey}
+          search={search}
+        />
 
-        {activeData ? (
+        {activeData && activeEntry ? (
           <CookieDetail
-            domain={activeDomain}
+            storageKey={activeStorageKey}
+            host={activeEntry.host}
+            label={getDisplaySubtitle(activeEntry, entries, defaultLabel)}
+            accountsOnHost={getAccountsCountForHost(entries, activeEntry.host)}
             data={activeData}
             search={search}
             canWrite={canWrite}
             saving={actions.saving}
-            onEditCookie={(oldItem, newItem) => actions.handleEditCookie(activeDomain, oldItem, newItem)}
-            onDeleteCookie={cookie => actions.handleDeleteCookie(activeDomain, cookie)}
-            onEditLocalStorage={(key, value) => actions.handleEditLocalStorage(activeDomain, key, value)}
-            onDeleteLocalStorage={key => actions.handleDeleteLocalStorage(activeDomain, key)}
-            onDeleteDomain={() => actions.handleDeleteDomain(activeDomain)}
+            onEditCookie={(oldItem, newItem) => actions.handleEditCookie(activeStorageKey, oldItem, newItem)}
+            onDeleteCookie={cookie => actions.handleDeleteCookie(activeStorageKey, cookie)}
+            onEditLocalStorage={(key, value) => actions.handleEditLocalStorage(activeStorageKey, key, value)}
+            onDeleteLocalStorage={key => actions.handleDeleteLocalStorage(activeStorageKey, key)}
+            onDeleteDomain={() => actions.handleDeleteDomain(activeStorageKey)}
           />
         ) : (
           <div className="rounded-lg border border-dashed border-border flex items-center justify-center p-6 text-center text-sm text-muted-foreground">
-            {domains.length === 0 && !search.trim() ? t('emptyCookieData') : t('noData')}
+            {entries.length === 0 && !search.trim() ? t('emptyCookieData') : t('noData')}
           </div>
         )}
       </div>

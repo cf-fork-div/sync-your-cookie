@@ -1,9 +1,11 @@
 import { accountStorage, type AccountInfo } from '@sync-your-cookie/storage/lib/accountStorage';
+import { accountProfileStorage, getActiveProfileDomainConfig } from '@sync-your-cookie/storage/lib/accountProfileStorage';
 import { settingsStorage } from '@sync-your-cookie/storage/lib/settingsStorage';
 
 import { readCloudflareKV, writeCloudflareKV, WriteResponse } from '../cloudflare/api';
 import { isServerSyncConfigured } from '../auth/accountAuth';
 import { readSyncKV, writeSyncKV } from '../sync/api';
+import { mergeEntryMetaOnWrite } from '../domain/entryMetaSync';
 
 import { MessageErrorCode } from '@lib/message';
 import {
@@ -114,15 +116,19 @@ export const readCookiesMap = async (accountInfo: AccountInfo): Promise<ICookies
   }
 };
 
-export const writeCookiesMap = async (accountInfo: AccountInfo, cookiesMap: ICookiesMap = {}) => {
+export const writeCookiesMap = async (accountInfo: AccountInfo, cookiesMap: ICookiesMap = {}, oldCookieMap: ICookiesMap = {}) => {
   const settingsInfo = settingsStorage.getSnapshot();
   const protobufEncoding = settingsInfo?.protobufEncoding;
   const encryptionEnabled = settingsInfo?.encryptionEnabled;
   const encryptionPassword = settingsInfo?.encryptionPassword;
 
+  await accountProfileStorage.ensureMigrated();
+  const domainConfig = getActiveProfileDomainConfig(await accountProfileStorage.get());
+  const cookiesMapWithMeta = mergeEntryMetaOnWrite(cookiesMap, oldCookieMap, domainConfig);
+
   let encodingStr = '';
   if (protobufEncoding) {
-    const buffered = await encodeCookiesMap(cookiesMap);
+    const buffered = await encodeCookiesMap(cookiesMapWithMeta);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     encodingStr = arrayBufferToBase64(buffered as any);
 
@@ -132,8 +138,8 @@ export const writeCookiesMap = async (accountInfo: AccountInfo, cookiesMap: ICoo
       console.log('writeCookiesMap-> data encrypted');
     }
   } else {
-    encodingStr = JSON.stringify(cookiesMap);
-    console.log('writeCookiesMap->', cookiesMap);
+    encodingStr = JSON.stringify(cookiesMapWithMeta);
+    console.log('writeCookiesMap->', cookiesMapWithMeta);
   }
 
   const res = await writeRemoteKv(accountInfo, encodingStr);
@@ -164,7 +170,7 @@ export const mergeAndWriteCookies = async (
     },
   };
 
-  const res = await writeCookiesMap(accountInfo, cookiesMap);
+  const res = await writeCookiesMap(accountInfo, cookiesMap, oldCookieMap);
   return [res, cookiesMap];
 };
 
@@ -193,7 +199,7 @@ export const mergeAndWriteMultipleDomainCookies = async (
     domainCookieMap: newDomainCookieMap,
   };
 
-  const res = await writeCookiesMap(cloudflareAccountInfo, cookiesMap);
+  const res = await writeCookiesMap(cloudflareAccountInfo, cookiesMap, oldCookieMap);
   return [res, cookiesMap];
 };
 
@@ -227,10 +233,13 @@ export const removeAndWriteCookies = async (
       }
     } else {
       delete cookiesMap.domainCookieMap[domain];
+      if (cookiesMap.entryMetaMap) {
+        delete cookiesMap.entryMetaMap[domain];
+      }
     }
   }
 
-  const res = await writeCookiesMap(cloudflareAccountInfo, cookiesMap);
+  const res = await writeCookiesMap(cloudflareAccountInfo, cookiesMap, oldCookieMap);
   return [res, cookiesMap];
 };
 
@@ -264,6 +273,6 @@ export const editAndWriteCookies = async (
     }
   }
 
-  const res = await writeCookiesMap(cloudflareAccountInfo, cookiesMap);
+  const res = await writeCookiesMap(cloudflareAccountInfo, cookiesMap, oldCookieMap);
   return [res, cookiesMap];
 };

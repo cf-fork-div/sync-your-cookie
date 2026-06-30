@@ -1036,6 +1036,256 @@ export const DomainCookie = $root.DomainCookie = (() => {
     return DomainCookie;
 })();
 
+export const DomainEntryMeta = $root.DomainEntryMeta = (() => {
+
+    /**
+     * Properties of a DomainEntryMeta.
+     * @exports IDomainEntryMeta
+     * @interface IDomainEntryMeta
+     * @property {string|null} [label] DomainEntryMeta label
+     * @property {string|null} [folder] DomainEntryMeta folder
+     * @property {string|null} [type] DomainEntryMeta type
+     */
+
+    /**
+     * Constructs a new DomainEntryMeta.
+     * @exports DomainEntryMeta
+     * @classdesc Synced display metadata for a domain entry (storage key).
+     * @implements IDomainEntryMeta
+     * @constructor
+     * @param {IDomainEntryMeta=} [properties] Properties to set
+     */
+    function DomainEntryMeta(properties) {
+        if (properties)
+            for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                if (properties[keys[i]] != null)
+                    this[keys[i]] = properties[keys[i]];
+    }
+
+    /**
+     * DomainEntryMeta label.
+     * @member {string} label
+     * @memberof DomainEntryMeta
+     * @instance
+     */
+    DomainEntryMeta.prototype.label = "";
+
+    /**
+     * DomainEntryMeta folder.
+     * @member {string} folder
+     * @memberof DomainEntryMeta
+     * @instance
+     */
+    DomainEntryMeta.prototype.folder = "";
+
+    /**
+     * DomainEntryMeta type.
+     * @member {string} type
+     * @memberof DomainEntryMeta
+     * @instance
+     */
+    DomainEntryMeta.prototype.type = "";
+
+    /**
+     * Creates a new DomainEntryMeta instance using the specified properties.
+     * @function create
+     * @memberof DomainEntryMeta
+     * @static
+     * @param {IDomainEntryMeta=} [properties] Properties to set
+     * @returns {DomainEntryMeta} DomainEntryMeta instance
+     */
+    DomainEntryMeta.create = function create(properties) {
+        return new DomainEntryMeta(properties);
+    };
+
+    /**
+     * Encodes the specified DomainEntryMeta message. Does not implicitly {@link DomainEntryMeta.verify|verify} messages.
+     * @function encode
+     * @memberof DomainEntryMeta
+     * @static
+     * @param {IDomainEntryMeta} message DomainEntryMeta message or plain object to encode
+     * @param {$protobuf.Writer} [writer] Writer to encode to
+     * @returns {$protobuf.Writer} Writer
+     */
+    DomainEntryMeta.encode = function encode(message, writer) {
+        if (!writer)
+            writer = $Writer.create();
+        if (message.label != null && Object.hasOwnProperty.call(message, "label"))
+            writer.uint32(/* id 1, wireType 2 =*/10).string(message.label);
+        if (message.folder != null && Object.hasOwnProperty.call(message, "folder"))
+            writer.uint32(/* id 2, wireType 2 =*/18).string(message.folder);
+        if (message.type != null && Object.hasOwnProperty.call(message, "type"))
+            writer.uint32(/* id 3, wireType 2 =*/26).string(message.type);
+        return writer;
+    };
+
+    /**
+     * Encodes the specified DomainEntryMeta message, length delimited. Does not implicitly {@link DomainEntryMeta.verify|verify} messages.
+     * @function encodeDelimited
+     * @memberof DomainEntryMeta
+     * @static
+     * @param {IDomainEntryMeta} message DomainEntryMeta message or plain object to encode
+     * @param {$protobuf.Writer} [writer] Writer to encode to
+     * @returns {$protobuf.Writer} Writer
+     */
+    DomainEntryMeta.encodeDelimited = function encodeDelimited(message, writer) {
+        return this.encode(message, writer).ldelim();
+    };
+
+    /**
+     * Decodes a DomainEntryMeta message from the specified reader or buffer.
+     * @function decode
+     * @memberof DomainEntryMeta
+     * @static
+     * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+     * @param {number} [length] Message length if known beforehand
+     * @returns {DomainEntryMeta} DomainEntryMeta
+     * @throws {Error} If the payload is not a reader or valid buffer
+     * @throws {$protobuf.util.ProtocolError} If required fields are missing
+     */
+    DomainEntryMeta.decode = function decode(reader, length) {
+        if (!(reader instanceof $Reader))
+            reader = $Reader.create(reader);
+        let end = length === undefined ? reader.len : reader.pos + length, message = new $root.DomainEntryMeta();
+        while (reader.pos < end) {
+            let tag = reader.uint32();
+            switch (tag >>> 3) {
+            case 1: {
+                    message.label = reader.string();
+                    break;
+                }
+            case 2: {
+                    message.folder = reader.string();
+                    break;
+                }
+            case 3: {
+                    message.type = reader.string();
+                    break;
+                }
+            default:
+                reader.skipType(tag & 7);
+                break;
+            }
+        }
+        return message;
+    };
+
+    /**
+     * Decodes a DomainEntryMeta message from the specified reader or buffer, length delimited.
+     * @function decodeDelimited
+     * @memberof DomainEntryMeta
+     * @static
+     * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+     * @returns {DomainEntryMeta} DomainEntryMeta
+     * @throws {Error} If the payload is not a reader or valid buffer
+     * @throws {$protobuf.util.ProtocolError} If required fields are missing
+     */
+    DomainEntryMeta.decodeDelimited = function decodeDelimited(reader) {
+        if (!(reader instanceof $Reader))
+            reader = new $Reader(reader);
+        return this.decode(reader, reader.uint32());
+    };
+
+    /**
+     * Verifies a DomainEntryMeta message.
+     * @function verify
+     * @memberof DomainEntryMeta
+     * @static
+     * @param {Object.<string,*>} message Plain object to verify
+     * @returns {string|null} `null` if valid, otherwise the reason why it is not
+     */
+    DomainEntryMeta.verify = function verify(message) {
+        if (typeof message !== "object" || message === null)
+            return "object expected";
+        if (message.label != null && message.hasOwnProperty("label"))
+            if (!$util.isString(message.label))
+                return "label: string expected";
+        if (message.folder != null && message.hasOwnProperty("folder"))
+            if (!$util.isString(message.folder))
+                return "folder: string expected";
+        if (message.type != null && message.hasOwnProperty("type"))
+            if (!$util.isString(message.type))
+                return "type: string expected";
+        return null;
+    };
+
+    /**
+     * Creates a DomainEntryMeta message from a plain object. Also converts values to their respective internal types.
+     * @function fromObject
+     * @memberof DomainEntryMeta
+     * @static
+     * @param {Object.<string,*>} object Plain object
+     * @returns {DomainEntryMeta} DomainEntryMeta
+     */
+    DomainEntryMeta.fromObject = function fromObject(object) {
+        if (object instanceof $root.DomainEntryMeta)
+            return object;
+        let message = new $root.DomainEntryMeta();
+        if (object.label != null)
+            message.label = String(object.label);
+        if (object.folder != null)
+            message.folder = String(object.folder);
+        if (object.type != null)
+            message.type = String(object.type);
+        return message;
+    };
+
+    /**
+     * Creates a plain object from a DomainEntryMeta message. Also converts values to other types if specified.
+     * @function toObject
+     * @memberof DomainEntryMeta
+     * @static
+     * @param {DomainEntryMeta} message DomainEntryMeta
+     * @param {$protobuf.IConversionOptions} [options] Conversion options
+     * @returns {Object.<string,*>} Plain object
+     */
+    DomainEntryMeta.toObject = function toObject(message, options) {
+        if (!options)
+            options = {};
+        let object = {};
+        if (options.defaults) {
+            object.label = "";
+            object.folder = "";
+            object.type = "";
+        }
+        if (message.label != null && message.hasOwnProperty("label"))
+            object.label = message.label;
+        if (message.folder != null && message.hasOwnProperty("folder"))
+            object.folder = message.folder;
+        if (message.type != null && message.hasOwnProperty("type"))
+            object.type = message.type;
+        return object;
+    };
+
+    /**
+     * Converts this DomainEntryMeta to JSON.
+     * @function toJSON
+     * @memberof DomainEntryMeta
+     * @instance
+     * @returns {Object.<string,*>} JSON object
+     */
+    DomainEntryMeta.prototype.toJSON = function toJSON() {
+        return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+    };
+
+    /**
+     * Gets the default type url for DomainEntryMeta
+     * @function getTypeUrl
+     * @memberof DomainEntryMeta
+     * @static
+     * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+     * @returns {string} The default type url
+     */
+    DomainEntryMeta.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+        if (typeUrlPrefix === undefined) {
+            typeUrlPrefix = "type.googleapis.com";
+        }
+        return typeUrlPrefix + "/DomainEntryMeta";
+    };
+
+    return DomainEntryMeta;
+})();
+
 export const CookiesMap = $root.CookiesMap = (() => {
 
     /**
@@ -1045,6 +1295,7 @@ export const CookiesMap = $root.CookiesMap = (() => {
      * @property {number|Long|null} [createTime] CookiesMap createTime
      * @property {number|Long|null} [updateTime] CookiesMap updateTime
      * @property {Object.<string,IDomainCookie>|null} [domainCookieMap] CookiesMap domainCookieMap
+     * @property {Object.<string,IDomainEntryMeta>|null} [entryMetaMap] CookiesMap entryMetaMap
      */
 
     /**
@@ -1057,6 +1308,7 @@ export const CookiesMap = $root.CookiesMap = (() => {
      */
     function CookiesMap(properties) {
         this.domainCookieMap = {};
+        this.entryMetaMap = {};
         if (properties)
             for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
                 if (properties[keys[i]] != null)
@@ -1086,6 +1338,14 @@ export const CookiesMap = $root.CookiesMap = (() => {
      * @instance
      */
     CookiesMap.prototype.domainCookieMap = $util.emptyObject;
+
+    /**
+     * CookiesMap entryMetaMap.
+     * @member {Object.<string,IDomainEntryMeta>} entryMetaMap
+     * @memberof CookiesMap
+     * @instance
+     */
+    CookiesMap.prototype.entryMetaMap = $util.emptyObject;
 
     /**
      * Creates a new CookiesMap instance using the specified properties.
@@ -1119,6 +1379,11 @@ export const CookiesMap = $root.CookiesMap = (() => {
             for (let keys = Object.keys(message.domainCookieMap), i = 0; i < keys.length; ++i) {
                 writer.uint32(/* id 5, wireType 2 =*/42).fork().uint32(/* id 1, wireType 2 =*/10).string(keys[i]);
                 $root.DomainCookie.encode(message.domainCookieMap[keys[i]], writer.uint32(/* id 2, wireType 2 =*/18).fork()).ldelim().ldelim();
+            }
+        if (message.entryMetaMap != null && Object.hasOwnProperty.call(message, "entryMetaMap"))
+            for (let keys = Object.keys(message.entryMetaMap), i = 0; i < keys.length; ++i) {
+                writer.uint32(/* id 6, wireType 2 =*/50).fork().uint32(/* id 1, wireType 2 =*/10).string(keys[i]);
+                $root.DomainEntryMeta.encode(message.entryMetaMap[keys[i]], writer.uint32(/* id 2, wireType 2 =*/18).fork()).ldelim().ldelim();
             }
         return writer;
     };
@@ -1185,6 +1450,29 @@ export const CookiesMap = $root.CookiesMap = (() => {
                     message.domainCookieMap[key] = value;
                     break;
                 }
+            case 6: {
+                    if (message.entryMetaMap === $util.emptyObject)
+                        message.entryMetaMap = {};
+                    let end2 = reader.uint32() + reader.pos;
+                    key = "";
+                    value = null;
+                    while (reader.pos < end2) {
+                        let tag2 = reader.uint32();
+                        switch (tag2 >>> 3) {
+                        case 1:
+                            key = reader.string();
+                            break;
+                        case 2:
+                            value = $root.DomainEntryMeta.decode(reader, reader.uint32());
+                            break;
+                        default:
+                            reader.skipType(tag2 & 7);
+                            break;
+                        }
+                    }
+                    message.entryMetaMap[key] = value;
+                    break;
+                }
             default:
                 reader.skipType(tag & 7);
                 break;
@@ -1236,6 +1524,16 @@ export const CookiesMap = $root.CookiesMap = (() => {
                     return "domainCookieMap." + error;
             }
         }
+        if (message.entryMetaMap != null && message.hasOwnProperty("entryMetaMap")) {
+            if (!$util.isObject(message.entryMetaMap))
+                return "entryMetaMap: object expected";
+            let key = Object.keys(message.entryMetaMap);
+            for (let i = 0; i < key.length; ++i) {
+                let error = $root.DomainEntryMeta.verify(message.entryMetaMap[key[i]]);
+                if (error)
+                    return "entryMetaMap." + error;
+            }
+        }
         return null;
     };
 
@@ -1279,6 +1577,16 @@ export const CookiesMap = $root.CookiesMap = (() => {
                 message.domainCookieMap[keys[i]] = $root.DomainCookie.fromObject(object.domainCookieMap[keys[i]]);
             }
         }
+        if (object.entryMetaMap) {
+            if (typeof object.entryMetaMap !== "object")
+                throw TypeError(".CookiesMap.entryMetaMap: object expected");
+            message.entryMetaMap = {};
+            for (let keys = Object.keys(object.entryMetaMap), i = 0; i < keys.length; ++i) {
+                if (typeof object.entryMetaMap[keys[i]] !== "object")
+                    throw TypeError(".CookiesMap.entryMetaMap: object expected");
+                message.entryMetaMap[keys[i]] = $root.DomainEntryMeta.fromObject(object.entryMetaMap[keys[i]]);
+            }
+        }
         return message;
     };
 
@@ -1295,8 +1603,10 @@ export const CookiesMap = $root.CookiesMap = (() => {
         if (!options)
             options = {};
         let object = {};
-        if (options.objects || options.defaults)
+        if (options.objects || options.defaults) {
             object.domainCookieMap = {};
+            object.entryMetaMap = {};
+        }
         if (options.defaults) {
             if ($util.Long) {
                 let long = new $util.Long(0, 0, false);
@@ -1324,6 +1634,11 @@ export const CookiesMap = $root.CookiesMap = (() => {
             object.domainCookieMap = {};
             for (let j = 0; j < keys2.length; ++j)
                 object.domainCookieMap[keys2[j]] = $root.DomainCookie.toObject(message.domainCookieMap[keys2[j]], options);
+        }
+        if (message.entryMetaMap && (keys2 = Object.keys(message.entryMetaMap)).length) {
+            object.entryMetaMap = {};
+            for (let j = 0; j < keys2.length; ++j)
+                object.entryMetaMap[keys2[j]] = $root.DomainEntryMeta.toObject(message.entryMetaMap[keys2[j]], options);
         }
         return object;
     };

@@ -27,8 +27,16 @@ message DomainCookie {
   string userAgent = 7;
 }
 
+/** Synced display metadata for a domain entry (storage key). */
+message DomainEntryMeta {
+  string label = 1;
+  string folder = 2;
+  string type = 3;
+}
+
 message CookiesMap {
   int64 createTime = 1;
   int64 updateTime = 2;
   map<string, DomainCookie> domainCookieMap = 5;
+  map<string, DomainEntryMeta> entryMetaMap = 6;
 }
