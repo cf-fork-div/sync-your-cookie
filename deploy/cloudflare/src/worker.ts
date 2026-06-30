@@ -7,7 +7,6 @@ import { isCfApiPath } from './lib/env';
 import { applyMiddleware, assetPathForRequest } from './middleware';
 
 export interface Env extends WorkerEnv {
-  COOKIES: KVNamespace;
   ASSETS: Fetcher;
 }
 

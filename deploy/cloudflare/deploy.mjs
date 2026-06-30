@@ -157,13 +157,6 @@ function saveState(state) {
   writeFileSync(STATE_FILE, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
 }
 
-function updateWranglerKvId(namespaceId) {
-  let toml = readFileSync(WRANGLER_TOML, 'utf8');
-  toml = toml.replace(/^id = ".*"$/m, `id = "${namespaceId}"`);
-  toml = toml.replace(/^preview_id = ".*"$/m, `preview_id = "${namespaceId}"`);
-  writeFileSync(WRANGLER_TOML, toml, 'utf8');
-}
-
 function updateWranglerBasePath(basePath) {
   let toml = readFileSync(WRANGLER_TOML, 'utf8');
   const line = `WEB_BASE_PATH = "${basePath.replace(/"/g, '\\"')}"`;
@@ -214,7 +207,6 @@ async function ensureKvNamespace(env, accountId) {
   const state = loadState();
   if (state.namespaceId && state.namespaceName === KV_NAMESPACE_NAME) {
     log(`复用已有 KV 命名空间: ${state.namespaceId}`);
-    updateWranglerKvId(state.namespaceId);
     return state.namespaceId;
   }
 
@@ -233,7 +225,6 @@ async function ensureKvNamespace(env, accountId) {
     if (existing?.id) {
       log(`找到已有 KV 命名空间: ${existing.id}`);
       saveState({ namespaceId: existing.id, namespaceName: KV_NAMESPACE_NAME, accountId });
-      updateWranglerKvId(existing.id);
       return existing.id;
     }
   } else {
@@ -241,7 +232,6 @@ async function ensureKvNamespace(env, accountId) {
     if (existing?.id) {
       log(`找到已有 KV 命名空间: ${existing.id}`);
       saveState({ namespaceId: existing.id, namespaceName: KV_NAMESPACE_NAME, accountId });
-      updateWranglerKvId(existing.id);
       return existing.id;
     }
   }
@@ -255,7 +245,6 @@ async function ensureKvNamespace(env, accountId) {
   }
 
   saveState({ namespaceId, namespaceName: KV_NAMESPACE_NAME, accountId });
-  updateWranglerKvId(namespaceId);
   return namespaceId;
 }
 
@@ -313,10 +302,8 @@ function deployWorker() {
   if (out) {
     process.stdout.write(out);
   }
-  const urlMatch =
-    out.match(/https:\/\/[^\s]+\.workers\.dev[^\s]*/) ??
-    out.match(/Published sync-your-cookie-web[^\n]*\n[^\n]*(https:\/\/[^\s]+)/);
-  return urlMatch?.[0] ?? `https://${WORKER_NAME}.${process.env.CF_ACCOUNT_SUBDOMAIN ?? 'workers'}.dev`;
+  const urlMatch = out.match(/https:\/\/[^\s]+\.workers\.dev[^\s]*/);
+  return urlMatch?.[0] ?? `https://${WORKER_NAME}.workers.dev`;
 }
 
 function maskToken(token) {
@@ -359,7 +346,7 @@ function printSummary({ accountId, namespaceId, basePath, workerUrl, env }) {
     console.log('  请在 Dashboard 设置 WEB_ACCESS_PASSWORD 后再访问 Web Viewer\n');
   }
   console.log('自动化项:');
-  console.log('  ✓ KV 命名空间创建/复用');
+  console.log('  ✓ KV 命名空间创建/复用（扩展凭据，不绑定 Worker）');
   console.log('  ✓ Worker 部署 + 运行时认证 + /cf-api 反向代理');
   console.log('  ✓ Account ID / Namespace ID 输出');
   console.log('\n需手动完成:');

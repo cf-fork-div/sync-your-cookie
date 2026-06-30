@@ -1,6 +1,6 @@
 # Cloudflare 部署指南
 
-将 **Web Viewer**（`pages/web`）部署到 **Cloudflare Worker**（静态资源 + 运行时 API），并（可选）自动创建用于扩展同步 Cookie 的 **KV 命名空间**。
+将 **Web Viewer**（`pages/web`）部署到 **Cloudflare Worker**（静态资源 + 运行时 API）。扩展同步 Cookie 使用的 **KV 命名空间**与 Worker 部署相互独立：Worker **不绑定** KV，扩展直连 Cloudflare REST API；一键部署脚本仍会创建/复用 KV 并输出扩展凭据。
 
 > **仅使用扩展？** 同步 Cookie 只需安装扩展并在 Options 填入 KV 凭据（见 [how-to-use.md](../how-to-use.md)），**不必**部署 Web Viewer。本文档面向需要浏览器端管理界面的用户。
 
@@ -40,7 +40,7 @@ pnpm deploy:cloudflare
 
 | 项目 | 自动化 |
 |------|--------|
-| KV 命名空间创建/复用 | ✅ |
+| KV 命名空间创建/复用（扩展用，不写入 Worker 绑定） | ✅ |
 | Worker 静态资源 + API 路由部署 | ✅ |
 | Account ID / Namespace ID 输出 | ✅ |
 | WEB_ACCESS_PASSWORD | ⚠️ Dashboard 手动设置，或 `DEPLOY_RUNTIME_SECRETS=1` |
@@ -62,7 +62,7 @@ pnpm deploy:cloudflare
 | Root directory | `/`（仓库根目录） |
 | Node.js version | `20` 或更高 |
 
-`build:cloudflare-worker` 会构建 Web Viewer（`base=/`）到 `dist/web`，由 Worker `[assets]` 绑定提供静态文件；`deploy/cloudflare/src/worker.ts` 处理 `/api/*`、`/cf-api/*` 与路径中间件。
+`build:cloudflare-worker` 会构建 Web Viewer（`base=/`）到 `dist/web`，由 Worker `[assets]` 绑定提供静态文件；`deploy/cloudflare/src/worker.ts` 处理 `/api/*`、`/cf-api/*` 与路径中间件。**无需**在 `wrangler.toml` 中配置 KV 绑定。
 
 ### Git 部署的限制（与一键部署对比）
 
@@ -84,7 +84,7 @@ pnpm deploy:cloudflare
    - Variable：`WEB_BASE_PATH`（默认 `my-cookie-vault`）
 4. 将 Account ID / Namespace ID / API Token 填入扩展 Options
 
-> Web Viewer 通过 `/cf-api` 代理访问 Cloudflare REST API，**不依赖** Worker 绑定 KV；扩展本身直连 `api.cloudflare.com`，因此 Git 部署不会自动创建 KV 不影响 Web Viewer，但扩展仍需手动配置 KV 凭据。
+> Web Viewer 通过 `/cf-api` 代理访问 Cloudflare REST API，**不依赖** Worker 绑定 KV；扩展本身直连 `api.cloudflare.com`。Git 部署不会自动创建 KV，需在 Dashboard 手动创建并填入扩展 Options，与 Worker 是否绑定 KV 无关。
 
 ## 运行时配置（无需重新构建）
 
@@ -224,7 +224,7 @@ pnpm deploy:cloudflare -- --dry-run
 
 ```
 deploy/cloudflare/
-  wrangler.toml              # Worker + [assets] + [vars] WEB_BASE_PATH
+  wrangler.toml              # Worker + [assets] + [vars] WEB_BASE_PATH（无 KV 绑定）
   deploy.mjs                 # 一键部署脚本
   build-worker.mjs           # Git Worker 构建脚本
   src/
