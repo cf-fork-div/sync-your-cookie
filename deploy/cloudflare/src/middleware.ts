@@ -3,7 +3,6 @@ import {
   getWebBasePathSegment,
   isApiPath,
   isCfApiPath,
-  isStaticAssetPath,
   stripBasePathPrefix,
   type WorkerEnv,
 } from './lib/env';
@@ -67,12 +66,11 @@ export async function applyMiddleware(request: Request, env: WorkerEnv): Promise
   return { pathname };
 }
 
+/** Map viewer paths to ASSETS fetch paths without triggering html_handling redirect loops. */
 export function assetPathForRequest(pathname: string): string {
-  if (pathname === '/' || pathname === '/index.html') {
-    return '/index.html';
-  }
-  if (isStaticAssetPath(pathname)) {
-    return pathname;
+  // Cloudflare assets redirect /index.html → / (307). Never fetch /index.html from the worker.
+  if (pathname === '/index.html') {
+    return '/';
   }
   return pathname;
 }
