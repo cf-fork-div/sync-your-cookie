@@ -7,6 +7,7 @@ import { AccountInfo, accountStorage } from '@sync-your-cookie/storage/lib/accou
 
 import { trySetLocalStorageForHost } from '@lib/message';
 import { getHostFromStorageKey } from '../domain/entryKey';
+import { formatSyncVerifyErrorMessage } from '../sync/api';
 import { WriteResponse } from '../cloudflare';
 import {
   editAndWriteCookies,
@@ -64,7 +65,7 @@ export const pullCookies = async (isInit = false): Promise<Cookie> => {
     });
     return res;
   } catch (e) {
-    console.error('pullCookies fail', e);
+    console.error('pullCookies fail', formatSyncVerifyErrorMessage(e), e);
     await domainStatusStorage.update({
       pulling: false,
     });

@@ -1,7 +1,7 @@
 import { accountProfileStorage, getActiveProfile } from '@sync-your-cookie/storage/lib/accountProfileStorage';
 import { domainStatusStorage } from '@sync-your-cookie/storage/lib/domainStatusStorage';
 import { pullCookies } from '../cookie/withStorage';
-import { normalizeServerUrl, verifySyncServer } from '../sync/api';
+import { normalizeServerUrl, verifySyncServer, applyServerStorageKey } from '../sync/api';
 import { useCallback, useMemo, useState } from 'react';
 import { isAccountConfigured } from '../auth/accountAuth';
 import { useStorageSuspense } from './useStorageSuspense';
@@ -28,15 +28,18 @@ export const useAccountAuth = () => {
     }
     setLoggingIn(true);
     try {
-      await verifySyncServer(serverUrl, authPassword);
+      const status = await verifySyncServer(serverUrl, authPassword);
+      const serverStorageKey = status.storageKey || 'sync-your-cookie';
       await accountProfileStorage.updateActiveProfile({
         name: form.profileName?.trim() || activeProfile?.name,
         serverUrl,
         authPassword,
+        defaultStorageKey: serverStorageKey,
         accountId: undefined,
         namespaceId: undefined,
         token: undefined,
       });
+      await applyServerStorageKey(serverStorageKey);
       await pullCookies();
     } finally {
       setLoggingIn(false);
@@ -51,11 +54,13 @@ export const useAccountAuth = () => {
     }
     setRefreshing(true);
     try {
-      await verifySyncServer(serverUrl, authPassword);
+      const status = await verifySyncServer(serverUrl, authPassword);
+      const serverStorageKey = status.storageKey || 'sync-your-cookie';
+      await applyServerStorageKey(serverStorageKey);
       await domainStatusStorage.resetState();
       await pullCookies();
-      if (activeProfile?.serverUrl !== serverUrl) {
-        await accountProfileStorage.updateActiveProfile({ serverUrl });
+      if (activeProfile?.serverUrl !== serverUrl || activeProfile?.defaultStorageKey !== serverStorageKey) {
+        await accountProfileStorage.updateActiveProfile({ serverUrl, defaultStorageKey: serverStorageKey });
       }
     } finally {
       setRefreshing(false);

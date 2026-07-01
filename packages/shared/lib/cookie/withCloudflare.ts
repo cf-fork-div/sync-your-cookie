@@ -4,7 +4,7 @@ import { settingsStorage } from '@sync-your-cookie/storage/lib/settingsStorage';
 
 import { readCloudflareKV, writeCloudflareKV, WriteResponse } from '../cloudflare/api';
 import { isServerSyncConfigured } from '../auth/accountAuth';
-import { readSyncKV, writeSyncKV } from '../sync/api';
+import { readSyncKV, SyncPullError, writeSyncKV } from '../sync/api';
 import { mergeEntryMetaOnWrite } from '../domain/entryMetaSync';
 
 import { MessageErrorCode } from '@lib/message';
@@ -26,10 +26,10 @@ export const check = (accountInfo?: AccountInfo) => {
   const info = accountInfo || accountStorage.getSnapshot();
   if (isServerSyncConfigured(info)) {
     if (!info?.serverUrl?.trim()) {
-      return Promise.reject({ message: 'Server URL is empty', code: MessageErrorCode.AccountCheck });
+      throw new SyncPullError(MessageErrorCode.AccountCheck, 'Server URL is empty');
     }
     if (!info?.authPassword?.trim()) {
-      return Promise.reject({ message: 'Auth password is empty', code: MessageErrorCode.AccountCheck });
+      throw new SyncPullError(MessageErrorCode.AccountCheck, 'Auth password is empty');
     }
     return info;
   }
@@ -42,10 +42,7 @@ export const check = (accountInfo?: AccountInfo) => {
       message = 'Token is empty';
     }
 
-    return Promise.reject({
-      message,
-      code: MessageErrorCode.AccountCheck,
-    });
+    throw new SyncPullError(MessageErrorCode.AccountCheck, message);
   }
   return cloudflareAccountInfo;
 };
@@ -80,19 +77,19 @@ export const readCookiesMap = async (accountInfo: AccountInfo): Promise<ICookies
 
       if (protobufEncoding && isBase64Encrypted(content)) {
         if (!encryptionEnabled || !encryptionPassword) {
-          return Promise.reject({
-            message: 'Failed to decrypt data. Please check your encryption password.',
-            code: MessageErrorCode.DecryptFailed,
-          });
+          throw new SyncPullError(
+            MessageErrorCode.DecryptFailed,
+            'Failed to decrypt data. Please check your encryption password in extension settings.',
+          );
         }
         try {
           processedContent = await decryptBase64(content, encryptionPassword);
         } catch (decryptError) {
           console.error('Decryption failed:', decryptError);
-          return Promise.reject({
-            message: 'Failed to decrypt data. Please check your encryption password.',
-            code: MessageErrorCode.DecryptFailed,
-          });
+          throw new SyncPullError(
+            MessageErrorCode.DecryptFailed,
+            'Failed to decrypt data. Please check your encryption password in extension settings.',
+          );
         }
       }
 
@@ -106,11 +103,14 @@ export const readCookiesMap = async (accountInfo: AccountInfo): Promise<ICookies
         return JSON.parse(processedContent);
       }
     } catch (error) {
+      if (error instanceof SyncPullError) {
+        throw error;
+      }
       devLog('Decode error', error);
-      return Promise.reject({
-        message: `Decode error: ${error}, please check your save settings`,
-        code: MessageErrorCode.DecodeFailed,
-      });
+      throw new SyncPullError(
+        MessageErrorCode.DecodeFailed,
+        `Decode error: ${error instanceof Error ? error.message : String(error)}. Please check your save settings.`,
+      );
     }
   } else {
     return {};

@@ -18,6 +18,21 @@ export function resolveSyncVerifyToast<K extends string>(
   if (code === 'password_not_configured') {
     return { variant: 'error', message: t('accessPasswordNotConfigured' as K) };
   }
+  if (code === 'storage_key_not_allowed') {
+    return { variant: 'error', message: t('storageKeyNotAllowed' as K) };
+  }
+  if (code === 'DecryptFailed') {
+    return { variant: 'error', message: t('decryptFailed' as K) };
+  }
+  if (code === 'DecodeFailed') {
+    return { variant: 'error', message: t('decodeFailed' as K) };
+  }
+  if (code === 'network_error') {
+    return {
+      variant: 'error',
+      message: t('syncFailed' as K, { message: formatSyncVerifyErrorMessage(err) }),
+    };
+  }
   if (code === 'rate_limited') {
     return {
       variant: 'error',
@@ -27,6 +42,6 @@ export function resolveSyncVerifyToast<K extends string>(
 
   return {
     variant: 'error',
-    message: t('verifyFailed' as K, { message: formatSyncVerifyErrorMessage(err) }),
+    message: t('syncFailed' as K, { message: formatSyncVerifyErrorMessage(err) }),
   };
 }

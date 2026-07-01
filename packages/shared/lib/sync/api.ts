@@ -1,3 +1,5 @@
+import { accountProfileStorage, getActiveProfile } from '@sync-your-cookie/storage/lib/accountProfileStorage';
+import { defaultKey } from '@sync-your-cookie/storage/lib/settingsTypes';
 import { settingsStorage } from '@sync-your-cookie/storage/lib/settingsStorage';
 
 export interface SyncApiError {
@@ -33,12 +35,34 @@ export class SyncVerifyError extends Error {
   }
 }
 
+export class SyncPullError extends Error {
+  readonly code: string;
+  readonly status?: number;
+
+  constructor(code: string, message: string, status?: number) {
+    super(message);
+    this.name = 'SyncPullError';
+    this.code = code;
+    this.status = status;
+  }
+}
+
+function isSyncErrorRecord(value: unknown): value is { message?: string; code?: string } {
+  return isRecord(value);
+}
+
 export function getSyncVerifyErrorCode(err: unknown): string {
   if (err instanceof SyncVerifyError) {
     return err.message;
   }
+  if (err instanceof SyncPullError) {
+    return err.code;
+  }
   if (err instanceof Error && err.message) {
     return err.message;
+  }
+  if (isSyncErrorRecord(err) && typeof err.code === 'string' && err.code) {
+    return err.code;
   }
   return 'verify_failed';
 }
@@ -56,10 +80,49 @@ export function formatSyncVerifyErrorMessage(err: unknown): string {
     }
     return parts.join(' · ');
   }
+  if (err instanceof SyncPullError) {
+    const parts = [err.message];
+    if (err.status !== undefined) {
+      parts.push(`HTTP ${err.status}`);
+    }
+    return parts.join(' · ');
+  }
   if (err instanceof Error && err.message) {
     return err.message;
   }
+  if (isSyncErrorRecord(err)) {
+    if (typeof err.message === 'string' && err.message) {
+      return err.message;
+    }
+    if (typeof err.code === 'string' && err.code) {
+      return err.code;
+    }
+  }
   return 'verify_failed';
+}
+
+/** @deprecated Use formatSyncVerifyErrorMessage — kept for callers that already import this name. */
+export const formatSyncError = formatSyncVerifyErrorMessage;
+
+export function resolveSyncStorageKey(override?: string): string {
+  if (override?.trim()) {
+    return override.trim();
+  }
+  const profile = getActiveProfile(accountProfileStorage.getSnapshot());
+  if (profile?.defaultStorageKey?.trim()) {
+    return profile.defaultStorageKey.trim();
+  }
+  return settingsStorage.getSnapshot()?.storageKey?.trim() || defaultKey;
+}
+
+export async function applyServerStorageKey(storageKey: string): Promise<void> {
+  const key = storageKey.trim() || defaultKey;
+  await accountProfileStorage.updateActiveProfile({ defaultStorageKey: key });
+  await settingsStorage.addStorageKey(key);
+  const current = settingsStorage.getSnapshot()?.storageKey;
+  if (current !== key) {
+    await settingsStorage.update({ storageKey: key });
+  }
 }
 
 export function normalizeServerUrl(url: string): string {
@@ -67,11 +130,30 @@ export function normalizeServerUrl(url: string): string {
 }
 
 function assertAllowedStorageKey(storageKey: string): void {
+  const profile = getActiveProfile(accountProfileStorage.getSnapshot());
+  if (profile?.defaultStorageKey === storageKey) {
+    return;
+  }
   const settings = settingsStorage.getSnapshot();
   const allowed = settings?.storageKeyList?.map(item => item.value) ?? [];
   if (!allowed.includes(storageKey)) {
-    throw new Error('storage_key_not_allowed');
+    throw new SyncPullError(
+      'storage_key_not_allowed',
+      'Storage key is not allowed in extension settings. Try signing in again to sync the server key.',
+    );
   }
+}
+
+async function readJsonErrorBody(res: Response): Promise<SyncApiError | null> {
+  try {
+    return (await res.json()) as SyncApiError;
+  } catch {
+    return null;
+  }
+}
+
+function pullHttpError(code: string, message: string, status: number): SyncPullError {
+  return new SyncPullError(code, message, status);
 }
 
 function authHeaders(password: string): HeadersInit {
@@ -213,34 +295,54 @@ export async function verifySyncServer(serverUrl: string, password: string): Pro
 
 export async function readSyncKV(serverUrl: string, password: string, storageKey?: string): Promise<string> {
   const base = normalizeServerUrl(serverUrl);
-  const key = storageKey || settingsStorage.getSnapshot()?.storageKey || 'sync-your-cookie';
+  const key = resolveSyncStorageKey(storageKey);
   assertAllowedStorageKey(key);
   const url = new URL(`${base}/api/sync/kv`);
   url.searchParams.set('storageKey', key);
 
-  const res = await fetch(url.toString(), {
-    method: 'GET',
-    headers: authHeaders(password),
-  });
+  let res: Response;
+  try {
+    res = await fetch(url.toString(), {
+      method: 'GET',
+      headers: authHeaders(password),
+    });
+  } catch (err) {
+    throw new SyncPullError('network_error', err instanceof Error ? err.message : String(err));
+  }
 
   if (res.status === 401) {
-    return Promise.reject({ message: 'Unauthorized', code: 'unauthorized' });
+    throw pullHttpError('wrong_password', 'Unauthorized', 401);
   }
   if (res.status === 404) {
     return '';
   }
+  if (res.status === 403) {
+    const data = await readJsonErrorBody(res);
+    throw pullHttpError(
+      data?.error || 'storage_key_not_allowed',
+      data?.message || 'Storage key is not allowed by the server.',
+      403,
+    );
+  }
   if (res.status === 503) {
-    const data = (await res.json().catch(() => null)) as SyncApiError | null;
+    const data = await readJsonErrorBody(res);
     if (data?.error === 'datasource_not_configured') {
-      return Promise.reject({
-        message: 'Server data source is not configured. Ask admin to set up Cloudflare KV on the web console.',
-        code: 'datasource_not_configured',
-      });
+      throw pullHttpError(
+        'datasource_not_configured',
+        'Server data source is not configured. Ask admin to set up Cloudflare KV on the web console.',
+        503,
+      );
     }
+    throw pullHttpError(
+      data?.error || 'service_unavailable',
+      data?.message || 'Sync service is unavailable.',
+      503,
+    );
   }
   if (!res.ok) {
-    const text = await res.text();
-    return Promise.reject({ message: text || `Read failed (${res.status})` });
+    const data = await readJsonErrorBody(res);
+    const message = data?.message || data?.error || `Read failed (${res.status})`;
+    throw pullHttpError(data?.error || `http_${res.status}`, message, res.status);
   }
   const text = await res.text();
   return text.trim();
@@ -253,7 +355,7 @@ export async function writeSyncKV(
   storageKey?: string,
 ): Promise<{ success: boolean; errors: { code: number; message: string }[] }> {
   const base = normalizeServerUrl(serverUrl);
-  const key = storageKey || settingsStorage.getSnapshot()?.storageKey || 'sync-your-cookie';
+  const key = resolveSyncStorageKey(storageKey);
   assertAllowedStorageKey(key);
   const url = new URL(`${base}/api/sync/kv`);
   url.searchParams.set('storageKey', key);
