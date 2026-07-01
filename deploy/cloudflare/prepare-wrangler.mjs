@@ -5,6 +5,7 @@
  *
  * Usage:
  *   node deploy/cloudflare/prepare-wrangler.mjs
+ *   node deploy/cloudflare/prepare-wrangler.mjs --deploy   # Git CI: prepare + wrangler deploy
  *   pnpm prepare:cloudflare-worker
  *
  * Optional env:
@@ -14,6 +15,7 @@
  *   WEB_BASE_PATH — optional runtime path segment written to wrangler.toml [vars]
  *   CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID — same as deploy.mjs
  */
+import { execSync } from 'node:child_process';
 import {
   DEPLOY_DIR,
   fail,
@@ -24,9 +26,21 @@ import {
   runWranglerCapture,
   seedDatasourceConfigIfNeeded,
   updateWranglerBasePath,
+  wranglerCmd,
 } from './lib/deploy-shared.mjs';
 
 const dryRun = process.argv.includes('--dry-run');
+const shouldDeploy = process.argv.includes('--deploy');
+
+function deployWorker() {
+  const wrangler = wranglerCmd();
+  const cmd =
+    process.platform === 'win32'
+      ? `"${wrangler}" deploy --config wrangler.toml`
+      : `${wrangler} deploy --config wrangler.toml`;
+  log('执行 wrangler deploy（cwd: deploy/cloudflare）...');
+  execSync(cmd, { cwd: DEPLOY_DIR, stdio: 'inherit', env: process.env });
+}
 
 async function main() {
   const env = mergeEnv();
@@ -53,9 +67,16 @@ async function main() {
 
   if (dryRun) {
     log('dry-run: 完成（未写入 wrangler.toml）');
-  } else {
-    log('完成。Git CI 请执行: node deploy/cloudflare/deploy-ci.mjs');
+    return;
   }
+
+  if (shouldDeploy) {
+    deployWorker();
+    log('Worker 部署完成');
+    return;
+  }
+
+  log('完成。Git CI Deploy command: node deploy/cloudflare/prepare-wrangler.mjs --deploy');
 }
 
 main().catch(err => {
