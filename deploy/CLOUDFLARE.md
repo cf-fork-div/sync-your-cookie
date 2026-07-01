@@ -2,11 +2,17 @@
 
 ## 是什么
 
-将 **Web 管理端**与 **Cookie 同步 API** 部署到 Cloudflare Worker。连接 Git 后 push 即自动构建部署；Worker 元数据（含 datasource 配置）存在 **SYNC_KV** 命名空间，Cookie 数据存在 Connect 表单指定的 KV 命名空间。
+**Sync Your Cookie** 通过自建的 **Cloudflare Worker + KV** 后端，配合 **Web 管理端**与**浏览器扩展**，在多台设备、多个浏览器之间同步 Cookie 与 LocalStorage。
 
-**扩展 v1.7.x** 仅支持 **Worker URL + 访问密码**，不再在选项页填写 Cloudflare Account ID / Namespace / Token。KV 凭据在 Web 管理端 **Connect 表单**配置一次即可。
+**解决什么痛点**
 
-> 使用场景、Push/Pull、切换并拉取等说明见 [how-to-use.md](../how-to-use.md)。
+- **多设备 / 多浏览器**登录态不一致，换机或换浏览器就要重新登录
+- **数据自主**：不依赖第三方 Cookie 同步服务，Cookie 存在你自己 Cloudflare 账号下的 Worker + KV
+- **扩展配置简单**（v1.7.x）：只需 **Worker URL + 访问密码**，不必在插件里填 Account ID / Namespace / Token；KV 凭据在 Web 管理端 Connect 表单配置一次即可
+- **运维轻量**：Git 连接后 **push 即自动构建部署**
+- **同步可控**：支持同站多账号、手动 Push / Pull；多账号推荐 **切换并拉取**（见 [how-to-use.md](../how-to-use.md#使用场景与推荐配置)）
+
+下文为 Worker 部署 checklist。
 
 ## 前置条件
 
