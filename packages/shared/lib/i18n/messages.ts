@@ -310,6 +310,11 @@ const enMessages = {
   viewEditCookies: 'View/Edit Cookies',
   cookiesCount: '{{count}} cookies',
   noCookiesForHost: 'No cookies for this site',
+  savedSites: 'Saved sites',
+  noSavedSites: 'No synced sites yet. Push cookies from the current tab to get started.',
+  currentTab: 'Current tab',
+  searchSites: 'Search sites...',
+  openSite: 'Open site',
 } as const;
 
 const zhCNMessages: Record<MessageKey, string> = {
@@ -603,6 +608,11 @@ const zhCNMessages: Record<MessageKey, string> = {
   viewEditCookies: '查看编辑 Cookie',
   cookiesCount: '{{count}} 个 Cookie',
   noCookiesForHost: '该站点暂无 Cookie',
+  savedSites: '已保存站点',
+  noSavedSites: '暂无已同步站点。请从当前标签页推送 Cookie 开始使用。',
+  currentTab: '当前标签页',
+  searchSites: '搜索站点...',
+  openSite: '打开站点',
 };
 
 export const messages = {
