@@ -3,7 +3,7 @@
 <h1>Sync Your Cookie</h1>
 <p>Sync browser cookies and LocalStorage to Cloudflare KV — across devices and browsers.</p>
 
-![](https://img.shields.io/badge/version-1.7.1-blue)
+![](https://img.shields.io/badge/version-1.7.2-blue)
 
 </div>
 
@@ -54,7 +54,7 @@ This fork is **not published to the stores separately**. Download `sync-your-coo
 - **Web admin manager** — optional Cloudflare Worker deployment; UI aligned with side panel (search, folder/type filters)
 - **Multi-account profiles** — separate credentials and domain rules per profile
 - **i18n** — English and Simplified Chinese (`en`, `zh_CN`)
-- **Version display** — current version in popup footer and options page (e.g. `v1.7.1`)
+- **Version display** — current version in popup footer and options page (e.g. `v1.7.2`)
 
 #### Security
 
@@ -111,6 +111,7 @@ pnpm release:zip  # store-ready zip → dist/release/
 
 | Version | Highlights |
 |---------|------------|
+| **1.7.2** | Popup account dropdown for single entry; auto pull on open |
 | **1.7.1** | Release ZIP distribution; docs and deploy flow updates |
 | **1.7.0** | Removed direct KV in extension; Worker URL + password only |
 | **1.6.x** | Security hardening, clearer HTTP error messages |

@@ -3,7 +3,7 @@
 <h1>Sync Your Cookie</h1>
 <p>将浏览器 Cookie 与 LocalStorage 同步到 Cloudflare KV — 跨设备、跨浏览器共享登录态。</p>
 
-![](https://img.shields.io/badge/version-1.7.1-blue)
+![](https://img.shields.io/badge/version-1.7.2-blue)
 
 </div>
 
@@ -65,7 +65,7 @@
 - **Web 管理端** — 可选 Worker 部署；界面与侧边栏对齐（搜索、文件夹/类型筛选）
 - **多账户配置（Account Profiles）** — 每套配置独立凭据与域名规则
 - **国际化** — 英文与简体中文（`en`、`zh_CN`）
-- **版本显示** — 弹窗底部与 Options 页显示当前版本（如 `v1.7.1`）
+- **版本显示** — 弹窗底部与 Options 页显示当前版本（如 `v1.7.2`）
 
 #### 安全
 
@@ -122,6 +122,7 @@ pnpm release:zip  # 商店用 zip → dist/release/
 
 | 版本 | 要点 |
 |------|------|
+| **1.7.2** | Popup 单账号显示下拉；打开弹窗自动拉取远程条目 |
 | **1.7.1** | Release ZIP 分发；文档与部署流程完善 |
 | **1.7.0** | 移除扩展直连 KV；仅 Worker URL + 密码同步 |
 | **1.6.3** | 已设 serverUrl 时优先走 Worker 路径 |

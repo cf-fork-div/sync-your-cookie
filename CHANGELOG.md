@@ -2,6 +2,12 @@
 
 All notable changes to **Sync Your Cookie** are documented here.
 
+## [1.7.2] — 2026-07-01
+
+### Fixed
+- **Popup account dropdown** — show the account selector when a site has a single remote entry (not only when multiple accounts exist).
+- **Popup remote sync** — automatically pull remote entries when opening the popup so the account list stays up to date.
+
 ## [1.7.1] — 2026-07-01
 
 ### Fixed

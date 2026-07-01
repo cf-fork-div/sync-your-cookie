@@ -32,13 +32,13 @@
 
 > **本 fork 尚未单独上架商店。** 请从 [GitHub Releases](https://github.com/cf-fork-div/sync-your-cookie/releases) 下载 ZIP 手动加载；开发者可从源码构建，见 [从源码加载](#从源码加载可选)。
 
-打开 [Releases 页面](https://github.com/cf-fork-div/sync-your-cookie/releases)，选择最新版本（如 `v1.7.1`），下载 **`sync-your-cookie-{version}.zip`**（页面也可能提供 `extension-{version}-chrome.zip` 等别名，内容相同）。
+打开 [Releases 页面](https://github.com/cf-fork-div/sync-your-cookie/releases)，选择最新版本（如 `v1.7.2`），下载 **`sync-your-cookie-{version}.zip`**（页面也可能提供 `extension-{version}-chrome.zip` 等别名，内容相同）。
 
 ![从 Release 下载 ZIP 并加载未打包扩展](deploy/images/install-from-release.png)
 
 | 步骤 | 操作 |
 |------|------|
-| **1** | 在 Release 页 **Assets** 中下载 `sync-your-cookie-1.7.1.zip` |
+| **1** | 在 Release 页 **Assets** 中下载 `sync-your-cookie-1.7.2.zip` |
 | **2** | 保存到本地并 **解压** 到任意文件夹 |
 | **3** | 浏览器地址栏打开 `chrome://extensions`（Edge 为 `edge://extensions`） |
 | **4** | 开启右上角 **开发者模式** |

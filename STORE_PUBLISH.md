@@ -108,4 +108,4 @@ No separate Edge build is required unless you add Edge-specific manifest changes
 | `.github/workflows/build-zip.yml` | Push to `main` / PR | Artifact: unpacked `dist/*` |
 | `.github/workflows/release.yml` | Tag push `v*` | [GitHub Release](https://github.com/cf-fork-div/sync-your-cookie/releases) with `sync-your-cookie-{version}.zip` plus `extension-{version}-chrome.zip` / `-edge.zip` (same MV3 build) and SHA256 checksums in release notes |
 
-For store submission, prefer local `pnpm release:zip` smoke test before tagging. Push a version tag matching root `package.json` (e.g. `v1.7.1`) to publish release assets automatically.
+For store submission, prefer local `pnpm release:zip` smoke test before tagging. Push a version tag matching root `package.json` (e.g. `v1.7.2`) to publish release assets automatically.
