@@ -2,6 +2,12 @@
 
 All notable changes to **Sync Your Cookie** are documented here.
 
+## [1.5.3] — 2026-07-01
+
+### Fixed
+- **Pull cookie round-trip** — apply every cookie stored for a domain entry on pull (including host-only subdomain and third-party cookies that push captured). Previously `cookieMatchesHost` dropped host-only cookies whose domain did not exactly match the storage host (e.g. `www.xkdaili.com` under `xkdaili.com`) and excluded third-party cookies (e.g. analytics on `.hm.baidu.com`).
+- **Silent pull failures** — `setCookieInBrowser` now rejects when `chrome.cookies.set` fails; pull reports which cookie names failed instead of swallowing errors.
+
 ## [1.5.1] — 2026-07-01
 
 ### Added
