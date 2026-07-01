@@ -2,84 +2,126 @@
 
 ## 是什么
 
-将 **Web 管理端**与 **Cookie 同步 API** 部署到 Cloudflare Worker。连接 Git 后 push 即自动构建部署，数据存在 **SYNC_KV** 命名空间。扩展通过 Worker URL + 密码访问 `/api/sync/*`。
+将 **Web 管理端**与 **Cookie 同步 API** 部署到 Cloudflare Worker。连接 Git 后 push 即自动构建部署；Worker 元数据（含 datasource 配置）存在 **SYNC_KV** 命名空间，Cookie 数据存在 Connect 表单指定的 KV 命名空间。
 
-> 登录密码 `WEB_ACCESS_PASSWORD` 在 Dashboard 修改后**立即生效**，无需重新构建。
+**扩展 v1.7.x** 仅支持 **Worker URL + 访问密码**，不再在选项页填写 Cloudflare Account ID / Namespace / Token。KV 凭据在 Web 管理端 **Connect 表单**配置一次即可。
+
+> 使用场景、Push/Pull、切换并拉取等说明见 [how-to-use.md](../how-to-use.md)。
 
 ## 前置条件
 
-1. Cloudflare 账号，Git 仓库已授权
-2. Node.js **20** 或更高
-3. 对本仓库有 push 权限（或 fork 后连接 fork）
+- [ ] Cloudflare 账号，Git 仓库已授权
+- [ ] Node.js **20+**
+- [ ] 对本仓库有 push 权限（或 fork 后连接 fork）
 
-## 部署步骤
+## 部署 checklist
 
-1. [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages** → **Create application** → **Workers** → **Connect to Git**，选择本仓库。
-2. **Worker name** 填 `sync-your-cookie`（须与 `deploy/cloudflare/wrangler.toml` 中 `name` 一致）。
-3. **Workers KV** → 创建命名空间 `sync-your-cookie`，复制 **Namespace ID**。
-4. **Settings → Build → Build variables and secrets** 添加：
-  - Variable `SYNC_KV_NAMESPACE_ID` = 上一步的 Namespace ID
-  - Secret `WEB_ACCESS_PASSWORD` = Web / 扩展登录密码
-5. 填写 Build / Deploy 命令（见下表），Node.js 版本选 **20**。
-6. **Save and Deploy**（或向连接分支 push），等待 Build + Deploy 完成。
-7. 浏览器打开 `https://sync-your-cookie.<你的子域>.workers.dev/`，用密码登录。
+### 1. 创建 Worker（Git 连接）
 
-### Build / Deploy 命令
+1. [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages** → **Create** → **Workers** → **Connect to Git**
+2. **Worker name** = `sync-your-cookie`（须与 `deploy/cloudflare/wrangler.toml` 中 `name` 一致）
+3. Node.js 版本选 **20**
 
+### 2. 创建 KV 命名空间
 
-| 项              | 值                                                                                                             |
-| -------------- | ------------------------------------------------------------------------------------------------------------- |
-| Root directory | `/`                                                                                                           |
-| Build command  | `pnpm install && pnpm build:cloudflare-worker`                                                                |
-| Deploy command | `node deploy/cloudflare/prepare-wrangler.mjs && npx wrangler deploy --config deploy/cloudflare/wrangler.toml` |
+**Workers & Pages → KV** → 创建 `sync-your-cookie` → 复制 **Namespace ID**
 
+### 3. Build 变量（Settings → Build → Build variables and secrets）
 
-## 必配变量
+| 变量 | 类型 | 说明 |
+|------|------|------|
+| `SYNC_KV_NAMESPACE_ID` | Variable | 上一步 Namespace ID（固定绑定，redeploy 不换绑） |
+| `WEB_ACCESS_PASSWORD` | Secret | Web / 扩展登录密码（Deploy 时由 prepare-wrangler 推送到 Worker） |
 
+可选 Build Variable：
 
-| 变量                     | 类型       | 说明                             |
-| ---------------------- | -------- | ------------------------------ |
-| `SYNC_KV_NAMESPACE_ID` | Variable | KV 命名空间 ID；固定绑定，避免 redeploy 换绑 |
-| `WEB_ACCESS_PASSWORD`  | Secret   | Web 管理端与扩展的登录密码                |
-
-
-可选：`WEB_BASE_PATH`（Variable，自定义 URL 路径段，如 `my-vault`）；`DEPLOY_SEED_DATASOURCE=1`（首次 Deploy 自动写入 Connect 凭据到 KV）。
+| 变量 | 说明 |
+|------|------|
+| `WEB_BASE_PATH` | 自定义 URL 路径段，如 `my-vault` → 访问 `/my-vault/` |
+| `DEPLOY_SEED_DATASOURCE=1` | 首次 Deploy 自动将 KV 凭据写入 SYNC_KV（免手动 Connect）；已有配置时用 `force` 覆盖 |
 
 `CLOUDFLARE_API_TOKEN` 由 Cloudflare Builds **自动注入**，无需手动添加。
+
+### 4. Build / Deploy 命令
+
+| 项 | 值 |
+|----|-----|
+| Root directory | `/` |
+| Build command | `pnpm install && pnpm build:cloudflare-worker` |
+| Deploy command | `node deploy/cloudflare/prepare-wrangler.mjs && npx wrangler deploy --config deploy/cloudflare/wrangler.toml` |
+
+### 5. 保存并部署
+
+**Save and Deploy** 或向连接分支 push，等待 Build + Deploy 完成。
+
+## 密码：Build Secret vs Production Secret
+
+| 位置 | 何时生效 | 说明 |
+|------|----------|------|
+| **Build → Secrets** `WEB_ACCESS_PASSWORD` | 每次 Deploy | `prepare-wrangler.mjs` 自动执行 `wrangler secret put` |
+| **Worker → Variables and Secrets → Production** | **立即** | 改密码无需 rebuild / redeploy |
+
+日常改密码：在 **Production** 修改即可。首次部署或 CI 未注入密码时，在 Build Secrets 添加并 redeploy。
+
+## 自定义域名（可选）
+
+1. Worker → **Settings → Domains & Routes** → **Add Custom Domain**
+2. 例如 `sync-your-cookie.onlydev.ccwu.cc`
+3. 扩展 **服务器 URL** 填 `https://sync-your-cookie.onlydev.ccwu.cc`（无尾斜杠）
+4. 若设置了 `WEB_BASE_PATH`，URL 需带前缀，如 `https://…/my-vault`
+
+`workers.dev` 子域与自定义域名可并存；扩展填实际使用的地址即可。
 
 ## 部署后
 
 ### Web 管理端
 
-访问 Worker URL（设了 `WEB_BASE_PATH` 则在路径前加前缀，如 `/my-vault/`），输入 `WEB_ACCESS_PASSWORD` 登录。可在 Connect 表单查看 KV 数据源配置。
+- [ ] 打开 Worker URL（或自定义域名），输入 `WEB_ACCESS_PASSWORD` 登录
+- [ ] **Connect 表单**：填写 **Account ID**、**Namespace ID**、**API Token**（需 Workers KV Storage:Edit 权限），保存
+- [ ] 若 Build 时设置了 `DEPLOY_SEED_DATASOURCE=1` 且 Deploy 成功，Connect 通常已自动配置
 
-### 扩展
+Connect 中的 KV 为 **Cookie 存储**；`SYNC_KV` 存 datasource 配置等 Worker 元数据（可与 Cookie KV 为同一 Namespace）。
 
-弹窗或侧边栏填写 **服务器 URL**（Worker 地址，无尾斜杠）与 **访问密码**（同上）。登录后即可 Push / Pull。详见 [how-to-use.md](../how-to-use.md)。
+### 扩展（v1.7.x）
 
-> **v1.7.0 起**：扩展不再支持在选项页填写 Cloudflare Account ID / Namespace / API Token 直连 KV。请部署 Worker 后仅使用 **服务器 URL + 访问密码**；KV 凭据仅在 Web 管理端 Connect 表单配置一次。
+弹窗或侧边栏填写 **服务器 URL**（Worker 根地址，无尾斜杠）与 **访问密码**（同上）。登录后即可 Push / Pull / **切换并拉取**。详见 [how-to-use.md](../how-to-use.md#使用场景与推荐配置)。
+
+## 后续更新
+
+向 Git 连接分支 **push 即自动 redeploy**；`SYNC_KV_NAMESPACE_ID` 不变时 KV 数据保留。
 
 ## 常见问题
 
-**无法登录 / 提示「未配置访问密码」？**  
-确认 Build secrets 已添加 `WEB_ACCESS_PASSWORD`，保存后重新 Deploy 一次。
+**无法登录 / 「未配置访问密码」？**
+- 确认 Build Secrets 或 Production 中已设置 `WEB_ACCESS_PASSWORD`
+- 若 Build 未注入：添加 Build Secret 后 redeploy，或直接在 Production 设置
 
-**redeploy 后 Connect 表单要重填？**  
-在 Build variables **固定 `SYNC_KV_NAMESPACE_ID`**；Deploy 命令须含 `prepare-wrangler.mjs`。
+**redeploy 后 Connect 表单要重填？**
+- Build variables **固定 `SYNC_KV_NAMESPACE_ID`**
+- Deploy 命令须含 `prepare-wrangler.mjs`
+- 或设置 `DEPLOY_SEED_DATASOURCE=1` 自动恢复
 
-**改密码要重新部署吗？**  
-不用。Dashboard → **Settings → Variables and Secrets → Production** 修改 `WEB_ACCESS_PASSWORD` 即可。
+**Push/Pull「验证失败」/`verify_failed`？**（v1.6.1+ 会显示 HTTP 状态与响应体）
 
-**后续如何更新？**  
-向 Git 连接分支 push 即自动 redeploy；KV 数据在 Namespace ID 不变时保留。
+| 原因 | 处理 |
+|------|------|
+| Worker 版本过旧 | push 触发 redeploy 到 v1.6.0+ |
+| 密码不匹配 | Production 确认密码；扩展重新保存 |
+| URL 错误 | 填根地址，不带 `/api`；有 `WEB_BASE_PATH` 则带前缀 |
+| `datasource_not_configured` | Web 管理端 Connect 表单保存 KV 凭据，或 `DEPLOY_SEED_DATASOURCE=1` |
+| `network_error` | 检查 URL、域名 DNS、Worker 是否在线 |
 
-**Push/Pull 提示「验证失败」或 `verify_failed`？**  
-1.6.0 起扩展会在验证失败时显示 HTTP 状态码与服务器返回内容。常见原因：
-- **Worker 未 redeploy 到 v1.6.0+**：扩展已升级但 Worker 仍是旧版，或 `/api/sync/status` 路由缺失。向 Git 连接分支 push 触发 redeploy，或手动执行 Deploy command。
-- **访问密码不匹配**：Dashboard → **Settings → Variables and Secrets → Production** 确认 `WEB_ACCESS_PASSWORD` 与扩展中填写的一致；修改后无需 rebuild，但需在扩展选项页重新保存密码。
-- **服务器 URL 错误**：填 Worker 根地址（如 `https://sync-your-cookie.<子域>.workers.dev`），不要带 `/api` 或 `/api/session` 后缀；若设置了 `WEB_BASE_PATH`，可填带前缀的 URL（如 `https://…/my-vault`）。
-- **数据源未配置**：登录 Web 管理端，在 Connect 表单保存 KV 凭据。
-- **CORS 通常不是问题**：扩展 origin（`chrome-extension://`）在 v1.6.0 Worker 中已允许；若 toast 显示 `network_error` 或 `Failed to fetch`，再检查 URL 与 Worker 是否在线。
+**Pull 失败 / 部分 Cookie 未写入？**
+- Toast 会显示 `name@domain: reason`（v1.5.5+）
+- 第三方 Cookie 可能被浏览器策略跳过，属正常
 
-**本地调试 Worker？**  
-先 `pnpm build:cloudflare-worker`，再 `cd deploy/cloudflare && npx wrangler dev`。
+**「切换并拉取」失败？**（v1.7.1 修复同站多账号 URL 解析）
+- 确认扩展 ≥ v1.7.1
+- 先手动 Pull 验证连接；仍失败则检查 datasource 与密码
+
+**本地调试 Worker？**
+
+```bash
+pnpm build:cloudflare-worker
+cd deploy/cloudflare && npx wrangler dev
+```
