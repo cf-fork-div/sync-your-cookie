@@ -59,11 +59,28 @@ pnpm build
 
 ### 从 Release ZIP 加载
 
-适用于不想从源码构建、但需使用本 fork 发布包的用户。维护者在仓库中执行 `pnpm release:zip`，产物为 **`dist/release/sync-your-cookie-{version}.zip`**（详见 [STORE_PUBLISH.md](./STORE_PUBLISH.md)）。
+适用于不想从源码构建、但需使用本 fork 发布包的用户。
+
+**下载地址：** [GitHub Releases](https://github.com/cf-fork-div/sync-your-cookie/releases) — 选择对应版本（如 `v1.7.1`），下载以下任一 ZIP（内容相同）：
+
+| 文件名 | 说明 |
+|--------|------|
+| `sync-your-cookie-{version}.zip` | 本 fork 稳定命名 |
+| `extension-{version}-chrome.zip` | 与 upstream 发布页命名一致（Chrome） |
+| `extension-{version}-edge.zip` | 与 upstream 发布页命名一致（Edge） |
+
+Release 说明中会附带各文件的 SHA256 校验和。维护者本地构建见 [STORE_PUBLISH.md](./STORE_PUBLISH.md)（`pnpm release:zip` → `dist/release/`）。
+
+**触发新 Release（维护者）：** 确保 `package.json` 版本已更新后，打 tag 并推送即可由 CI 自动上传：
+
+```bash
+git tag v1.7.1
+git push origin v1.7.1
+```
 
 **安装步骤：**
 
-1. 下载对应版本的 ZIP 并解压到任意文件夹
+1. 从 [Releases 页面](https://github.com/cf-fork-div/sync-your-cookie/releases) 下载对应版本的 ZIP 并解压到任意文件夹
 2. 打开 `chrome://extensions`（Edge 为 `edge://extensions`）
 3. 开启右上角 **开发者模式**
 4. 点击 **加载已解压的扩展程序**

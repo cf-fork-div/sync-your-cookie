@@ -26,6 +26,8 @@ This runs a production build and creates:
 | `dist/` | Unpacked extension (load unpacked for testing) |
 | `dist-zip/extension-{version}-{date}-{time}.zip` | Timestamped archive |
 | `dist/release/sync-your-cookie-{version}.zip` | **Store-ready** archive (stable name) |
+| `dist/release/extension-{version}-chrome.zip` | Same build, upstream-style name for GitHub Releases |
+| `dist/release/extension-{version}-edge.zip` | Same build, upstream-style name for GitHub Releases |
 
 Verify locally:
 
@@ -89,7 +91,7 @@ No separate Edge build is required unless you add Edge-specific manifest changes
 - [ ] Privacy policy link valid: [private-policy.md](./private-policy.md)
 - [ ] Upload ZIP to Chrome Web Store
 - [ ] Upload same ZIP to Edge Add-ons
-- [ ] Tag release on GitHub: `v1.5.1`
+- [ ] Tag and push to trigger GitHub Release: `git tag v1.5.1 && git push origin v1.5.1`
 
 ## Troubleshooting
 
@@ -99,6 +101,11 @@ No separate Edge build is required unless you add Edge-specific manifest changes
 | Review rejection (permissions) | `<all_urls>` and `cookies` are required for sync; explain in store notes |
 | Version mismatch | Manifest version comes from root `package.json` via `chrome-extension/manifest.js` |
 
-## CI artifact
+## CI artifacts and GitHub Releases
 
-GitHub Actions workflow `.github/workflows/build-zip.yml` uploads `dist/*` on push to `main`. Download the artifact for CI-built packages; for store submission prefer local `pnpm release:zip` with a tagged release.
+| Workflow | Trigger | Output |
+|----------|---------|--------|
+| `.github/workflows/build-zip.yml` | Push to `main` / PR | Artifact: unpacked `dist/*` |
+| `.github/workflows/release.yml` | Tag push `v*` | [GitHub Release](https://github.com/cf-fork-div/sync-your-cookie/releases) with `sync-your-cookie-{version}.zip` plus `extension-{version}-chrome.zip` / `-edge.zip` (same MV3 build) and SHA256 checksums in release notes |
+
+For store submission, prefer local `pnpm release:zip` smoke test before tagging. Push a version tag matching root `package.json` (e.g. `v1.7.1`) to publish release assets automatically.
