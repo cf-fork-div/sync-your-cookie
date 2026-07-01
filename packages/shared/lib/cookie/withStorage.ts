@@ -15,7 +15,7 @@ import {
   removeAndWriteCookies,
 } from './withCloudflare';
 import { clearAllBrowserCookies } from './browserCookies';
-import { buildPullCookieSetDetails, cookieMatchesHost, setCookieInBrowser } from './setDetails';
+import { buildPullCookieSetDetails, setCookieInBrowser } from './setDetails';
 import { mergeEntryMetaIntoDomainConfig, mergeEntryMetaOnWrite } from '../domain/entryMetaSync';
 
 export const readCookiesMapWithStatus = async (cloudflareInfo: AccountInfo) => {
@@ -79,12 +79,6 @@ export const pullAndSetCookies = async (activeTabUrl: string, host: string, isRe
     throw new Error('No cookies to pull, push first please');
   }
 
-  const matchedCookies = cookieDetails.filter(cookie => cookieMatchesHost(cookie, host));
-  if (matchedCookies.length === 0 && localStorageItems.length === 0) {
-    console.warn('no matched cookies and localStorageItems to pull, push first please', host, cookieMap);
-    throw new Error('No matched cookies and localStorageItems to pull, push first please');
-  }
-
   await clearAllBrowserCookies(host, activeTabUrl);
 
   await sendMessage(
@@ -99,15 +93,21 @@ export const pullAndSetCookies = async (activeTabUrl: string, host: string, isRe
     true,
   );
 
-  const cookiesPromiseList = matchedCookies.map(cookie => {
+  const cookiesPromiseList = cookieDetails.map(cookie => {
     const cookieDetail = buildPullCookieSetDetails(cookie, activeTabUrl);
     return setCookieInBrowser(cookieDetail);
   });
   const cookieResults = await Promise.allSettled(cookiesPromiseList);
-  const failedCookies = cookieResults.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+  const failedCookies = cookieResults.flatMap((result, index) => {
+    if (result.status === 'rejected') {
+      const cookie = cookieDetails[index];
+      return [`${cookie.name ?? '?'}@${cookie.domain ?? '?'}: ${result.reason?.message ?? result.reason}`];
+    }
+    return [];
+  });
   if (failedCookies.length > 0) {
     console.error('failed to set cookies during pull', failedCookies);
-    throw new Error(`Failed to set ${failedCookies.length} cookie(s) during pull`);
+    throw new Error(`Failed to set ${failedCookies.length} cookie(s) during pull: ${failedCookies.join('; ')}`);
   }
 
   if (isReload) {

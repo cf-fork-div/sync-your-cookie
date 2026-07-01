@@ -1,12 +1,19 @@
 import { ICookie } from '@sync-your-cookie/protobuf';
 
+function normalizeCookieHost(host: string): string {
+  return host.replace(/^\./, '').replace(/:\d+$/, '').toLowerCase();
+}
+
+/** Whether a browser cookie change is relevant when viewing a domain entry in the UI. */
 export function cookieMatchesHost(cookie: Pick<ICookie, 'domain' | 'hostOnly'>, host: string): boolean {
-  const normalizedHost = host.replace(/^\./, '').replace(/:\d+$/, '').toLowerCase();
-  const cookieDomain = (cookie.domain || '').replace(/^\./, '').toLowerCase();
+  const normalizedHost = normalizeCookieHost(host);
+  const cookieDomain = normalizeCookieHost(cookie.domain || '');
   if (!cookieDomain) return false;
   if (cookieDomain === normalizedHost) return true;
-  if (cookie.hostOnly) return false;
-  return normalizedHost === cookieDomain || normalizedHost.endsWith(`.${cookieDomain}`);
+  if (cookie.hostOnly) {
+    return cookieDomain.endsWith(`.${normalizedHost}`);
+  }
+  return normalizedHost.endsWith(`.${cookieDomain}`) || cookieDomain.endsWith(`.${normalizedHost}`);
 }
 
 export function buildPullCookieUrl(
@@ -29,7 +36,11 @@ export function buildPullCookieSetDetails(
 ): chrome.cookies.SetDetails {
   const isHostPrefixed = (cookie.name || '').startsWith('__Host-');
   const isSecurePrefixed = (cookie.name || '').startsWith('__Secure-');
-  const secure = isHostPrefixed || isSecurePrefixed ? true : (cookie.secure ?? undefined);
+  const sameSite = (cookie.sameSite ?? undefined) as chrome.cookies.SameSiteStatus | undefined;
+  let secure = isHostPrefixed || isSecurePrefixed ? true : (cookie.secure ?? undefined);
+  if (sameSite === 'no_restriction' && !secure) {
+    secure = true;
+  }
   const path = isHostPrefixed ? '/' : cookie.path ?? undefined;
   const url = buildPullCookieUrl({ ...cookie, secure: secure ?? false }, activeTabUrl);
 
@@ -37,32 +48,36 @@ export function buildPullCookieSetDetails(
     url,
     name: cookie.name ?? undefined,
     value: cookie.value ?? undefined,
-    expirationDate: cookie.expirationDate ?? undefined,
+    expirationDate: cookie.session ? undefined : cookie.expirationDate ?? undefined,
     path,
     httpOnly: cookie.httpOnly ?? undefined,
     secure,
-    sameSite: (cookie.sameSite ?? undefined) as chrome.cookies.SameSiteStatus,
+    sameSite,
   };
 
-  if (!isHostPrefixed && cookie.domain?.startsWith('.')) {
+  if (!isHostPrefixed && !cookie.hostOnly && cookie.domain?.startsWith('.')) {
     details.domain = cookie.domain;
   }
 
   return details;
 }
 
-export function setCookieInBrowser(details: chrome.cookies.SetDetails): Promise<chrome.cookies.Cookie | null> {
-  return new Promise(resolve => {
+export function setCookieInBrowser(details: chrome.cookies.SetDetails): Promise<chrome.cookies.Cookie> {
+  return new Promise((resolve, reject) => {
     try {
       chrome.cookies.set(details, cookie => {
         if (chrome.runtime.lastError) {
-          console.error('cookie set error', details, chrome.runtime.lastError.message);
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
         }
-        resolve(cookie ?? null);
+        if (!cookie) {
+          reject(new Error(`Failed to set cookie "${details.name ?? ''}"`));
+          return;
+        }
+        resolve(cookie);
       });
     } catch (error) {
-      console.error('cookie set error', details, error);
-      resolve(null);
+      reject(error instanceof Error ? error : new Error(String(error)));
     }
   });
 }
