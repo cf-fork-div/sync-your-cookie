@@ -113,7 +113,7 @@ pnpm release:zip  # 商店用 zip → dist/release/
 4. **打开管理器** — 侧边栏查看完整 Cookie/LocalStorage。
 5. **Web 管理端**（可选） — 浏览器打开 Worker URL，界面与侧边栏一致。
 
-使用说明：[how-to-use.md](./how-to-use.md) · Worker 部署：[deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md) · 商店发布：[STORE_PUBLISH.md](./STORE_PUBLISH.md)
+使用说明：[how-to-use.md](./how-to-use.md)（含[使用场景与推荐配置](./how-to-use.md#使用场景与推荐配置)） · Worker 部署：[deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md) · 商店发布：[STORE_PUBLISH.md](./STORE_PUBLISH.md)
 
 ### 更新日志
 
