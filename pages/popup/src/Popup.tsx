@@ -238,6 +238,21 @@ const Popup = () => {
                   })}
                 </SelectContent>
               </Select>
+              <SyncTooltip title={t('switchAndPullHint')}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full mt-2 justify-start"
+                  disabled={!activeTabUrl || isBusy}
+                  onClick={() => handleAndReload()}>
+                  {domainItemStatus?.pulling ? (
+                    <RotateCw size={16} className="mr-2 animate-spin" />
+                  ) : (
+                    <CloudDownload size={16} className="mr-2" />
+                  )}
+                  {t('switchAndPull')}
+                </Button>
+              </SyncTooltip>
               <p className="text-[11px] text-muted-foreground mt-1">
                 {activeAccountSubtitle || t('selectAccountHint')}
               </p>

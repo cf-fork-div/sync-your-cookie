@@ -2,6 +2,11 @@
 
 All notable changes to **Sync Your Cookie** are documented here.
 
+## [1.5.8] — 2026-07-01
+
+### Added
+- **Popup「切换并拉取」** — when a site has multiple saved accounts, choose an account in the dropdown and use one click to refresh the connection, pull that account’s cookies, and reload tabs (same flow as Pull, placed next to the account selector).
+
 ## [1.5.7] — 2026-07-01
 
 ### Added

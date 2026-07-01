@@ -291,6 +291,8 @@ const enMessages = {
   accountsForHost: '{{count}} accounts',
   selectAccount: 'Sync account',
   selectAccountHint: 'Choose which saved account to push or pull for this site.',
+  switchAndPull: 'Switch & Pull',
+  switchAndPullHint: 'Pull cookies for the selected account and reload tabs for this site.',
   pushExistingAccountTitle: 'This site already has saved account data',
   pushExistingAccountDesc:
     'Browser cookies differ from saved accounts. Overwrite an existing entry or save as a new account.',
@@ -589,6 +591,8 @@ const zhCNMessages: Record<MessageKey, string> = {
   accountsForHost: '{{count}} 个账户',
   selectAccount: '同步账户',
   selectAccountHint: '选择要推送或拉取的已保存账户。',
+  switchAndPull: '切换并拉取',
+  switchAndPullHint: '拉取所选账户的 Cookie，并刷新当前站点的标签页。',
   pushExistingAccountTitle: '该域名已有账号数据',
   pushExistingAccountDesc: '浏览器 Cookie 与已保存账户不同。可覆盖已有条目，或保存为新账户。',
   pushFirstTimeTitle: '为此账户命名',
