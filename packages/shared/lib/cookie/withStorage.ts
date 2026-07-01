@@ -5,7 +5,8 @@ import { domainStatusStorage } from '@sync-your-cookie/storage/lib/domainStatusS
 
 import { AccountInfo, accountStorage } from '@sync-your-cookie/storage/lib/accountStorage';
 
-import { MessageType, sendMessage } from '@lib/message';
+import { trySetLocalStorageForHost } from '@lib/message';
+import { getHostFromStorageKey } from '../domain/entryKey';
 import { WriteResponse } from '../cloudflare';
 import {
   editAndWriteCookies,
@@ -14,7 +15,7 @@ import {
   readCookiesMap,
   removeAndWriteCookies,
 } from './withCloudflare';
-import { clearAllBrowserCookies } from './browserCookies';
+import { clearAllBrowserCookies, resolveDomainUrl } from './browserCookies';
 import { buildPullCookieSetDetails, setCookieInBrowser } from './setDetails';
 import { mergeEntryMetaIntoDomainConfig, mergeEntryMetaOnWrite } from '../domain/entryMetaSync';
 
@@ -70,7 +71,16 @@ export const pullCookies = async (isInit = false): Promise<Cookie> => {
     return Promise.reject(e);
   }
 };
-export const pullAndSetCookies = async (activeTabUrl: string, host: string, isReload = true): Promise<Cookie> => {
+export type PullAndSetCookiesResult = {
+  cookieMap: Cookie;
+  warnings: string[];
+};
+
+export const pullAndSetCookies = async (
+  activeTabUrl: string,
+  host: string,
+  isReload = true,
+): Promise<PullAndSetCookiesResult> => {
   const cookieMap = await pullCookies();
   const cookieDetails = cookieMap?.domainCookieMap?.[host]?.cookies || [];
   const localStorageItems = cookieMap?.domainCookieMap?.[host]?.localStorageItems || [];
@@ -79,22 +89,13 @@ export const pullAndSetCookies = async (activeTabUrl: string, host: string, isRe
     throw new Error('No cookies to pull, push first please');
   }
 
-  await clearAllBrowserCookies(host, activeTabUrl);
+  const tabUrl = await resolveDomainUrl(host, activeTabUrl);
+  const warnings: string[] = [];
 
-  await sendMessage(
-    {
-      type: MessageType.SetLocalStorage,
-      payload: {
-        domain: host,
-        value: localStorageItems,
-        replace: true,
-      },
-    },
-    true,
-  );
+  await clearAllBrowserCookies(host, tabUrl);
 
   const cookiesPromiseList = cookieDetails.map(cookie => {
-    const cookieDetail = buildPullCookieSetDetails(cookie, activeTabUrl);
+    const cookieDetail = buildPullCookieSetDetails(cookie, tabUrl);
     return setCookieInBrowser(cookieDetail);
   });
   const cookieResults = await Promise.allSettled(cookiesPromiseList);
@@ -105,22 +106,35 @@ export const pullAndSetCookies = async (activeTabUrl: string, host: string, isRe
     }
     return [];
   });
-  if (failedCookies.length > 0) {
+  const successCount = cookieResults.filter(result => result.status === 'fulfilled').length;
+
+  if (cookieDetails.length > 0 && successCount === 0) {
     console.error('failed to set cookies during pull', failedCookies);
-    throw new Error(`Failed to set ${failedCookies.length} cookie(s) during pull: ${failedCookies.join('; ')}`);
+    throw new Error(`Failed to set cookies during pull: ${failedCookies.join('; ')}`);
+  }
+  if (failedCookies.length > 0) {
+    console.warn('some cookies skipped during pull', failedCookies);
+    warnings.push(`Skipped ${failedCookies.length} cookie(s): ${failedCookies.join('; ')}`);
+  }
+
+  const localStorageResult = await trySetLocalStorageForHost(host, localStorageItems, true);
+  if (!localStorageResult.ok && localStorageItems.length > 0) {
+    console.warn('localStorage not updated during pull', localStorageResult.msg);
+    warnings.push(localStorageResult.msg || 'localStorage was not updated');
   }
 
   if (isReload) {
     chrome.tabs.query({}, function (tabs) {
       tabs.forEach(function (tab) {
-        if (tab.url && tab.url.includes(host) && tab.id) {
+        const tabHost = getHostFromStorageKey(host);
+        if (tab.url && tab.url.includes(tabHost) && tab.id) {
           console.log('tab', tab);
           chrome.tabs.reload(tab.id);
         }
       });
     });
   }
-  return cookieMap;
+  return { cookieMap, warnings };
 };
 
 export type PushCookiesResponse = WriteResponse;

@@ -44,9 +44,10 @@ export function checkResponseAndCallback(
         result: res,
       });
     } else {
+      const errMsg = res?.msg || res?.message;
       const defaultErrMsg =
-        res?.message?.toLowerCase().includes?.(scene) || (res?.code && res?.message)
-          ? res?.message
+        errMsg?.toLowerCase?.().includes?.(scene) || (res?.code && errMsg)
+          ? errMsg
           : `${scene} fail, please try again.`;
       callback({ isOk: false, code: res?.code, msg: defaultErrMsg, result: res });
     }

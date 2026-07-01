@@ -93,7 +93,11 @@ export const useCookieAction = (host: string, toast: typeof Toast) => {
       .then(res => {
         console.log('res', res);
         if (res.isOk) {
-          toast.success(t('pullSuccess'));
+          if (res.msg && res.msg !== 'Pull success') {
+            toast.warning(res.msg);
+          } else {
+            toast.success(t('pullSuccess'));
+          }
         } else {
           toast.error(res.msg || t('pullFail'));
         }

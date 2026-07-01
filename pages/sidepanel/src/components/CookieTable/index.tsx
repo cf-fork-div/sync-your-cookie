@@ -436,7 +436,7 @@ const CookieTable = () => {
         const itemStatus = cookieAction.getDomainItemStatus(row.original.storageKey) || {};
         const sourceUrl = row.original.sourceUrl;
         const protocol = sourceUrl ? new URL(sourceUrl).protocol : 'http:';
-        const href = `${protocol}//${row.original.host}`;
+        const href = sourceUrl || `${protocol}//${row.original.host}`;
         const disabled = itemStatus.pushing || cookieAction.pushing;
 
         return (

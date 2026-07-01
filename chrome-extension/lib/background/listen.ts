@@ -79,7 +79,11 @@ const handlePull = async (activeTabUrl: string, domain: string, isReload: boolea
     await domainStatusStorage.togglePullingState(domain, true);
     const cookieMap = await pullAndSetCookies(activeTabUrl, domain, isReload);
     console.log('handlePull->cookieMap', cookieMap);
-    callback({ isOk: true, msg: 'Pull success', result: cookieMap });
+    const msg =
+      cookieMap.warnings.length > 0
+        ? `Pull completed with warnings: ${cookieMap.warnings.join('; ')}`
+        : 'Pull success';
+    callback({ isOk: true, msg, result: cookieMap.cookieMap });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
     checkResponseAndCallback(err, 'pull', callback);

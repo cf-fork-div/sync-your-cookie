@@ -1,4 +1,5 @@
 import { pushCookies } from '@lib/cookie';
+import { getHostFromStorageKey } from '@lib/domain/entryKey';
 import { ICookie, ILocalStorageItem } from '@sync-your-cookie/protobuf';
 import { settingsStorage } from '@sync-your-cookie/storage/lib/settingsStorage';
 import pTimeout from 'p-timeout';
@@ -205,6 +206,60 @@ export const getTabsByHost = async (host: string) => {
       reject(error);
     }
   });
+};
+
+export const trySetLocalStorageForHost = async (
+  storageKey: string,
+  items: ILocalStorageItem[],
+  replace = true,
+): Promise<{ ok: boolean; msg?: string }> => {
+  if (items.length === 0) {
+    return { ok: true };
+  }
+
+  const hostname = getHostFromStorageKey(storageKey);
+
+  try {
+    const matchedTabs = await getTabsByHost(hostname);
+    if (matchedTabs.length === 0) {
+      return {
+        ok: false,
+        msg: `No open tab for ${hostname}; localStorage was not updated. Open the site and pull again.`,
+      };
+    }
+
+    const tab = matchedTabs.find(item => item.active) ?? matchedTabs[0];
+    if (!tab?.id) {
+      return { ok: false, msg: 'No tab available to update localStorage' };
+    }
+
+    return await new Promise(resolve => {
+      chrome.tabs.sendMessage(
+        tab.id!,
+        {
+          type: MessageType.SetLocalStorage,
+          payload: {
+            domain: hostname,
+            value: items,
+            replace,
+          },
+        },
+        (result: SendResponse) => {
+          if (chrome.runtime.lastError) {
+            resolve({ ok: false, msg: chrome.runtime.lastError.message });
+            return;
+          }
+          if (result?.isOk) {
+            resolve({ ok: true });
+            return;
+          }
+          resolve({ ok: false, msg: result?.msg || 'set localStorage failed' });
+        },
+      );
+    });
+  } catch (error) {
+    return { ok: false, msg: error instanceof Error ? error.message : String(error) };
+  }
 };
 
 export const sendGetLocalStorageMessage = async (host: string, isTry = true) => {

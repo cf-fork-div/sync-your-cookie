@@ -2,6 +2,14 @@
 
 All notable changes to **Sync Your Cookie** are documented here.
 
+## [1.5.4] — 2026-07-01
+
+### Fixed
+- **Side panel pull leaving 0 cookies** — pull no longer aborts after `clearAllBrowserCookies` when localStorage sync fails (wrong active tab, multi-account storage key, or no open site tab). Cookies are applied first; localStorage is best-effort on a matching domain tab.
+- **Partial pull failures** — third-party or blocked cookies (e.g. analytics on `.hm.baidu.com`) are skipped with a warning instead of failing the entire pull.
+- **Pull error toasts** — show the actual error message instead of the generic “pull fail, please try again”.
+- **Side panel pull URL** — use saved `sourceUrl` from domain config when pulling, not just `protocol//host`.
+
 ## [1.5.3] — 2026-07-01
 
 ### Fixed
