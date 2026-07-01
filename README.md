@@ -3,7 +3,7 @@
 <h1>Sync Your Cookie</h1>
 <p>将浏览器 Cookie 与 LocalStorage 同步到 Cloudflare KV — 跨设备、跨浏览器共享登录态。</p>
 
-![](https://img.shields.io/badge/version-1.6.0-blue)
+![](https://img.shields.io/badge/version-1.7.0-blue)
 
 </div>
 
@@ -11,7 +11,22 @@
 
 **Sync Your Cookie** 是一款 Chromium 扩展（Chrome、Edge 及兼容浏览器），可将 Cookie 与 LocalStorage 同步到 **Cloudflare KV**。在不同设备间共享登录会话、为同一站点管理多个账号，并可选择部署 **Cloudflare Worker** 后端与密码保护的 Web 管理端。
 
-> **说明：** 已移除 GitHub Gist 同步，**仅支持 Cloudflare Worker**（URL + 密码）后端。
+> **说明（v1.7.0）：** 已移除 GitHub Gist 与扩展内直连 KV（Account ID / Token）。扩展**仅通过 Worker**（服务器 URL + 访问密码）同步；KV 凭据在 Web 管理端 Connect 表单配置一次即可。
+
+### 与原版对比
+
+基于上游 [jackluson/sync-your-cookie](https://github.com/jackluson/sync-your-cookie) 的 fork，主要增强如下：
+
+| 能力 | 原版 | 本 fork |
+|------|------|---------|
+| 同步方式 | Gist 或扩展内填 KV 凭据 | **Worker URL + 密码**（v1.7.0 移除扩展直连 KV） |
+| 同站多账号 | 单条目 | 多账号 + **切换并拉取**（v1.5.8） |
+| 账号元数据 | 备注 | 首次 Push 备注 + **文件夹 / 类型**（login / session / other） |
+| Pull | 基础覆盖 | **镜像同步**（先应用远程再清理多余项）+ 操作前**自动刷新**连接 |
+| Cookie 编辑 | 侧边栏 | 弹窗完整编辑器 + 复制 **Cookie 头 / JSON**（v1.5.6–1.5.7） |
+| 部署 | 手动配置 KV | **Git 连 Cloudflare** 一键部署 Worker；支持 `WEB_BASE_PATH` 自定义路径 |
+| 安全 | — | v1.6.0 消息校验、凭据本地化、Worker 限流 / 会话 / CORS / 加密默认 |
+| 错误提示 | 通用失败 | v1.6.1–1.6.3 显示 HTTP 状态与服务器响应，Pull 逐条跳过原因 |
 
 ### 安装
 
@@ -47,7 +62,7 @@
 - **Web 管理端** — 可选 Worker 部署；界面与侧边栏对齐（搜索、文件夹/类型筛选）
 - **多账户配置（Account Profiles）** — 每套配置独立凭据与域名规则
 - **国际化** — 英文与简体中文（`en`、`zh_CN`）
-- **版本显示** — 弹窗底部与 Options 页显示 `v1.6.0`
+- **版本显示** — 弹窗底部与 Options 页显示 `v1.7.0`
 
 #### 安全
 
@@ -104,6 +119,10 @@ pnpm release:zip  # 商店用 zip → dist/release/
 
 | 版本 | 要点 |
 |------|------|
+| **1.7.0** | 移除扩展直连 KV；仅 Worker URL + 密码同步 |
+| **1.6.3** | 已设 serverUrl 时优先走 Worker 路径 |
+| **1.6.2** | 登录时同步 server 存储键；改进 Pull 错误提示 |
+| **1.6.1** | 验证失败显示 HTTP 状态与服务器响应体 |
 | **1.6.0** | 安全加固：消息校验、hostname 匹配、本地凭据、Worker 限流/会话/CORS、加密默认 |
 | **1.5.8** | Popup「切换并拉取」多账号一键拉取 |
 | **1.5.6** | 弹窗 Cookie 编辑器：增删改、复制值/JSON |
