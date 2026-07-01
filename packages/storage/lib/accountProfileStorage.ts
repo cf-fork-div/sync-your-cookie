@@ -361,7 +361,7 @@ export const accountProfileStorage: AccountProfileStorage = {
   ensureMigrated,
   getActiveProfile: async () => {
     await ensureMigrated();
-    const state = await storage.get();
+    const state = await loadStateWithSecrets();
     return getActiveProfile(state);
   },
   setActiveProfileId: async (id: string) => {

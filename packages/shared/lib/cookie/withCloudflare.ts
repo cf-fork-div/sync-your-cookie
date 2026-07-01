@@ -22,16 +22,32 @@ import {
   isBase64Encrypted,
 } from '@sync-your-cookie/protobuf';
 
-export const check = (accountInfo?: AccountInfo) => {
-  const info = accountInfo || accountStorage.getSnapshot();
-  if (isServerSyncConfigured(info)) {
-    if (!info?.serverUrl?.trim()) {
+const resolveAccountInfoForSync = (accountInfo?: AccountInfo): AccountInfo => {
+  const snapshot = accountStorage.getSnapshot() ?? {};
+  if (!accountInfo) {
+    return snapshot;
+  }
+  return {
+    serverUrl: accountInfo.serverUrl ?? snapshot.serverUrl,
+    authPassword: accountInfo.authPassword?.trim() || snapshot.authPassword,
+    accountId: accountInfo.accountId ?? snapshot.accountId,
+    namespaceId: accountInfo.namespaceId ?? snapshot.namespaceId,
+    token: accountInfo.token ?? snapshot.token,
+  };
+};
+
+export const check = (accountInfo?: AccountInfo): AccountInfo => {
+  const info = resolveAccountInfoForSync(accountInfo);
+  const serverUrl = info?.serverUrl?.trim();
+  const authPassword = info?.authPassword?.trim();
+  if (serverUrl || isServerSyncConfigured(info)) {
+    if (!serverUrl) {
       throw new SyncPullError(MessageErrorCode.AccountCheck, 'Server URL is empty');
     }
-    if (!info?.authPassword?.trim()) {
+    if (!authPassword) {
       throw new SyncPullError(MessageErrorCode.AccountCheck, 'Auth password is empty');
     }
-    return info;
+    return { ...info, serverUrl, authPassword };
   }
   const cloudflareAccountInfo = info;
   if (!cloudflareAccountInfo?.accountId || !cloudflareAccountInfo.namespaceId || !cloudflareAccountInfo.token) {
@@ -62,8 +78,8 @@ const writeRemoteKv = async (accountInfo: AccountInfo, value: string): Promise<W
 };
 
 export const readCookiesMap = async (accountInfo: AccountInfo): Promise<ICookiesMap> => {
-  await check(accountInfo);
-  const content = await readRemoteKv(accountInfo);
+  const resolved = check(accountInfo);
+  const content = await readRemoteKv(resolved);
 
   if (content) {
     try {
@@ -155,7 +171,7 @@ export const mergeAndWriteCookies = async (
   userAgent = '',
   oldCookieMap: ICookiesMap = {},
 ): Promise<[WriteResponse, ICookiesMap]> => {
-  await check(accountInfo);
+  const resolved = check(accountInfo);
   const cookiesMap: ICookiesMap = {
     updateTime: Date.now(),
     createTime: oldCookieMap?.createTime || Date.now(),
@@ -171,7 +187,7 @@ export const mergeAndWriteCookies = async (
     },
   };
 
-  const res = await writeCookiesMap(accountInfo, cookiesMap, oldCookieMap);
+  const res = await writeCookiesMap(resolved, cookiesMap, oldCookieMap);
   return [res, cookiesMap];
 };
 
@@ -180,7 +196,7 @@ export const mergeAndWriteMultipleDomainCookies = async (
   domainCookies: { domain: string; cookies: ICookie[]; localStorageItems: ILocalStorageItem[]; userAgent?: string }[],
   oldCookieMap: ICookiesMap = {},
 ): Promise<[WriteResponse, ICookiesMap]> => {
-  await check(cloudflareAccountInfo);
+  const resolved = check(cloudflareAccountInfo);
 
   const newDomainCookieMap = {
     ...(oldCookieMap.domainCookieMap || {}),
@@ -200,7 +216,7 @@ export const mergeAndWriteMultipleDomainCookies = async (
     domainCookieMap: newDomainCookieMap,
   };
 
-  const res = await writeCookiesMap(cloudflareAccountInfo, cookiesMap, oldCookieMap);
+  const res = await writeCookiesMap(resolved, cookiesMap, oldCookieMap);
   return [res, cookiesMap];
 };
 
@@ -210,7 +226,7 @@ export const removeAndWriteCookies = async (
   oldCookieMap: ICookiesMap = {},
   id?: string,
 ): Promise<[WriteResponse, ICookiesMap]> => {
-  await check(cloudflareAccountInfo);
+  const resolved = check(cloudflareAccountInfo);
   const cookiesMap: ICookiesMap = {
     updateTime: Date.now(),
     createTime: oldCookieMap?.createTime || Date.now(),
@@ -240,7 +256,7 @@ export const removeAndWriteCookies = async (
     }
   }
 
-  const res = await writeCookiesMap(cloudflareAccountInfo, cookiesMap, oldCookieMap);
+  const res = await writeCookiesMap(resolved, cookiesMap, oldCookieMap);
   return [res, cookiesMap];
 };
 
@@ -251,7 +267,7 @@ export const editAndWriteCookies = async (
   oldItem: ICookie,
   newItem: ICookie,
 ): Promise<[WriteResponse, ICookiesMap]> => {
-  await check(cloudflareAccountInfo);
+  const resolved = check(cloudflareAccountInfo);
   const cookiesMap: ICookiesMap = {
     updateTime: Date.now(),
     createTime: oldCookieMap?.createTime || Date.now(),
@@ -274,6 +290,6 @@ export const editAndWriteCookies = async (
     }
   }
 
-  const res = await writeCookiesMap(cloudflareAccountInfo, cookiesMap, oldCookieMap);
+  const res = await writeCookiesMap(resolved, cookiesMap, oldCookieMap);
   return [res, cookiesMap];
 };
