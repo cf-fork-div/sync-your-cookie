@@ -2,6 +2,11 @@
 
 All notable changes to **Sync Your Cookie** are documented here.
 
+## [1.5.6] — 2026-07-01
+
+### Added
+- **Popup cookie editor** — full management: add cookie dialog, copy value, copy single cookie as JSON, copy all cookies as JSON, inline edit/save (expand row), delete, clear all, and refresh.
+
 ## [1.5.5] — 2026-07-01
 
 ### Fixed

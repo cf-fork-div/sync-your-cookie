@@ -82,12 +82,18 @@ export const usePopupBrowserCookies = (host: string, enabled: boolean, tabUrl?: 
     await refresh();
   };
 
+  const handleAdd = async (form: CookieFormData) => {
+    await setBrowserCookie(form);
+    await refresh();
+  };
+
   return {
     cookies,
     loading,
     domainUrl,
     refresh,
     handleSet,
+    handleAdd,
     handleRemove,
     handleClearAll,
   };

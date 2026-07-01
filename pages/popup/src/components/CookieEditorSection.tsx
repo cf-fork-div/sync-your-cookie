@@ -26,11 +26,12 @@ import {
   Switch,
   cn,
 } from '@sync-your-cookie/ui';
-import { ChevronDown, ChevronUp, RotateCw, Save, Trash2 } from 'lucide-react';
+import { Braces, Check, ChevronDown, ChevronUp, Copy, Plus, RotateCw, Save, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { usePopupBrowserCookies } from '../hooks/usePopupBrowserCookies';
+import { CookieFormDialog } from './CookieFormDialog';
 
 type CookieEditorRowProps = {
   cookie: BrowserCookieItem;
@@ -44,6 +45,15 @@ type CookieEditorRowProps = {
 const fieldInputClass = 'h-7 text-xs min-w-0 max-w-full';
 const fieldTextareaClass =
   'flex min-h-[48px] w-full min-w-0 max-w-full rounded-md border border-input bg-background px-2 py-1 text-xs font-mono break-all overflow-x-hidden resize-y';
+
+const copyToClipboard = async (text: string, onSuccess: () => void, onError: () => void) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    onSuccess();
+  } catch {
+    onError();
+  }
+};
 
 const ReadOnlyField = ({ label, value }: { label: string; value: string }) => (
   <div className="min-w-0 space-y-0.5 overflow-hidden">
@@ -64,6 +74,8 @@ export function CookieEditorRow({
   const [form, setForm] = useState<CookieFormData>(() => browserCookieToForm(cookie, domainUrl));
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [copiedValue, setCopiedValue] = useState(false);
+  const [copiedJson, setCopiedJson] = useState(false);
 
   useEffect(() => {
     if (expanded) {
@@ -101,34 +113,77 @@ export function CookieEditorRow({
     }
   };
 
+  const handleCopyValue = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await copyToClipboard(
+      cookie.value,
+      () => {
+        setCopiedValue(true);
+        toast.success(t('copiedValue'));
+        setTimeout(() => setCopiedValue(false), 1500);
+      },
+      () => toast.error(t('copyFailed')),
+    );
+  };
+
+  const handleCopyJson = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await copyToClipboard(
+      JSON.stringify(cookie, null, 2),
+      () => {
+        setCopiedJson(true);
+        toast.success(t('copiedJson'));
+        setTimeout(() => setCopiedJson(false), 1500);
+      },
+      () => toast.error(t('copyFailed')),
+    );
+  };
+
   const boolLabel = (val?: boolean | null) => (val ? t('yes') : t('no'));
 
   return (
     <div className="max-w-full min-w-0 overflow-hidden rounded-md border border-border bg-card/50">
-      <button
-        type="button"
-        className="flex w-full items-center gap-2 px-2 py-1.5 text-left hover:bg-muted/40"
-        onClick={onToggle}>
-        <span className="shrink-0 text-muted-foreground">
-          {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-        </span>
-        <span className="min-w-0 flex-1 overflow-hidden">
-          <span className="block text-xs font-medium text-foreground truncate">{cookie.name || '-'}</span>
-          {!expanded ? (
-            <>
-              <span
-                style={{ overflowWrap: 'anywhere' }}
-                className="block text-[11px] text-orange-600 dark:text-orange-400 line-clamp-2 font-mono bg-muted/50 rounded px-1 mt-0.5">
-                {cookie.value || '-'}
-              </span>
-              <span className="block text-[10px] text-muted-foreground truncate mt-0.5">
-                {cookie.domain}
-                {cookie.path ? ` · ${cookie.path}` : ''}
-              </span>
-            </>
-          ) : null}
-        </span>
-      </button>
+      <div className="flex w-full items-center gap-1">
+        <button
+          type="button"
+          className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left hover:bg-muted/40"
+          onClick={onToggle}>
+          <span className="shrink-0 text-muted-foreground">
+            {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </span>
+          <span className="min-w-0 flex-1 overflow-hidden">
+            <span className="block text-xs font-medium text-foreground truncate">{cookie.name || '-'}</span>
+            {!expanded ? (
+              <>
+                <span
+                  style={{ overflowWrap: 'anywhere' }}
+                  className="block text-[11px] text-orange-600 dark:text-orange-400 line-clamp-2 font-mono bg-muted/50 rounded px-1 mt-0.5">
+                  {cookie.value || '-'}
+                </span>
+                <span className="block text-[10px] text-muted-foreground truncate mt-0.5">
+                  {cookie.domain}
+                  {cookie.path ? ` · ${cookie.path}` : ''}
+                </span>
+              </>
+            ) : null}
+          </span>
+        </button>
+        {!expanded ? (
+          <div className="flex shrink-0 items-center gap-0.5 pr-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              onClick={handleCopyValue}
+              title={t('copyValue')}>
+              {copiedValue ? <Check size={12} className="text-green-600" /> : <Copy size={12} />}
+            </Button>
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={handleCopyJson} title={t('copyJson')}>
+              {copiedJson ? <Check size={12} className="text-green-600" /> : <Braces size={12} />}
+            </Button>
+          </div>
+        ) : null}
+      </div>
 
       {expanded ? (
         <div className="min-w-0 space-y-2 overflow-hidden border-t border-border/60 p-2">
@@ -212,10 +267,28 @@ export function CookieEditorRow({
             <ReadOnlyField label={t('sessionCookie')} value={boolLabel(cookie.session)} />
             <ReadOnlyField label={t('storeId')} value={cookie.storeId || '-'} />
           </div>
-          <div className="flex gap-2 pt-1">
+          <div className="flex flex-wrap gap-1.5 pt-1">
             <Button size="sm" className="h-7 text-xs" onClick={handleSave} disabled={saving || deleting}>
               <Save size={12} className="mr-1" />
               {t('save')}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs"
+              onClick={handleCopyValue}
+              disabled={saving || deleting}>
+              <Copy size={12} className="mr-1" />
+              {t('copyValue')}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs"
+              onClick={handleCopyJson}
+              disabled={saving || deleting}>
+              <Braces size={12} className="mr-1" />
+              {t('copyJson')}
             </Button>
             <Button
               size="sm"
@@ -241,19 +314,19 @@ type CookieEditorSectionProps = {
 
 export function CookieEditorSection({ host, tabUrl, enabled }: CookieEditorSectionProps) {
   const { t } = useI18n();
-  const { cookies, loading, domainUrl, refresh, handleSet, handleRemove, handleClearAll } = usePopupBrowserCookies(
-    host,
-    enabled,
-    tabUrl,
-  );
+  const { cookies, loading, domainUrl, refresh, handleSet, handleAdd, handleRemove, handleClearAll } =
+    usePopupBrowserCookies(host, enabled, tabUrl);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [clearAllOpen, setClearAllOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!enabled) {
       setExpandedId(null);
       setClearAllOpen(false);
+      setFormOpen(false);
     }
   }, [enabled]);
 
@@ -271,15 +344,58 @@ export function CookieEditorSection({ host, tabUrl, enabled }: CookieEditorSecti
     }
   };
 
+  const handleCopyAllJson = () => {
+    if (cookies.length === 0) {
+      toast.warning(t('noCookiesToCopy'));
+      return;
+    }
+    void copyToClipboard(
+      JSON.stringify(cookies, null, 2),
+      () => toast.success(t('copiedJson')),
+      () => toast.error(t('copyFailed')),
+    );
+  };
+
+  const handleAddCookie = async (form: CookieFormData) => {
+    setSaving(true);
+    try {
+      await handleAdd(form);
+      toast.success(t('setSuccess'));
+    } catch {
+      toast.error(t('setFailed'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (!enabled) {
     return null;
   }
 
   return (
     <div className="mt-2 w-full min-w-0 overflow-hidden">
-      <div className="flex items-center justify-between mb-2">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-1">
         <span className="text-xs text-muted-foreground">{t('cookiesCount', { count: cookies.length })}</span>
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center justify-end gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 px-2 text-xs"
+            onClick={() => setFormOpen(true)}
+            title={t('addCookie')}>
+            <Plus size={12} className="mr-1" />
+            {t('addCookie')}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 px-2 text-xs"
+            disabled={cookies.length === 0}
+            onClick={handleCopyAllJson}
+            title={t('copyAllAsJson')}>
+            <Braces size={12} className="mr-1" />
+            {t('copyAllAsJson')}
+          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -289,7 +405,7 @@ export function CookieEditorSection({ host, tabUrl, enabled }: CookieEditorSecti
             title={t('clearAllCookies')}>
             <Trash2 size={12} />
           </Button>
-          <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => void refresh()} disabled={loading}>
+          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => void refresh()} disabled={loading}>
             <RotateCw size={12} className={cn('mr-1', loading && 'animate-spin')} />
             {t('refresh')}
           </Button>
@@ -314,6 +430,14 @@ export function CookieEditorSection({ host, tabUrl, enabled }: CookieEditorSecti
           ))
         )}
       </div>
+      <CookieFormDialog
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        onSave={handleAddCookie}
+        domainUrl={domainUrl}
+        defaultDomain={host}
+        saving={saving}
+      />
       <AlertDialog open={clearAllOpen} onOpenChange={setClearAllOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
