@@ -1,6 +1,6 @@
 # Cloudflare 部署指南
 
-## 是什么
+## 介绍
 
 **Sync Your Cookie** 通过自建的 **Cloudflare Worker + KV** 后端，配合 **Web 管理端**与**浏览器扩展**，在多台设备、多个浏览器之间同步 Cookie 与 LocalStorage。
 
@@ -20,13 +20,18 @@
 - [ ] Node.js **20+**
 - [ ] 对本仓库有 push 权限（或 fork 后连接 fork）
 
-## 部署 checklist
+## 部署步骤
 
 ### 1. 创建 Worker（Git 连接）
 
 1. [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages** → **Create** → **Workers** → **Connect to Git**
-2. **Worker name** = `sync-your-cookie`（须与 `deploy/cloudflare/wrangler.toml` 中 `name` 一致）
-3. Node.js 版本选 **20**
+2. 在仓库列表中选择 **sync-your-cookie**，点击 **下一步**
+
+![选择 GitHub 仓库 sync-your-cookie 并点击下一步](images/git-select-repo.png)
+
+3. **项目名称** = `sync-your-cookie`（须与 `deploy/cloudflare/wrangler.toml` 中 `name` 一致）
+4. 填写 **构建命令** 与 **部署命令**（见下图及第 4 节表格），勾选 **非生产分支构建**（可选）
+5. Node.js 版本选 **20**（**高级设置** 中）
 
 ### 2. 创建 KV 命名空间
 
@@ -49,6 +54,8 @@
 `CLOUDFLARE_API_TOKEN` 由 Cloudflare Builds **自动注入**，无需手动添加。
 
 ### 4. Build / Deploy 命令
+
+![配置项目名称、构建命令与部署命令](images/worker-build-settings.png)
 
 | 项 | 值 |
 |----|-----|
