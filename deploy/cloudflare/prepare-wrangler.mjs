@@ -54,7 +54,7 @@ async function main() {
   if (dryRun) {
     log('dry-run: 完成（未写入 wrangler.toml）');
   } else {
-    log('完成。可执行: npx wrangler deploy --config deploy/cloudflare/wrangler.toml');
+    log('完成。Git CI 请执行: node deploy/cloudflare/deploy-ci.mjs');
   }
 }
 
