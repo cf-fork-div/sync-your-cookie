@@ -12,6 +12,56 @@ export interface SyncStatusResponse {
   storageKey?: string;
 }
 
+export class SyncVerifyError extends Error {
+  readonly status?: number;
+  readonly detail?: string;
+  readonly serverError?: string;
+
+  constructor(
+    code: string,
+    options?: {
+      status?: number;
+      detail?: string;
+      serverError?: string;
+    },
+  ) {
+    super(code);
+    this.name = 'SyncVerifyError';
+    this.status = options?.status;
+    this.detail = options?.detail;
+    this.serverError = options?.serverError;
+  }
+}
+
+export function getSyncVerifyErrorCode(err: unknown): string {
+  if (err instanceof SyncVerifyError) {
+    return err.message;
+  }
+  if (err instanceof Error && err.message) {
+    return err.message;
+  }
+  return 'verify_failed';
+}
+
+export function formatSyncVerifyErrorMessage(err: unknown): string {
+  if (err instanceof SyncVerifyError) {
+    const parts: string[] = [];
+    const label = err.serverError && err.serverError !== err.message ? err.serverError : err.message;
+    parts.push(label);
+    if (err.status !== undefined) {
+      parts.push(`HTTP ${err.status}`);
+    }
+    if (err.detail) {
+      parts.push(err.detail);
+    }
+    return parts.join(' · ');
+  }
+  if (err instanceof Error && err.message) {
+    return err.message;
+  }
+  return 'verify_failed';
+}
+
 export function normalizeServerUrl(url: string): string {
   return url.trim().replace(/\/+$/, '');
 }
@@ -30,42 +80,134 @@ function authHeaders(password: string): HeadersInit {
   };
 }
 
-async function parseJsonResponse<T>(res: Response): Promise<T> {
-  const data = (await res.json()) as T;
-  return data;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function readServerError(body: unknown): string | undefined {
+  if (!isRecord(body)) {
+    return undefined;
+  }
+  if (typeof body.error === 'string' && body.error) {
+    return body.error;
+  }
+  if (typeof body.message === 'string' && body.message) {
+    return body.message;
+  }
+  return undefined;
+}
+
+async function readResponseBody(res: Response): Promise<{ body: unknown; raw: string }> {
+  const raw = await res.text();
+  if (!raw.trim()) {
+    return { body: null, raw };
+  }
+  try {
+    return { body: JSON.parse(raw) as unknown, raw };
+  } catch {
+    throw new SyncVerifyError('invalid_response', {
+      status: res.status,
+      detail: raw.slice(0, 200),
+    });
+  }
+}
+
+function mapUnauthorizedError(body: unknown): SyncVerifyError {
+  const serverError = readServerError(body);
+  return new SyncVerifyError('wrong_password', {
+    status: 401,
+    serverError,
+    detail: serverError && serverError !== 'wrong_password' ? serverError : undefined,
+  });
+}
+
+function mapHttpError(status: number, body: unknown, raw: string): SyncVerifyError {
+  const serverError = readServerError(body);
+
+  if (status === 503) {
+    if (serverError === 'password_not_configured') {
+      return new SyncVerifyError('password_not_configured', { status, serverError });
+    }
+    if (serverError === 'datasource_not_configured') {
+      return new SyncVerifyError('datasource_not_configured', { status, serverError });
+    }
+    return new SyncVerifyError('service_unavailable', { status, serverError, detail: raw.slice(0, 200) });
+  }
+
+  if (status === 429) {
+    return new SyncVerifyError('rate_limited', { status, serverError, detail: raw.slice(0, 200) });
+  }
+
+  if (status === 401) {
+    return mapUnauthorizedError(body);
+  }
+
+  const code = serverError || `http_${status}`;
+  return new SyncVerifyError(code, {
+    status,
+    serverError,
+    detail: raw.slice(0, 200),
+  });
+}
+
+function mapUnexpectedSuccessBody(body: unknown, status: number, raw: string): SyncVerifyError {
+  if (isRecord(body) && 'authenticated' in body && !('ok' in body)) {
+    return new SyncVerifyError('wrong_endpoint', {
+      status,
+      serverError: 'session_response',
+      detail: 'Server returned /api/session payload; use Worker root URL (no /api suffix).',
+    });
+  }
+
+  const serverError = readServerError(body);
+  return new SyncVerifyError(serverError || 'verify_failed', {
+    status,
+    serverError,
+    detail: raw.slice(0, 200),
+  });
 }
 
 export async function verifySyncServer(serverUrl: string, password: string): Promise<SyncStatusResponse> {
   const base = normalizeServerUrl(serverUrl);
-  const res = await fetch(`${base}/api/sync/status`, {
-    method: 'GET',
-    headers: authHeaders(password),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${base}/api/sync/status`, {
+      method: 'GET',
+      headers: authHeaders(password),
+    });
+  } catch (err) {
+    throw new SyncVerifyError('network_error', {
+      detail: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  const { body, raw } = await readResponseBody(res);
 
   if (res.status === 401) {
-    throw new Error('wrong_password');
-  }
-  if (res.status === 503) {
-    const data = await parseJsonResponse<SyncApiError>(res).catch(() => ({ error: 'service_unavailable' }));
-    if (data.error === 'password_not_configured') {
-      throw new Error('password_not_configured');
-    }
-    if (data.error === 'datasource_not_configured') {
-      throw new Error('datasource_not_configured');
-    }
-    throw new Error('service_unavailable');
-  }
-  if (!res.ok) {
-    throw new Error('network_error');
+    throw mapUnauthorizedError(body);
   }
 
-  const data = await parseJsonResponse<SyncStatusResponse>(res);
-  if (!data.ok) {
-    throw new Error('verify_failed');
+  if (res.status === 503) {
+    throw mapHttpError(res.status, body, raw);
   }
+
+  if (!res.ok) {
+    throw mapHttpError(res.status, body, raw);
+  }
+
+  if (!isRecord(body) || body.ok !== true) {
+    throw mapUnexpectedSuccessBody(body, res.status, raw);
+  }
+
+  const data: SyncStatusResponse = {
+    ok: true,
+    datasourceConfigured: body.datasourceConfigured === true,
+    storageKey: typeof body.storageKey === 'string' ? body.storageKey : undefined,
+  };
   if (!data.datasourceConfigured) {
-    throw new Error('datasource_not_configured');
+    throw new SyncVerifyError('datasource_not_configured', { status: res.status });
   }
+
   return data;
 }
 
@@ -88,7 +230,7 @@ export async function readSyncKV(serverUrl: string, password: string, storageKey
     return '';
   }
   if (res.status === 503) {
-    const data = await parseJsonResponse<SyncApiError>(res).catch(() => null);
+    const data = (await res.json().catch(() => null)) as SyncApiError | null;
     if (data?.error === 'datasource_not_configured') {
       return Promise.reject({
         message: 'Server data source is not configured. Ask admin to set up Cloudflare KV on the web console.',
@@ -129,7 +271,7 @@ export async function writeSyncKV(
     return { success: false, errors: [{ code: 401, message: 'Unauthorized' }] };
   }
   if (!res.ok) {
-    const data = await parseJsonResponse<SyncApiError>(res).catch(() => null);
+    const data = (await res.json().catch(() => null)) as SyncApiError | null;
     return {
       success: false,
       errors: [{ code: res.status, message: data?.message || data?.error || 'Write failed' }],

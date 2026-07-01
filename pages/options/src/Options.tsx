@@ -9,6 +9,8 @@ import {
 
   normalizeServerUrl,
 
+  resolveSyncVerifyToast,
+
   useDocumentTitle,
 
   useI18n,
@@ -259,23 +261,15 @@ const Options = () => {
 
     } catch (err: unknown) {
 
-      const code = err instanceof Error ? err.message : 'verify_failed';
+      const { variant, message } = resolveSyncVerifyToast(err, t);
 
-      if (code === 'wrong_password') {
+      if (variant === 'warning') {
 
-        toast.error(t('wrongPassword'));
-
-      } else if (code === 'datasource_not_configured') {
-
-        toast.error(t('datasourceNotConfigured'));
-
-      } else if (code === 'password_not_configured') {
-
-        toast.error(t('accessPasswordNotConfigured'));
+        toast.warning(message);
 
       } else {
 
-        toast.error(t('verifyFailed', { message: code }));
+        toast.error(message);
 
       }
 

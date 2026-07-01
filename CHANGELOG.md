@@ -2,6 +2,11 @@
 
 All notable changes to **Sync Your Cookie** are documented here.
 
+## [1.6.1] — 2026-07-01
+
+### Fixed
+- **Sync verify errors:** Push/Pull and refresh now show HTTP status and server response body instead of bare `verify_failed`; map session-style responses and non-JSON errors to actionable messages.
+
 ## [1.6.0] — 2026-07-01
 
 ### Security

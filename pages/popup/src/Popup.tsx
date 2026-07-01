@@ -13,6 +13,7 @@ import {
   useStorageSuspense,
   useTheme,
   useAccountAuth,
+  resolveSyncVerifyToast,
   withErrorBoundary,
   withSuspense,
 } from '@sync-your-cookie/shared';
@@ -116,15 +117,11 @@ const Popup = () => {
   const isBusy = isPushingOrPulling || pushing || refreshing;
 
   const handleRefreshError = (err: unknown) => {
-    const code = err instanceof Error ? err.message : 'verify_failed';
-    if (code === 'missing_credentials') {
-      toast.warning(t('serverUrlPasswordRequired'));
-    } else if (code === 'wrong_password') {
-      toast.error(t('wrongPassword'));
-    } else if (code === 'datasource_not_configured') {
-      toast.error(t('datasourceNotConfigured'));
+    const { variant, message } = resolveSyncVerifyToast(err, t);
+    if (variant === 'warning') {
+      toast.warning(message);
     } else {
-      toast.error(t('verifyFailed', { message: code }));
+      toast.error(message);
     }
   };
 
