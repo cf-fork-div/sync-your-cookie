@@ -30,20 +30,11 @@
 
 ## 获取与安装
 
-### 从浏览器商店安装（推荐）
+> **本 fork 尚未单独上架商店。** 下方商店链接指向上游原版扩展；若需 v1.7.x（Worker 模式、切换并拉取修复等），请使用 [从源码加载](#从源码加载推荐)。
 
-| 浏览器 | 链接 |
-|--------|------|
-| **Chrome** | [Sync Your Cookie](https://chromewebstore.google.com/detail/sync-your-cookie/bcegpckmgklcpcapnbigfdadedcneopf) |
-| **Edge** | [Sync Your Cookie](https://microsoftedge.microsoft.com/addons/detail/sync-your-cookie/ohlcghldllgnmkegocpcphdbbphikgfm) |
+### 从源码加载（推荐）
 
-1. 打开上表对应链接，点击 **添加至 Chrome** / **获取**。
-2. 安装完成后，浏览器工具栏会出现扩展图标。
-3. 继续阅读下方 [登录扩展](#登录扩展) 填写 Worker URL 与密码。
-
-### 从源码加载（开发 / 测试）
-
-适用于本仓库 fork 用户或需要最新未上架版本时。
+适用于本 fork 及需要最新功能的用户。
 
 **环境要求：** Node.js **20+**，包管理器 **pnpm**。
 
@@ -67,6 +58,17 @@ pnpm build
 > 修改代码后需重新执行 `pnpm build`，并在扩展管理页点击 **重新加载**。
 
 打包为 zip（商店发布用）：见 [STORE_PUBLISH.md](./STORE_PUBLISH.md) 中的 `pnpm release:zip`。
+
+### 从浏览器商店安装（上游原版）
+
+若只需基础功能、且版本要求不高，可安装上游已上架版本（**非本 fork**，可能缺少 v1.7.x 改动）：
+
+| 浏览器 | 链接 |
+|--------|------|
+| **Chrome** | [Sync Your Cookie](https://chromewebstore.google.com/detail/sync-your-cookie/bcegpckmgklcpcapnbigfdadedcneopf) |
+| **Edge** | [Sync Your Cookie](https://microsoftedge.microsoft.com/addons/detail/sync-your-cookie/ohlcghldllgnmkegocpcphdbbphikgfm) |
+
+安装后同样需配置 Worker URL 与访问密码，见下方 [登录扩展](#登录扩展)。
 
 ---
 
