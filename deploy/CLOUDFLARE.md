@@ -28,17 +28,16 @@
 
 ## 前置参数获取
 
-进入 Worker 创建页之前，先准备好以下值（对应 Build 的 4 个变量 + Connect 表单）：
+进入 Worker 创建页之前，先准备好以下 **4 个 Build 变量** 所需的值：
 
 | 参数 | 填入位置 | 说明 |
 |------|----------|------|
 | **Namespace ID** | Variable `SYNC_KV_NAMESPACE_ID` | 见下方「创建 KV 命名空间」 |
 | **API Token**（`cfut_...`） | Secret `CLOUDFLARE_API_TOKEN` | 见下方「创建 API Token」 |
 | **Web 访问密码** | Secret `WEB_ACCESS_PASSWORD` | 自定强密码，Web / 扩展登录用 |
-| **Account ID** | Connect 表单或种子写入 | Dashboard 右侧边栏，或任意 Worker → **Settings** |
 | **`DEPLOY_SEED_DATASOURCE=1`** | Build Variable | 首次 Deploy 自动写入 Connect 配置（覆盖已有用 `force`） |
 
-> 设置 `DEPLOY_SEED_DATASOURCE=1` 后，Deploy 成功时 Connect 表单通常已自动配置 KV 凭据，无需部署后再手动填写。
+> 设置 `DEPLOY_SEED_DATASOURCE=1` 且配置了 `CLOUDFLARE_API_TOKEN` 后，Deploy 会**自动解析 Account ID** 并写入 Connect 表单，**无需**手动复制 Account ID。仅当未设置 `DEPLOY_SEED_DATASOURCE`、需部署后手动填 Connect 表单时，才要在 Dashboard 右侧边栏查找 Account ID。
 
 ### 创建 KV 命名空间
 
