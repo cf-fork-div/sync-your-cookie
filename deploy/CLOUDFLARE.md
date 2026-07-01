@@ -77,20 +77,8 @@
 
 Connect 中的 KV 为 **Cookie 存储**；`SYNC_KV` 存 datasource 等 Worker 元数据（可与 Cookie KV 为同一 Namespace）。
 
-### 浏览器扩展（v1.7.x）
+---
 
-- [ ] **服务器 URL**：Worker 根地址，无尾斜杠
-- [ ] **访问密码**：与 `WEB_ACCESS_PASSWORD` 相同
-- [ ] 试一次 Push / Pull
+## 下一步
 
-### 后续更新
-
-向 Git 连接分支 **push 即自动 redeploy**。`SYNC_KV_NAMESPACE_ID` 不变时 KV 数据保留。
-
-### 自定义域名（可选）
-
-1. Worker → **Settings → Domains & Routes** → **Add Custom Domain**
-2. 例如 `sync-your-cookie.example.com`
-3. 扩展 **服务器 URL** 填 `https://sync-your-cookie.example.com`（无尾斜杠）
-
-`workers.dev` 与自定义域名可并存；扩展填实际使用的地址即可。
+Worker 部署验证通过后，请阅读 **[插件使用指南](../how-to-use.md)**，完成扩展安装、选项页配置与 Push / Pull。
