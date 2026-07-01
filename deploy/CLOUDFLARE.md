@@ -19,6 +19,32 @@
 - [ ] Cloudflare 账号，Git 仓库已授权
 - [ ] Node.js **20+**
 - [ ] 对本仓库有 push 权限（或 fork 后连接 fork）
+- [ ] 已创建 KV 命名空间并记录 **Namespace ID**（见下）
+- [ ] 已创建 API Token 并记录 **Token 字符串**（见下）
+
+### 创建 Workers KV 命名空间
+
+Namespace ID 用于 Build 变量 `SYNC_KV_NAMESPACE_ID`，以及部署后 Web 管理端 Connect 表单。
+
+1. [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages** → **KV** → **创建命名空间**
+2. 名称填 **`sync-your-cookie`**，点击 **创建**
+3. 在命名空间详情页复制 **Namespace ID**（稍后填入 Build 变量与 Connect 表单）
+
+![① 创建 KV 命名空间 sync-your-cookie；② 点击创建；③ 复制 Namespace ID](images/kv-create-namespace.png)
+
+### 创建 API Token（Connect 表单用）
+
+此 Token 供 **Web 管理端 Connect 表单**使用，Worker 通过它读写 **Cookie 存储 KV**（需 **Workers KV Storage:Edit** 权限）。
+
+> **与 Build 自动注入的 Token 区分**：Git 连接部署时，Cloudflare Builds 会自动注入 `CLOUDFLARE_API_TOKEN` 供 `wrangler deploy` 与 `prepare-wrangler.mjs` 使用，**无需**手动添加到 Build 变量。本节创建的 Token 由你自行保管，部署完成后填入 Connect 表单；若设置了 `DEPLOY_SEED_DATASOURCE=1`，Build 会用自动注入的 Token 预写 Connect 配置，但仍建议保存一份备用。
+
+1. Dashboard → **我的个人资料** → **API 令牌** → **创建令牌**
+2. 在模板列表选择 **编辑 Cloudflare Workers**，点击 **使用模板**
+3. 令牌名称填 **`sync-your-cookie`**
+4. 确认权限包含 **Workers KV Storage:Edit** 后，点击 **创建令牌**
+5. 复制生成的 Token（`cfut_...`），关闭页面前妥善保存
+
+![① 选择「编辑 Cloudflare Workers」模板；② 使用模板；③ 令牌名称 sync-your-cookie；④ 创建令牌；⑤ 复制 cfut_ Token](images/api-token-workers.png)
 
 ## 部署步骤
 
@@ -30,18 +56,14 @@
 ![选择 GitHub 仓库 sync-your-cookie 并点击下一步](images/git-select-repo.png)
 
 3. **项目名称** = `sync-your-cookie`（须与 `deploy/cloudflare/wrangler.toml` 中 `name` 一致）
-4. 填写 **构建命令** 与 **部署命令**（见下图及第 4 节表格），勾选 **非生产分支构建**（可选）
+4. 填写 **构建命令** 与 **部署命令**（见第 2、3 节及下图），勾选 **非生产分支构建**（可选）
 5. Node.js 版本选 **20**（**高级设置** 中）
 
-### 2. 创建 KV 命名空间
-
-**Workers & Pages → KV** → 创建 `sync-your-cookie` → 复制 **Namespace ID**
-
-### 3. Build 变量（Settings → Build → Build variables and secrets）
+### 2. Build 变量（Settings → Build → Build variables and secrets）
 
 | 变量 | 类型 | 说明 |
 |------|------|------|
-| `SYNC_KV_NAMESPACE_ID` | Variable | 上一步 Namespace ID（固定绑定，redeploy 不换绑） |
+| `SYNC_KV_NAMESPACE_ID` | Variable | 前置条件中创建的 Namespace ID（固定绑定，redeploy 不换绑） |
 | `WEB_ACCESS_PASSWORD` | Secret | Web / 扩展登录密码（Deploy 时由 prepare-wrangler 推送到 Worker） |
 
 可选 Build Variable：
@@ -53,7 +75,7 @@
 
 `CLOUDFLARE_API_TOKEN` 由 Cloudflare Builds **自动注入**，无需手动添加。
 
-### 4. Build / Deploy 命令
+### 3. Build / Deploy 命令
 
 ![配置项目名称、构建命令与部署命令](images/worker-build-settings.png)
 
@@ -63,7 +85,7 @@
 | Build command | `pnpm install && pnpm build:cloudflare-worker` |
 | Deploy command | `node deploy/cloudflare/prepare-wrangler.mjs && npx wrangler deploy --config deploy/cloudflare/wrangler.toml` |
 
-### 5. 保存并部署
+### 4. 保存并部署
 
 **Save and Deploy** 或向连接分支 push，等待 Build + Deploy 完成。
 
@@ -90,7 +112,7 @@
 ### Web 管理端
 
 - [ ] 打开 Worker URL（或自定义域名），输入 `WEB_ACCESS_PASSWORD` 登录
-- [ ] **Connect 表单**：填写 **Account ID**、**Namespace ID**、**API Token**（需 Workers KV Storage:Edit 权限），保存
+- [ ] **Connect 表单**：填写 **Account ID**、**Namespace ID**（同上）、**API Token**（前置条件中创建的 `cfut_...` Token），保存
 - [ ] 若 Build 时设置了 `DEPLOY_SEED_DATASOURCE=1` 且 Deploy 成功，Connect 通常已自动配置
 
 Connect 中的 KV 为 **Cookie 存储**；`SYNC_KV` 存 datasource 配置等 Worker 元数据（可与 Cookie KV 为同一 Namespace）。
