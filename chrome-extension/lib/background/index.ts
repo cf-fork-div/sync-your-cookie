@@ -1,7 +1,7 @@
 // sort-imports-ignore
 import 'webextension-polyfill';
 
-import { pullAndSetCookies, pullCookies, pushMultipleDomainCookies, getHostFromStorageKey, resolveAutoPullEntryKey, resolveAutoPushEntryKeys } from '@sync-your-cookie/shared';
+import { gatherRawBrowserCookies, pullAndSetCookies, pullCookies, pushMultipleDomainCookies, getHostFromStorageKey, resolveAutoPullEntryKey, resolveAutoPushEntryKeys } from '@sync-your-cookie/shared';
 import { cookieStorage } from '@sync-your-cookie/storage/lib/cookieStorage';
 import { domainConfigStorage } from '@sync-your-cookie/storage/lib/domainConfigStorage';
 import { domainStatusStorage } from '@sync-your-cookie/storage/lib/domainStatusStorage';
@@ -92,12 +92,10 @@ chrome.cookies.onChanged.addListener(async changeInfo => {
     console.log('pushDomainHostMap', pushDomainHostMap);
     for (const domain of pushDomainHostMap.keys()) {
       const hosts = pushDomainHostMap.get(domain) || [];
-      // const [domain] = await extractDomainAndPort(host);
 
-      const cookies = await chrome.cookies.getAll({
-        domain: domain,
-      });
       for (const host of hosts) {
+        const sourceUrl = domainConfig.domainMap[host]?.sourceUrl;
+        const cookies = await gatherRawBrowserCookies(host, sourceUrl);
         uploadDomainCookies.push({
           domain: host,
           cookies,

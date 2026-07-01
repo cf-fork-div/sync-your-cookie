@@ -1,3 +1,4 @@
+import { getHostFromStorageKey } from '../domain/entryKey';
 import { domainConfigStorage } from '@sync-your-cookie/storage/lib/domainConfigStorage';
 
 export type BrowserCookieItem = {
@@ -94,12 +95,16 @@ export function toBrowserCookieItem(cookie: chrome.cookies.Cookie, index: number
   };
 }
 
-export async function fetchBrowserCookies(host: string, tabUrl?: string): Promise<BrowserCookieItem[]> {
-  const url = await resolveDomainUrl(host, tabUrl);
-  const normalizedHost = normalizeCookieHost(host);
+/** Merge URL-scoped and domain-scoped browser cookies (same strategy as the cookie editor). */
+export async function gatherRawBrowserCookies(
+  hostOrStorageKey: string,
+  tabUrl?: string,
+): Promise<chrome.cookies.Cookie[]> {
+  const cookieHost = normalizeCookieHost(getHostFromStorageKey(hostOrStorageKey));
+  const url = await resolveDomainUrl(hostOrStorageKey, tabUrl);
   const [urlCookies, domainCookies] = await Promise.all([
     chrome.cookies.getAll({ url }),
-    chrome.cookies.getAll({ domain: normalizedHost }),
+    chrome.cookies.getAll({ domain: cookieHost }),
   ]);
 
   const merged = new Map<string, chrome.cookies.Cookie>();
@@ -107,7 +112,12 @@ export async function fetchBrowserCookies(host: string, tabUrl?: string): Promis
     merged.set(browserCookieKey(cookie), cookie);
   }
 
-  return Array.from(merged.values()).map((cookie, index) => toBrowserCookieItem(cookie, index));
+  return Array.from(merged.values());
+}
+
+export async function fetchBrowserCookies(host: string, tabUrl?: string): Promise<BrowserCookieItem[]> {
+  const cookies = await gatherRawBrowserCookies(host, tabUrl);
+  return cookies.map((cookie, index) => toBrowserCookieItem(cookie, index));
 }
 
 export function buildCookieUrl(

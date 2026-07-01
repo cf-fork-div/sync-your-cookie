@@ -19,6 +19,7 @@ export enum MessageErrorCode {
   CloudflareNotFoundRoute = 'CloudflareNotFoundRoute',
   DecryptFailed = 'DecryptFailed',
   DecodeFailed = 'DecodeFailed',
+  NoSessionData = 'NoSessionData',
 }
 
 export type PushCookieMessagePayload = {

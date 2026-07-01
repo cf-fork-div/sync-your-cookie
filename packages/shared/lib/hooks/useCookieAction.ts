@@ -32,14 +32,20 @@ export const catchHandler = (
 ) => {
   const defaultMsg = t ? t(sceneFailKey[scene]) : `${scene} fail`;
   const code = err?.code;
+  const detail =
+    err?.msg ||
+    err?.message ||
+    (typeof err === 'string' ? err : undefined);
   const settingErrors = [
     MessageErrorCode.AccountCheck,
     MessageErrorCode.CloudflareNotFoundRoute,
     MessageErrorCode.DecodeFailed,
     MessageErrorCode.DecryptFailed,
   ];
-  if (settingErrors.includes(code)) {
-    toast.error(err?.msg || err?.result?.message || defaultMsg, {
+  if (code === MessageErrorCode.NoSessionData) {
+    toast.error(t ? t('pushNoSessionData') : detail || defaultMsg);
+  } else if (settingErrors.includes(code)) {
+    toast.error(detail || err?.result?.message || defaultMsg, {
       action: {
         label: t ? t('goToSettings') : 'go to settings',
         onClick: () => {
@@ -48,7 +54,7 @@ export const catchHandler = (
       },
     });
   } else {
-    toast.error(err?.msg || defaultMsg);
+    toast.error(detail || defaultMsg);
   }
   console.log('err', err);
 };
@@ -68,7 +74,8 @@ export const useCookieAction = (host: string, toast: typeof Toast) => {
         if (res.isOk) {
           toast.success(t('pushedSuccess'));
         } else {
-          toast.error(res.msg || t('pushedFail'));
+          const detail = res.msg || (res.code === MessageErrorCode.NoSessionData ? t('pushNoSessionData') : undefined);
+          toast.error(detail || t('pushedFail'));
         }
         console.log('res', res);
       })

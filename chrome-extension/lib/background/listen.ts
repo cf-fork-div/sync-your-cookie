@@ -2,9 +2,11 @@ import {
   check,
   checkResponseAndCallback,
   CookieOperator,
-  extractDomainAndPort,
+  gatherRawBrowserCookies,
+  getHostFromStorageKey,
   ICookie,
   Message,
+  MessageErrorCode,
   MessageType,
   pullAndSetCookies,
   PushCookieMessagePayload,
@@ -34,15 +36,13 @@ const handlePush = async (payload: PushCookieMessagePayload, callback: HandleCal
     await domainStatusStorage.updateItem(host, {
       pushing: true,
     });
-    const [domain, port, hostname] = await extractDomainAndPort(host);
-    const condition = sourceUrl ? { url: sourceUrl } : { domain: domain };
-    const cookies = await chrome.cookies.getAll(condition);
+    const cookies = await gatherRawBrowserCookies(host, sourceUrl);
 
     let localStorageItems: NonNullable<Parameters<typeof pushCookies>[2]> = [];
     const includeLocalStorage = settingsStorage.getSnapshot()?.includeLocalStorage;
     if (includeLocalStorage) {
       try {
-        const hostname = sourceUrl ? new URL(sourceUrl).hostname : host;
+        const hostname = sourceUrl ? new URL(sourceUrl).hostname : getHostFromStorageKey(host);
         localStorageItems = await sendGetLocalStorageMessage(hostname);
       } catch (error) {
         console.error('sendGetLocalStorageMessage error', error);
@@ -58,7 +58,12 @@ const handlePush = async (payload: PushCookieMessagePayload, callback: HandleCal
       const res = await pushCookies(host, cookies, localStorageItems, userAgent);
       checkResponseAndCallback(res, 'push', callback);
     } else {
-      callback({ isOk: false, msg: 'no cookies and  localStorageItems found', result: cookies });
+      callback({
+        isOk: false,
+        code: MessageErrorCode.NoSessionData,
+        msg: 'No cookies or localStorage data found for this site',
+        result: cookies,
+      });
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
