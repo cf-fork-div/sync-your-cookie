@@ -67,11 +67,9 @@
 
 ## 部署图文流程
 
-**推荐思路**：先完成 [前置参数获取](#前置参数获取)，进入 Worker 创建页后 **一次性填完** 仓库、Build/Deploy 命令与 4 个 Build 变量，**再点第一次「部署」**——首次 Deploy 即可成功，无需先 Deploy 失败再补变量。
+先完成 [前置参数获取](#前置参数获取)，进入 Worker 创建页后 **一次性填完** 下表全部项，**再点第一次「部署」**。
 
 ![一次性部署：Git、Build/Deploy 命令与 4 个 Build 变量填完后再点部署](images/deploy-one-shot.png)
-
-### 快速对照表
 
 | 步骤 | 操作 |
 |------|------|
@@ -86,76 +84,28 @@
 | **9** | Secret **`CLOUDFLARE_API_TOKEN`** |
 | **10** | 点击 **部署**，在 Deployments 页等待 **Build** 与 **Deploy** 均成功 |
 
-### 第 1 步：连接 Git 仓库
-
-1. [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages** → **Create** → **Workers** → **Connect to Git**
-2. 选择 **已 push 最新代码** 的仓库与分支（本 fork 示例：`cf-fork-div/sync-your-cookie`，分支 `main`）
-3. 点击 **下一步**
-
-![选择 GitHub 仓库 sync-your-cookie 并点击下一步](images/git-select-repo.png)
-
-4. **项目名称** 填 **`sync-your-cookie`**
-5. **Root directory** 填 **`/`**，Node.js 版本选 **20**（**高级设置**）
-6. 继续填写 Build 变量与命令（第 2、3 步），再点部署
-
-> 删除旧 Worker 后重建时，**KV 命名空间与 API Token 可保留**；删除 Worker 不会清空 KV 里的 Cookie 数据。
-
-### 第 2 步：Build 变量（4 个）
-
-在 **Settings → Build → Build variables and secrets**（高级设置）中添加：
-
-| 变量 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `SYNC_KV_NAMESPACE_ID` | Variable | 是 | [前置参数获取](#前置参数获取) 中的 Namespace ID |
-| `WEB_ACCESS_PASSWORD` | Secret | 是 | Web / 扩展登录密码 |
-| `CLOUDFLARE_API_TOKEN` | Secret | 是 | `cfut_...`，用于部署与自动写入 Connect |
-| `DEPLOY_SEED_DATASOURCE` | Variable | 是 | 填 `1`；首次 Deploy 自动配置 Connect |
-
-可选 Variable：
-
-| 变量 | 说明 |
-|------|------|
-| `WEB_BASE_PATH` | 自定义 URL 路径段，如 `my-vault` → 访问 `/my-vault/` |
-
-> Cloudflare Git 连接有时也会自动注入 `CLOUDFLARE_API_TOKEN`；若 Build 日志仍报缺少 Token，请按上表 **手动添加 Secret**。
-
-### 第 3 步：Build / Deploy 命令
-
-![配置项目名称、构建命令与部署命令](images/worker-build-settings.png)
-
-**构建命令**（原样复制）：
+**命令（原样复制）**
 
 ```text
 pnpm install && pnpm build:cloudflare-worker
 ```
 
-**部署命令**（原样复制，推荐）：
-
 ```text
 node deploy/cloudflare/prepare-wrangler.mjs --deploy
 ```
 
-若报 `Unknown option '--deploy'`（代码过旧），改用：
+若报 `Unknown option '--deploy'`（代码过旧），部署命令改用：
 
 ```text
 node deploy/cloudflare/prepare-wrangler.mjs && cd deploy/cloudflare && npx wrangler deploy
 ```
 
-**非生产分支部署命令**（可保持默认）：
+**注意**
 
-```text
-npx wrangler versions upload
-```
-
-> **勿用**带 `--config deploy/cloudflare/wrangler.toml` 的长命令：Dashboard 输入框可能把 `.toml` 截成 `.tom`，导致 `Missing entry-point`。
->
-> **勿**只改 Dashboard 命令就对旧构建点 Retry：须 **Save and Deploy** 或 **向 Git push** 触发包含最新脚本的新构建。
-
-### 第 4 步：保存并等待完成
-
-1. 点击 **Save and Deploy**（或 **部署**）
-2. 在 **Deployments** 页等待 **Build** 与 **Deploy** 均成功
-3. 成功标志：日志末尾出现 Worker URL（`*.workers.dev`），无 `Failed`
+- **勿用**带 `--config deploy/cloudflare/wrangler.toml` 的长命令：Dashboard 可能把 `.toml` 截断导致 `Missing entry-point`
+- **勿**只对旧 Deployment 点 Retry；改命令后须 **Save and Deploy** 或 **向 Git push** 触发新构建
+- 可选 Variable **`WEB_BASE_PATH`**：自定义 URL 路径段（如 `my-vault` → 访问 `/my-vault/`）
+- 删除旧 Worker 后重建时，**KV 与 API Token 可保留**；删除 Worker 不会清空 KV 里的 Cookie 数据
 
 ---
 
