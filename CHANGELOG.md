@@ -2,6 +2,12 @@
 
 All notable changes to **Sync Your Cookie** are documented here.
 
+## [1.7.1] — 2026-07-01
+
+### Fixed
+- **Multi-account pull / Switch & Pull** — resolve tab URLs from the domain host instead of the full entry storage key (`host::entryId`), so switching accounts on the same site no longer builds invalid URLs and fails cookie apply.
+- **Pull error toasts** — always show the underlying error message when available.
+
 ## [1.6.1] — 2026-07-01
 
 ### Fixed

@@ -46,10 +46,7 @@ export function checkResponseAndCallback(
   }
 
   const errMsg = res?.msg || res?.message;
-  const defaultErrMsg =
-    errMsg?.toLowerCase?.().includes?.(scene) || (res?.code && errMsg)
-      ? errMsg
-      : `${scene} fail, please try again.`;
+  const defaultErrMsg = errMsg || `${scene} fail, please try again.`;
   callback({ isOk: false, code: res?.code, msg: defaultErrMsg, result: res });
 }
 function addProtocol(uri: string) {

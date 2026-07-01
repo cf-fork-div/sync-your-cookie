@@ -58,15 +58,15 @@ function hostMatchesUrl(normalizedHost: string, url: string): boolean {
   }
 }
 
-export async function resolveDomainUrl(host: string, tabUrl?: string): Promise<string> {
+export async function resolveDomainUrl(hostOrStorageKey: string, tabUrl?: string): Promise<string> {
   const domainConfig = await domainConfigStorage.get();
-  const config = domainConfig?.domainMap?.[host];
+  const config = domainConfig?.domainMap?.[hostOrStorageKey];
   const sourceUrl = config?.sourceUrl;
   if (sourceUrl) {
     return sourceUrl;
   }
 
-  const normalizedHost = normalizeCookieHost(host);
+  const normalizedHost = normalizeCookieHost(getHostFromStorageKey(hostOrStorageKey));
 
   if (tabUrl && hostMatchesUrl(normalizedHost, tabUrl)) {
     return tabUrl;

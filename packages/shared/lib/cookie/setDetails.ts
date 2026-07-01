@@ -1,5 +1,6 @@
 import { ICookie } from '@sync-your-cookie/protobuf';
 
+import { getHostFromStorageKey } from '../domain/entryKey';
 import { normalizeCookieHost } from './browserCookies';
 
 const VALID_SAME_SITE: chrome.cookies.SameSiteStatus[] = ['unspecified', 'no_restriction', 'lax', 'strict'];
@@ -15,8 +16,11 @@ function normalizeSameSite(sameSite?: string | null): chrome.cookies.SameSiteSta
 }
 
 /** Whether a browser cookie change is relevant when viewing a domain entry in the UI. */
-export function cookieMatchesHost(cookie: Pick<ICookie, 'domain' | 'hostOnly'>, host: string): boolean {
-  const normalizedHost = normalizeCookieHost(host);
+export function cookieMatchesHost(
+  cookie: Pick<ICookie, 'domain' | 'hostOnly'>,
+  hostOrStorageKey: string,
+): boolean {
+  const normalizedHost = normalizeCookieHost(getHostFromStorageKey(hostOrStorageKey));
   const cookieDomain = normalizeCookieHost(cookie.domain || '');
   if (!cookieDomain) return false;
   if (cookieDomain === normalizedHost) return true;
