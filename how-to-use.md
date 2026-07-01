@@ -30,7 +30,7 @@
 
 ## 获取与安装
 
-> **本 fork 尚未单独上架商店。** 下方商店链接指向上游原版扩展；若需 v1.7.x（Worker 模式、切换并拉取修复等），请使用 [从源码加载](#从源码加载推荐)。
+> **本 fork 尚未单独上架商店。** 请使用下方 [从源码加载](#从源码加载推荐) 或 [从 Release ZIP 加载](#从-release-zip-加载) 安装。
 
 ### 从源码加载（推荐）
 
@@ -70,17 +70,6 @@ pnpm build
 5. 选择解压后的文件夹（内含 `manifest.json`）
 
 > 不能将 ZIP 或 CRX 文件直接拖入扩展管理页加载；Chrome / Edge 会显示「开发者扩展」警告属正常现象。更新版本需重新下载 ZIP，解压后在扩展管理页点击 **重新加载**。
-
-### 从浏览器商店安装（上游原版）
-
-若只需基础功能、且版本要求不高，可安装上游已上架版本（**非本 fork**，可能缺少 v1.7.x 改动）：
-
-| 浏览器 | 链接 |
-|--------|------|
-| **Chrome** | [Sync Your Cookie](https://chromewebstore.google.com/detail/sync-your-cookie/bcegpckmgklcpcapnbigfdadedcneopf) |
-| **Edge** | [Sync Your Cookie](https://microsoftedge.microsoft.com/addons/detail/sync-your-cookie/ohlcghldllgnmkegocpcphdbbphikgfm) |
-
-安装后同样需配置 Worker URL 与访问密码，见下方 [登录扩展](#登录扩展)。
 
 ---
 
