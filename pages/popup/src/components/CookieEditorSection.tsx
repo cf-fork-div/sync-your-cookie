@@ -2,6 +2,7 @@ import {
   SAME_SITE_OPTIONS,
   browserCookieToForm,
   formatExpiration,
+  serializeCookieHeader,
   type BrowserCookieItem,
   type CookieFormData,
   useI18n,
@@ -344,6 +345,23 @@ export function CookieEditorSection({ host, tabUrl, enabled }: CookieEditorSecti
     }
   };
 
+  const handleCopyAllHeader = () => {
+    if (cookies.length === 0) {
+      toast.warning(t('noCookiesToCopy'));
+      return;
+    }
+    const text = serializeCookieHeader(cookies);
+    if (!text) {
+      toast.warning(t('noCookiesToCopy'));
+      return;
+    }
+    void copyToClipboard(
+      text,
+      () => toast.success(t('copiedCookieHeader')),
+      () => toast.error(t('copyFailed')),
+    );
+  };
+
   const handleCopyAllJson = () => {
     if (cookies.length === 0) {
       toast.warning(t('noCookiesToCopy'));
@@ -387,14 +405,22 @@ export function CookieEditorSection({ host, tabUrl, enabled }: CookieEditorSecti
             {t('addCookie')}
           </Button>
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
-            className="h-7 px-2 text-xs"
+            className="h-7 w-7 p-0"
+            disabled={cookies.length === 0}
+            onClick={handleCopyAllHeader}
+            title={t('copyCookieHeader')}>
+            <Copy size={12} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
             disabled={cookies.length === 0}
             onClick={handleCopyAllJson}
-            title={t('copyAllAsJson')}>
-            <Braces size={12} className="mr-1" />
-            {t('copyAllAsJson')}
+            title={t('copyJson')}>
+            <Braces size={12} />
           </Button>
           <Button
             variant="ghost"

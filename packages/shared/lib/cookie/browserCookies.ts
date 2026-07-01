@@ -239,6 +239,14 @@ export async function clearAllBrowserCookies(host: string, tabUrl?: string): Pro
   }
 }
 
+/** Serialize cookies as HTTP `Cookie` header value (`name=value; name2=value2`). */
+export function serializeCookieHeader(cookies: BrowserCookieItem[]): string {
+  return cookies
+    .filter(cookie => cookie.name)
+    .map(cookie => `${cookie.name}=${cookie.value}`)
+    .join('; ');
+}
+
 export function parseImportedCookies(json: string): Partial<CookieFormData>[] {
   const parsed = JSON.parse(json);
   const list = Array.isArray(parsed) ? parsed : parsed.cookies ?? [];

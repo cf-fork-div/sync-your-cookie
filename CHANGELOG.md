@@ -2,6 +2,11 @@
 
 All notable changes to **Sync Your Cookie** are documented here.
 
+## [1.5.7] — 2026-07-01
+
+### Added
+- **Popup cookie editor toolbar** — copy Cookie header (icon) and copy all cookies as JSON (icon) next to clear all and refresh, matching side panel domain detail.
+
 ## [1.5.6] — 2026-07-01
 
 ### Added
