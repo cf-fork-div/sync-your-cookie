@@ -3,7 +3,7 @@
 <h1>Sync Your Cookie</h1>
 <p>将浏览器 Cookie 与 LocalStorage 同步到 Cloudflare KV — 跨设备、跨浏览器共享登录态。</p>
 
-![](https://img.shields.io/badge/version-1.7.0-blue)
+![](https://img.shields.io/badge/version-1.7.1-blue)
 
 </div>
 
@@ -11,7 +11,7 @@
 
 **Sync Your Cookie** 是一款 Chromium 扩展（Chrome、Edge 及兼容浏览器），可将 Cookie 与 LocalStorage 同步到 **Cloudflare KV**。在不同设备间共享登录会话、为同一站点管理多个账号，并可选择部署 **Cloudflare Worker** 后端与密码保护的 Web 管理端。
 
-> **说明（v1.7.0）：** 已移除 GitHub Gist 与扩展内直连 KV（Account ID / Token）。扩展**仅通过 Worker**（服务器 URL + 访问密码）同步；KV 凭据在 Web 管理端 Connect 表单配置一次即可。
+> **说明（v1.7.x）：** 已移除 GitHub Gist 与扩展内直连 KV（Account ID / Token）。扩展**仅通过 Worker**（服务器 URL + 访问密码）同步；KV 凭据在 Web 管理端 Connect 表单配置一次即可。
 
 ### 与原版对比
 
@@ -30,12 +30,15 @@
 
 ### 安装
 
-| 商店 | 链接 |
-|------|------|
-| Chrome | [Sync Your Cookie](https://chromewebstore.google.com/detail/sync-your-cookie/bcegpckmgklcpcapnbigfdadedcneopf) |
-| Edge | [Sync Your Cookie](https://microsoftedge.microsoft.com/addons/detail/sync-your-cookie/ohlcghldllgnmkegocpcphdbbphikgfm) |
+本 fork **未单独上架商店**。请从 **[GitHub Releases](https://github.com/cf-fork-div/sync-your-cookie/releases)** 下载 `sync-your-cookie-{version}.zip`，解压后在浏览器扩展页加载。完整步骤见 [how-to-use.md — 获取与安装](./how-to-use.md#获取与安装)。
 
-从源码构建：见 [安装配置](#安装配置) 与 [商店发布说明](./STORE_PUBLISH.md)。
+![从 Release 下载并加载扩展](deploy/images/install-from-release.png)
+
+| 方式 | 说明 |
+|------|------|
+| **Release ZIP（推荐）** | [Releases](https://github.com/cf-fork-div/sync-your-cookie/releases) 下载最新 `sync-your-cookie-{version}.zip` |
+| 从源码构建 | `pnpm build` 后加载 `dist/`，见 [安装配置](#安装配置) |
+| 上游商店（原版） | [Chrome](https://chromewebstore.google.com/detail/sync-your-cookie/bcegpckmgklcpcapnbigfdadedcneopf) · [Edge](https://microsoftedge.microsoft.com/addons/detail/sync-your-cookie/ohlcghldllgnmkegocpcphdbbphikgfm) — 上游版本，非本 fork 发布 |
 
 ### 功能
 
@@ -62,7 +65,7 @@
 - **Web 管理端** — 可选 Worker 部署；界面与侧边栏对齐（搜索、文件夹/类型筛选）
 - **多账户配置（Account Profiles）** — 每套配置独立凭据与域名规则
 - **国际化** — 英文与简体中文（`en`、`zh_CN`）
-- **版本显示** — 弹窗底部与 Options 页显示 `v1.7.0`
+- **版本显示** — 弹窗底部与 Options 页显示当前版本（如 `v1.7.1`）
 
 #### 安全
 
@@ -92,9 +95,9 @@ Git 连接 Cloudflare 部署 Worker（Web 管理端 + 同步 API），扩展用 
 
 ### 安装配置
 
-1. 从商店安装扩展，或 `pnpm build` 后加载 `dist/`。
+1. 从 [GitHub Releases](https://github.com/cf-fork-div/sync-your-cookie/releases) 下载 ZIP 并加载扩展，或 `pnpm build` 后加载 `dist/` — 见 [how-to-use.md](./how-to-use.md)。
 2. 按 [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md) 连接 Git 部署 Worker，设置 `WEB_ACCESS_PASSWORD`。
-3. 扩展弹窗用 Worker URL + 密码登录 — 见 [how-to-use.md](./how-to-use.md)。
+3. 扩展弹窗用 Worker URL + 密码登录 — 功能与场景见 [how-to-use.md](./how-to-use.md)。
 
 #### 从源码构建
 
@@ -113,12 +116,13 @@ pnpm release:zip  # 商店用 zip → dist/release/
 4. **打开管理器** — 侧边栏查看完整 Cookie/LocalStorage。
 5. **Web 管理端**（可选） — 浏览器打开 Worker URL，界面与侧边栏一致。
 
-使用说明：[how-to-use.md](./how-to-use.md)（含[使用场景与推荐配置](./how-to-use.md#使用场景与推荐配置)） · Worker 部署：[deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md) · 部署参数：[deploy/CLOUDFLARE-PARAMS.md](./deploy/CLOUDFLARE-PARAMS.md) · 商店发布：[STORE_PUBLISH.md](./STORE_PUBLISH.md)
+**文档导航：** [how-to-use.md](./how-to-use.md)（[安装](./how-to-use.md#获取与安装) · [登录与同步](./how-to-use.md#登录与同步) · [使用场景](./how-to-use.md#使用场景与推荐配置)） · Worker 部署：[deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md) · 部署参数：[deploy/CLOUDFLARE-PARAMS.md](./deploy/CLOUDFLARE-PARAMS.md) · 下载：[GitHub Releases](https://github.com/cf-fork-div/sync-your-cookie/releases)
 
 ### 更新日志
 
 | 版本 | 要点 |
 |------|------|
+| **1.7.1** | Release ZIP 分发；文档与部署流程完善 |
 | **1.7.0** | 移除扩展直连 KV；仅 Worker URL + 密码同步 |
 | **1.6.3** | 已设 serverUrl 时优先走 Worker 路径 |
 | **1.6.2** | 登录时同步 server 存储键；改进 Pull 错误提示 |
@@ -138,3 +142,15 @@ pnpm release:zip  # 商店用 zip → dist/release/
 ### 隐私政策
 
 详见 [隐私政策](./private-policy.md)。
+
+### 赞赏 / 支持
+
+<div align="center">
+
+感谢你的支持
+
+<img width="240" src="./deploy/images/donation-qr.png" alt="微信赞赏码"/>
+
+微信赞赏码
+
+</div>
