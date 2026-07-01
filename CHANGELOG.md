@@ -2,6 +2,21 @@
 
 All notable changes to **Sync Your Cookie** are documented here.
 
+## [1.6.0] — 2026-07-01
+
+### Security
+- **Content script:** removed `window.$messageListener`; validate `sender.id === chrome.runtime.id` on all extension messages.
+- **localStorage domain match:** strict hostname comparison instead of `location.origin.includes()`.
+- **Credentials:** `authPassword` and `encryptionPassword` moved to `chrome.storage.local` with automatic migration from sync.
+- **Worker login rate limiting** (5 failures / 15 min per IP).
+- **Web sessions:** random session IDs in KV; legacy HMAC cookies accepted during transition.
+- **`/cf-api/*`:** restricted to KV value paths for the configured namespace.
+- **`/api/sync/kv`:** storage key allowlist on Worker and extension.
+- **CORS:** extension origins + same host only for sync API.
+- **Encryption:** default on for new profiles; warning banner when Protobuf is on without encryption.
+- **Dependencies:** protobufjs upgraded to patched release.
+- See [docs/SECURITY.md](./docs/SECURITY.md) for full details and reporting.
+
 ## [1.5.8] — 2026-07-01
 
 ### Added

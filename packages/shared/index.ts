@@ -9,9 +9,11 @@ export * from './lib/Providers';
 
 export * from './lib/message';
 export * from './lib/utils';
+export * from './lib/utils/devLog';
 export * from './lib/i18n';
 export * from './lib/auth/accountAuth';
 export * from './lib/domain/entryKey';
+export * from './lib/domain/hostnameMatch';
 export * from './lib/domain/hostEntries';
 export * from './lib/domain/cookieCompare';
 export * from './lib/domain/pushConflict';

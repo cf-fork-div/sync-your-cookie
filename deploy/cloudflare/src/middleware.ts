@@ -46,7 +46,11 @@ export interface MiddlewareResult {
   response?: Response;
 }
 
-export async function applyMiddleware(request: Request, env: WorkerEnv): Promise<MiddlewareResult> {
+export async function applyMiddleware(
+  request: Request,
+  env: WorkerEnv,
+  kv: KVNamespace,
+): Promise<MiddlewareResult> {
   const url = new URL(request.url);
   const baseSegment = getWebBasePathSegment(env);
 
@@ -75,17 +79,17 @@ export async function applyMiddleware(request: Request, env: WorkerEnv): Promise
     }
 
     if (isSyncApiPath(pathname)) {
-      const authorized = await isPasswordAuthorized(request, env);
+      const authorized = await isPasswordAuthorized(request, env, kv);
       if (!authorized) {
         return { pathname, response: jsonResponse({ ok: false, error: 'unauthorized' }, { status: 401 }) };
       }
     } else if (isAdminApiPath(pathname)) {
-      const authenticated = await isValidSession(request, password);
+      const authenticated = await isValidSession(request, password, kv);
       if (!authenticated) {
         return { pathname, response: jsonResponse({ ok: false, error: 'unauthorized' }, { status: 401 }) };
       }
     } else {
-      const authenticated = await isValidSession(request, password);
+      const authenticated = await isValidSession(request, password, kv);
       if (!authenticated) {
         return { pathname, response: jsonResponse({ ok: false, error: 'unauthorized' }, { status: 401 }) };
       }
@@ -97,7 +101,6 @@ export async function applyMiddleware(request: Request, env: WorkerEnv): Promise
 
 /** Map viewer paths to ASSETS fetch paths without triggering html_handling redirect loops. */
 export function assetPathForRequest(pathname: string): string {
-  // Cloudflare assets redirect /index.html → / (307). Never fetch /index.html from the worker.
   if (pathname === '/index.html') {
     return '/';
   }

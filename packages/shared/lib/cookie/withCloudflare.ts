@@ -8,6 +8,7 @@ import { readSyncKV, writeSyncKV } from '../sync/api';
 import { mergeEntryMetaOnWrite } from '../domain/entryMetaSync';
 
 import { MessageErrorCode } from '@lib/message';
+import { devLog } from '@lib/utils/devLog';
 import {
   arrayBufferToBase64,
   base64ToArrayBuffer,
@@ -98,14 +99,14 @@ export const readCookiesMap = async (accountInfo: AccountInfo): Promise<ICookies
       if (protobufEncoding) {
         const compressedBuffer = base64ToArrayBuffer(processedContent);
         const deMsg = await decodeCookiesMap(compressedBuffer);
-        console.log('readCookiesMap->deMsg', deMsg);
+        devLog('readCookiesMap decoded protobuf');
         return deMsg;
       } else {
-        console.log('readCookiesMap->res', JSON.parse(processedContent));
+        devLog('readCookiesMap decoded json');
         return JSON.parse(processedContent);
       }
     } catch (error) {
-      console.log('Decode error', error, content);
+      devLog('Decode error', error);
       return Promise.reject({
         message: `Decode error: ${error}, please check your save settings`,
         code: MessageErrorCode.DecodeFailed,
@@ -135,11 +136,11 @@ export const writeCookiesMap = async (accountInfo: AccountInfo, cookiesMap: ICoo
     // Encrypt the data if encryption is enabled
     if (encryptionEnabled && encryptionPassword) {
       encodingStr = await encryptBase64(encodingStr, encryptionPassword);
-      console.log('writeCookiesMap-> data encrypted');
+      devLog('writeCookiesMap data encrypted');
     }
   } else {
     encodingStr = JSON.stringify(cookiesMapWithMeta);
-    console.log('writeCookiesMap->', cookiesMapWithMeta);
+    devLog('writeCookiesMap json payload');
   }
 
   const res = await writeRemoteKv(accountInfo, encodingStr);

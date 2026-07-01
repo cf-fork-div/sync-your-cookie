@@ -5,6 +5,7 @@ import {
   gatherRawBrowserCookies,
   getHostFromStorageKey,
   ICookie,
+  isTrustedExtensionSender,
   Message,
   MessageErrorCode,
   MessageType,
@@ -16,6 +17,7 @@ import {
   sendGetLocalStorageMessage,
   SendResponse,
 } from '@sync-your-cookie/shared';
+import { devLog } from '@sync-your-cookie/shared/lib/utils/devLog';
 import { cookieStorage } from '@sync-your-cookie/storage/lib/cookieStorage';
 import { settingsStorage } from '@sync-your-cookie/storage/lib/settingsStorage';
 
@@ -78,7 +80,7 @@ const handlePull = async (activeTabUrl: string, domain: string, isReload: boolea
     await check();
     await domainStatusStorage.togglePullingState(domain, true);
     const cookieMap = await pullAndSetCookies(activeTabUrl, domain, isReload);
-    console.log('handlePull->cookieMap', cookieMap);
+    devLog('handlePull cookieMap', cookieMap);
     const msg =
       cookieMap.warnings.length > 0
         ? `Pull completed with warnings: ${cookieMap.warnings.join('; ')}`
@@ -131,6 +133,11 @@ function handleMessage(
   sender: chrome.runtime.MessageSender,
   callback: (response?: SendResponse) => void,
 ) {
+  if (!isTrustedExtensionSender(sender)) {
+    callback({ isOk: false, msg: 'Unauthorized message sender' });
+    return false;
+  }
+
   const type = message.type;
   switch (type) {
     case MessageType.PushCookie:

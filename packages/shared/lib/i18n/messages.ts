@@ -82,6 +82,8 @@ const enMessages = {
   e2eEncryption: 'E2E Encryption',
   e2eEncryptionNote:
     'End-to-end encryption requires Protobuf Encoding to be enabled. Your data will be encrypted with AES-256-GCM before being sent to the cloud.',
+  encryptionSecurityWarning:
+    'Protobuf encoding is on but encryption is off. Remote KV data is not encrypted at rest in transit from this extension. Enable E2E encryption or accept the risk.',
   password: 'Password',
   encryptionPasswordPlaceholder: 'Enter encryption password',
   keyAlreadyExists: 'Key already exists',
@@ -392,6 +394,8 @@ const zhCNMessages: Record<MessageKey, string> = {
   e2eEncryption: '端到端加密',
   e2eEncryptionNote:
     '端到端加密需要启用 Protobuf 编码。数据将在上传至云端前使用 AES-256-GCM 加密。',
+  encryptionSecurityWarning:
+    '已启用 Protobuf 编码但未开启加密，远程 KV 中的 Cookie 数据未加密存储。请开启端到端加密或确认您接受此风险。',
   password: '密码',
   encryptionPasswordPlaceholder: '输入加密密码',
   keyAlreadyExists: 'Key 已存在',

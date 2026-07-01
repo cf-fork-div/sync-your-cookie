@@ -1,11 +1,26 @@
-import { loadDatasourceConfig, readKvValue, writeKvValue } from '../lib/datasource';
+import { loadDatasourceConfig, readKvValue, writeKvValue, type DatasourceConfig } from '../lib/datasource';
 import { getWebAccessPassword, type WorkerEnv } from '../lib/env';
 import { jsonResponse } from '../lib/response';
 
-function getStorageKey(request: Request): string | undefined {
+const STORAGE_KEY_PATTERN = /^[a-zA-Z0-9._-]{1,128}$/;
+
+function getStorageKeyParam(request: Request): string | undefined {
   const url = new URL(request.url);
   const key = url.searchParams.get('storageKey')?.trim();
   return key || undefined;
+}
+
+function resolveAllowedStorageKey(request: Request, config: DatasourceConfig): string | null {
+  const requested = getStorageKeyParam(request);
+  const key = requested || config.storageKey;
+  if (!STORAGE_KEY_PATTERN.test(key)) {
+    return null;
+  }
+  const allowed = new Set([config.storageKey, ...(config.allowedStorageKeys ?? [])]);
+  if (!allowed.has(key)) {
+    return null;
+  }
+  return key;
 }
 
 export async function handleSyncStatus(request: Request, env: WorkerEnv, kv: KVNamespace): Promise<Response> {
@@ -36,8 +51,13 @@ export async function handleSyncKvGet(request: Request, kv: KVNamespace): Promis
     return jsonResponse({ ok: false, error: 'datasource_not_configured' }, { status: 503 });
   }
 
+  const storageKey = resolveAllowedStorageKey(request, config);
+  if (!storageKey) {
+    return jsonResponse({ ok: false, error: 'storage_key_not_allowed' }, { status: 403 });
+  }
+
   try {
-    const content = await readKvValue(config, getStorageKey(request));
+    const content = await readKvValue(config, storageKey);
     return new Response(content, {
       status: 200,
       headers: {
@@ -61,9 +81,14 @@ export async function handleSyncKvPut(request: Request, kv: KVNamespace): Promis
     return jsonResponse({ ok: false, error: 'datasource_not_configured' }, { status: 503 });
   }
 
+  const storageKey = resolveAllowedStorageKey(request, config);
+  if (!storageKey) {
+    return jsonResponse({ ok: false, error: 'storage_key_not_allowed' }, { status: 403 });
+  }
+
   const content = await request.text();
   try {
-    await writeKvValue(config, content, getStorageKey(request));
+    await writeKvValue(config, content, storageKey);
     return jsonResponse({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'write_failed';

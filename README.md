@@ -3,7 +3,7 @@
 <h1>Sync Your Cookie</h1>
 <p>将浏览器 Cookie 与 LocalStorage 同步到 Cloudflare KV — 跨设备、跨浏览器共享登录态。</p>
 
-![](https://img.shields.io/badge/version-1.5.7-blue)
+![](https://img.shields.io/badge/version-1.6.0-blue)
 
 </div>
 
@@ -47,7 +47,11 @@
 - **Web 管理端** — 可选 Worker 部署；界面与侧边栏对齐（搜索、文件夹/类型筛选）
 - **多账户配置（Account Profiles）** — 每套配置独立凭据与域名规则
 - **国际化** — 英文与简体中文（`en`、`zh_CN`）
-- **版本显示** — 弹窗底部与 Options 页显示 `v1.5.7`
+- **版本显示** — 弹窗底部与 Options 页显示 `v1.6.0`
+
+#### 安全
+
+- 凭据与加密密码仅存于本地（不同步至 Chrome Sync）；详见 [docs/SECURITY.md](./docs/SECURITY.md)
 
 #### Cloudflare Worker 后端
 
@@ -100,7 +104,8 @@ pnpm release:zip  # 商店用 zip → dist/release/
 
 | 版本 | 要点 |
 |------|------|
-| **1.5.7** | 弹窗 Cookie 工具栏：复制 Cookie 头、复制 JSON |
+| **1.6.0** | 安全加固：消息校验、hostname 匹配、本地凭据、Worker 限流/会话/CORS、加密默认 |
+| **1.5.8** | Popup「切换并拉取」多账号一键拉取 |
 | **1.5.6** | 弹窗 Cookie 编辑器：增删改、复制值/JSON |
 | **1.5.5** | Pull 部分失败不丢 Cookie；sameSite 修复 |
 | **1.5.4** | 侧边栏 Pull 不再归零；跳过失败 Cookie 并提示 |

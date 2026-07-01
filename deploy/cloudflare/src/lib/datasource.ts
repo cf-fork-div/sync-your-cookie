@@ -5,6 +5,8 @@ export interface DatasourceConfig {
   namespaceId: string;
   token: string;
   storageKey: string;
+  /** Optional extra KV keys allowed for /api/sync/kv (defaults to [storageKey]). */
+  allowedStorageKeys?: string[];
 }
 
 export interface DatasourceStatus {
@@ -33,6 +35,9 @@ export async function loadDatasourceConfig(kv: KVNamespace): Promise<DatasourceC
         namespaceId: parsed.namespaceId.trim(),
         token: parsed.token.trim(),
         storageKey: parsed.storageKey.trim(),
+        allowedStorageKeys: Array.isArray(parsed.allowedStorageKeys)
+          ? parsed.allowedStorageKeys.map(key => key.trim()).filter(Boolean)
+          : undefined,
       };
     }
   } catch {

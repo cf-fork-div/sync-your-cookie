@@ -23,7 +23,7 @@
   "dependencies": {
     "p-timeout": "^6.1.4",
     "pako": "^2.1.0",
-    "protobufjs": "^7.3.2"
+    "protobufjs": "^7.6.4"
   },
   "devDependencies": {
     "@sync-your-cookie/protobuf": "workspace:*",

@@ -5,7 +5,19 @@ const CORS_HEADERS = {
 };
 
 export function isExtensionOrigin(origin: string | null): boolean {
-  return Boolean(origin?.startsWith('chrome-extension://'));
+  return Boolean(origin?.startsWith('chrome-extension://') || origin?.startsWith('moz-extension://'));
+}
+
+export function isAllowedCorsOrigin(origin: string, request: Request): boolean {
+  if (isExtensionOrigin(origin)) {
+    return true;
+  }
+  try {
+    const requestOrigin = new URL(request.url).origin;
+    return origin === requestOrigin;
+  } catch {
+    return false;
+  }
 }
 
 export function corsPreflightResponse(request: Request): Response | null {
@@ -13,7 +25,7 @@ export function corsPreflightResponse(request: Request): Response | null {
     return null;
   }
   const origin = request.headers.get('Origin');
-  if (!origin) {
+  if (!origin || !isAllowedCorsOrigin(origin, request)) {
     return new Response(null, { status: 204 });
   }
   return new Response(null, {
@@ -27,7 +39,7 @@ export function corsPreflightResponse(request: Request): Response | null {
 
 export function withCors(response: Response, request: Request): Response {
   const origin = request.headers.get('Origin');
-  if (!origin) {
+  if (!origin || !isAllowedCorsOrigin(origin, request)) {
     return response;
   }
   const headers = new Headers(response.headers);

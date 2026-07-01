@@ -1,5 +1,6 @@
 import { pushCookies } from '@lib/cookie';
 import { getHostFromStorageKey } from '@lib/domain/entryKey';
+import { devLog } from '@lib/utils/devLog';
 import { ICookie, ILocalStorageItem } from '@sync-your-cookie/protobuf';
 import { settingsStorage } from '@sync-your-cookie/storage/lib/settingsStorage';
 import pTimeout from 'p-timeout';
@@ -108,11 +109,13 @@ export type SendResponse = {
   code?: MessageErrorCode;
 };
 
+export { isTrustedExtensionSender } from './extensionMessage';
+
 export function sendMessage<T extends MessageType>(message: Message<T>, isTab = false, useTimeout: boolean = false) {
-  console.log('message', message);
-  const send = (resolve: (value: SendResponse | PromiseLike<SendResponse>) => void, reject: (reason?: any) => void) => {
+  devLog('message', message);
+  const send = (resolve: (value: SendResponse | PromiseLike<SendResponse>) => void, reject: (reason?: unknown) => void) => {
     chrome.runtime.sendMessage(message, function (result: SendResponse) {
-      console.log('sendMessage->message', message);
+      devLog('sendMessage result', message.type, result?.isOk);
       if (result?.isOk) {
         resolve(result);
       } else {
@@ -127,13 +130,13 @@ export function sendMessage<T extends MessageType>(message: Message<T>, isTab = 
           if (tabs.length === 0) {
             // const allOpendTabs = await chrome.tabs.query({});
 
-            console.log('No active tab found, try alternative way');
+            devLog('No active tab found, try alternative way');
             // reject({ isOk: false, msg: 'No active tab found' } as SendResponse);
             send(resolve, reject);
             return;
           }
           chrome.tabs.sendMessage(tabs[0].id!, message, function (result) {
-            console.log('isTab', isTab, 'result->', result);
+            devLog('tabs.sendMessage result', message.type, result?.isOk);
             if (result?.isOk) {
               resolve(result);
             } else {
@@ -324,7 +327,7 @@ export const sendGetLocalStorageMessage = async (host: string, isTry = true) => 
             const localStorageItems = await sendGetLocalStorageMessage(host, false);
             myResolve(localStorageItems);
           } catch (error) {
-            console.log('error', error);
+            devLog('getLocalStorage retry error', error);
             myReject(error);
           }
         }, 500);

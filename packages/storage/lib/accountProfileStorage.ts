@@ -1,6 +1,11 @@
 import { BaseStorage, createCachedSnapshot, createStorage, StorageType } from './base';
 import type { DomainConfig } from './domainConfigTypes';
 import { defaultDomainConfig } from './domainConfigTypes';
+import {
+  profileSecretsStorage,
+  type ProfileSecretEntry,
+  type ProfileSecretsMap,
+} from './profileSecretsStorage';
 import type { ISettings } from './settingsTypes';
 import { defaultKey, defaultSettings } from './settingsTypes';
 
@@ -47,10 +52,81 @@ const defaultSettingsSnapshot: ISettings = {
 const createDefaultProfile = (overrides: Partial<AccountProfile> = {}): AccountProfile => ({
   id: crypto.randomUUID(),
   name: DEFAULT_PROFILE_NAME,
-  settings: { ...defaultSettings },
+  settings: { ...defaultSettings, encryptionEnabled: true },
   domainConfig: defaultDomainConfig(),
   ...overrides,
 });
+
+const stripSecretsFromProfile = (profile: AccountProfile): AccountProfile => {
+  const { authPassword: _auth, ...rest } = profile;
+  const settings = profile.settings
+    ? (() => {
+        const { encryptionPassword: _enc, ...settingsRest } = profile.settings!;
+        return settingsRest;
+      })()
+    : undefined;
+  return {
+    ...rest,
+    settings,
+  };
+};
+
+const mergeSecretsIntoProfile = (profile: AccountProfile, secrets?: ProfileSecretEntry): AccountProfile => {
+  if (!secrets) {
+    return profile;
+  }
+  return {
+    ...profile,
+    authPassword: secrets.authPassword ?? profile.authPassword,
+    settings: profile.settings
+      ? {
+          ...profile.settings,
+          encryptionPassword: secrets.encryptionPassword ?? profile.settings.encryptionPassword,
+        }
+      : profile.settings,
+  };
+};
+
+const stripSecretsFromState = (state: AccountProfileState): AccountProfileState => ({
+  ...state,
+  accountProfileList: state.accountProfileList.map(stripSecretsFromProfile),
+});
+
+const buildSecretsMap = (profiles: AccountProfile[]): ProfileSecretsMap => {
+  const secrets: ProfileSecretsMap = {};
+  for (const profile of profiles) {
+    const authPassword = profile.authPassword?.trim();
+    const encryptionPassword = profile.settings?.encryptionPassword?.trim();
+    if (authPassword || encryptionPassword) {
+      secrets[profile.id] = {
+        ...(authPassword ? { authPassword } : {}),
+        ...(encryptionPassword ? { encryptionPassword } : {}),
+      };
+    }
+  }
+  return secrets;
+};
+
+const mergeSecretsIntoState = (state: AccountProfileState, secrets: ProfileSecretsMap): AccountProfileState => ({
+  ...state,
+  accountProfileList: state.accountProfileList.map(profile => mergeSecretsIntoProfile(profile, secrets[profile.id])),
+});
+
+const persistProfileSecrets = async (profiles: AccountProfile[]): Promise<void> => {
+  const currentSecrets = await profileSecretsStorage.get();
+  const nextSecrets = { ...currentSecrets, ...buildSecretsMap(profiles) };
+  for (const profile of profiles) {
+    if (!profile.authPassword?.trim() && !profile.settings?.encryptionPassword?.trim()) {
+      delete nextSecrets[profile.id];
+    }
+  }
+  await profileSecretsStorage.set(nextSecrets);
+};
+
+const stateHasInlineSecrets = (state: AccountProfileState): boolean =>
+  state.accountProfileList.some(
+    profile => Boolean(profile.authPassword?.trim() || profile.settings?.encryptionPassword?.trim()),
+  );
 
 const normalizeAccountProfileState = (
   state: AccountProfileState | null | undefined,
@@ -69,11 +145,29 @@ const setNormalized = async (
     | ((prev: AccountProfileState) => AccountProfileState | Promise<AccountProfileState>),
 ): Promise<void> => {
   await storage.set(async current => {
-    const normalized = normalizeAccountProfileState(current);
+    const secrets = await profileSecretsStorage.get();
+    const normalizedCurrent = mergeSecretsIntoState(normalizeAccountProfileState(current), secrets);
     const next =
-      typeof valueOrUpdate === 'function' ? await valueOrUpdate(normalized) : valueOrUpdate;
-    return normalizeAccountProfileState(next);
+      typeof valueOrUpdate === 'function' ? await valueOrUpdate(normalizedCurrent) : valueOrUpdate;
+    const normalized = normalizeAccountProfileState(next);
+    await persistProfileSecrets(normalized.accountProfileList);
+    return stripSecretsFromState(normalized);
   });
+};
+
+const loadStateWithSecrets = async (): Promise<AccountProfileState> => {
+  const raw = normalizeAccountProfileState(await storage.get());
+  const secrets = await profileSecretsStorage.get();
+  return mergeSecretsIntoState(raw, secrets);
+};
+
+const migrateInlineSecretsToLocal = async (): Promise<void> => {
+  const raw = normalizeAccountProfileState(await storage.get());
+  if (!stateHasInlineSecrets(raw)) {
+    return;
+  }
+  await persistProfileSecrets(raw.accountProfileList);
+  await storage.set(stripSecretsFromState(raw));
 };
 
 const initStorage = (): BaseStorage<AccountProfileState> => {
@@ -99,8 +193,16 @@ const initStorage = (): BaseStorage<AccountProfileState> => {
 const storage = initStorage();
 
 const getNormalizedSnapshot = createCachedSnapshot(
-  () => storage.getSnapshot(),
-  snapshot => (snapshot === null ? null : normalizeAccountProfileState(snapshot)),
+  () => ({
+    state: storage.getSnapshot(),
+    secrets: profileSecretsStorage.getSnapshot(),
+  }),
+  ({ state, secrets }) => {
+    if (state === null) {
+      return null;
+    }
+    return mergeSecretsIntoState(normalizeAccountProfileState(state), secrets ?? {});
+  },
 );
 
 let migrationPromise: Promise<void> | null = null;
@@ -110,7 +212,8 @@ const ensureMigrated = async (): Promise<void> => {
     return migrationPromise;
   }
   migrationPromise = (async () => {
-    const state = normalizeAccountProfileState(await storage.get());
+    await migrateInlineSecretsToLocal();
+    const state = await loadStateWithSecrets();
     const hasProfiles = state.accountProfileList.length > 0;
 
     if (state.migrated && hasProfiles) {
@@ -151,6 +254,7 @@ const ensureMigrated = async (): Promise<void> => {
         activeProfileId: profile.id,
         migrated: true,
       });
+      await migrateInlineSecretsToLocal();
       return;
     }
 
@@ -158,13 +262,13 @@ const ensureMigrated = async (): Promise<void> => {
       await setNormalized(current => ({ ...current, migrated: true }));
     }
 
-    await migrateLegacyDomainConfig(normalizeAccountProfileState(await storage.get()));
+    await migrateLegacyDomainConfig(await loadStateWithSecrets());
   })();
   return migrationPromise;
 };
 
 export const getActiveProfile = (state?: AccountProfileState | null): AccountProfile | undefined => {
-  const snapshot = normalizeAccountProfileState(state ?? storage.getSnapshot());
+  const snapshot = normalizeAccountProfileState(state ?? getNormalizedSnapshot());
   const profiles = snapshot.accountProfileList;
   if (!snapshot.activeProfileId) {
     return profiles[0];
@@ -243,9 +347,17 @@ export const accountProfileStorage: AccountProfileStorage = {
   ...storage,
   get: async () => {
     await ensureMigrated();
-    return normalizeAccountProfileState(await storage.get());
+    return loadStateWithSecrets();
   },
   getSnapshot: () => getNormalizedSnapshot(),
+  subscribe: (listener: () => void) => {
+    const unsubStorage = storage.subscribe(listener);
+    const unsubSecrets = profileSecretsStorage.subscribe(listener);
+    return () => {
+      unsubStorage();
+      unsubSecrets();
+    };
+  },
   ensureMigrated,
   getActiveProfile: async () => {
     await ensureMigrated();
@@ -328,7 +440,7 @@ export const accountProfileStorage: AccountProfileStorage = {
     if (!active) {
       return;
     }
-    const current = getActiveProfileDomainConfig(storage.getSnapshot());
+    const current = getActiveProfileDomainConfig(getNormalizedSnapshot());
     await accountProfileStorage.updateProfile(active.id, {
       domainConfig: updater(current),
     });
@@ -339,7 +451,7 @@ export const accountProfileStorage: AccountProfileStorage = {
     if (!active) {
       return;
     }
-    const settings = getActiveProfileSettings(storage.getSnapshot());
+    const settings = getActiveProfileSettings(getNormalizedSnapshot());
     const exists = settings.storageKeyList.find(item => item.value === key);
     if (exists) {
       return;
@@ -350,7 +462,7 @@ export const accountProfileStorage: AccountProfileStorage = {
   },
   removeStorageKeyFromActive: async (key: string) => {
     await ensureMigrated();
-    const settings = getActiveProfileSettings(storage.getSnapshot());
+    const settings = getActiveProfileSettings(getNormalizedSnapshot());
     const exists = settings.storageKeyList.find(item => item.value === key);
     if (!exists) {
       return;

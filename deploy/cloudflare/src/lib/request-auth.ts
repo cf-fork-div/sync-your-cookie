@@ -10,7 +10,11 @@ export function getBearerPassword(request: Request): string | null {
   return match?.[1]?.trim() || null;
 }
 
-export async function isPasswordAuthorized(request: Request, env: WorkerEnv): Promise<boolean> {
+export async function isPasswordAuthorized(
+  request: Request,
+  env: WorkerEnv,
+  kv: KVNamespace,
+): Promise<boolean> {
   const password = getWebAccessPassword(env);
   if (!password) {
     return false;
@@ -19,5 +23,5 @@ export async function isPasswordAuthorized(request: Request, env: WorkerEnv): Pr
   if (bearer && bearer === password) {
     return true;
   }
-  return isValidSession(request, password);
+  return isValidSession(request, password, kv);
 }

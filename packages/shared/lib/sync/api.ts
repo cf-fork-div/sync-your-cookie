@@ -16,6 +16,14 @@ export function normalizeServerUrl(url: string): string {
   return url.trim().replace(/\/+$/, '');
 }
 
+function assertAllowedStorageKey(storageKey: string): void {
+  const settings = settingsStorage.getSnapshot();
+  const allowed = settings?.storageKeyList?.map(item => item.value) ?? [];
+  if (!allowed.includes(storageKey)) {
+    throw new Error('storage_key_not_allowed');
+  }
+}
+
 function authHeaders(password: string): HeadersInit {
   return {
     Authorization: `Bearer ${password}`,
@@ -64,6 +72,7 @@ export async function verifySyncServer(serverUrl: string, password: string): Pro
 export async function readSyncKV(serverUrl: string, password: string, storageKey?: string): Promise<string> {
   const base = normalizeServerUrl(serverUrl);
   const key = storageKey || settingsStorage.getSnapshot()?.storageKey || 'sync-your-cookie';
+  assertAllowedStorageKey(key);
   const url = new URL(`${base}/api/sync/kv`);
   url.searchParams.set('storageKey', key);
 
@@ -103,6 +112,7 @@ export async function writeSyncKV(
 ): Promise<{ success: boolean; errors: { code: number; message: string }[] }> {
   const base = normalizeServerUrl(serverUrl);
   const key = storageKey || settingsStorage.getSnapshot()?.storageKey || 'sync-your-cookie';
+  assertAllowedStorageKey(key);
   const url = new URL(`${base}/api/sync/kv`);
   url.searchParams.set('storageKey', key);
 

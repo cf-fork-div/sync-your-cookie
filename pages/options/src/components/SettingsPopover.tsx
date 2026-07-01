@@ -3,8 +3,8 @@ import { accountProfileStorage } from '@sync-your-cookie/storage/lib/accountProf
 import { cookieStorage } from '@sync-your-cookie/storage/lib/cookieStorage';
 import { domainStatusStorage } from '@sync-your-cookie/storage/lib/domainStatusStorage';
 import { settingsStorage } from '@sync-your-cookie/storage/lib/settingsStorage';
-import { Input, Label, Popover, PopoverContent, PopoverTrigger, Switch, SyncTooltip } from '@sync-your-cookie/ui';
-import { Eye, EyeOff, Info, Lock } from 'lucide-react';
+import { Input, Label, Popover, PopoverContent, PopoverTrigger, Switch, SyncTooltip, Alert, AlertDescription } from '@sync-your-cookie/ui';
+import { Eye, EyeOff, Info, Lock, ShieldAlert } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { StorageSelect } from './StorageSelect';
 
@@ -141,6 +141,12 @@ export function SettingsPopover({ trigger }: SettingsPopover) {
             </div>
 
             <div className="border-t pt-4 mt-2">
+              {settingsInfo.protobufEncoding && !settingsInfo.encryptionEnabled && (
+                <Alert className="mb-4">
+                  <ShieldAlert className="h-4 w-4" />
+                  <AlertDescription>{t('encryptionSecurityWarning')}</AlertDescription>
+                </Alert>
+              )}
               <div className="flex items-center gap-4 mb-4">
                 <Label
                   className="items-center whitespace-nowrap flex w-[136px] justify-end text-right"

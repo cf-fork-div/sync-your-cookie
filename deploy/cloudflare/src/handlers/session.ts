@@ -2,7 +2,7 @@ import { getWebAccessPassword, getWebBasePathPrefix, type WorkerEnv } from '../l
 import { jsonResponse } from '../lib/response';
 import { isValidSession } from '../lib/session';
 
-export async function handleSession(request: Request, env: WorkerEnv): Promise<Response> {
+export async function handleSession(request: Request, env: WorkerEnv, kv: KVNamespace): Promise<Response> {
   if (request.method !== 'GET') {
     return jsonResponse({ ok: false, error: 'method_not_allowed' }, { status: 405 });
   }
@@ -18,7 +18,7 @@ export async function handleSession(request: Request, env: WorkerEnv): Promise<R
     });
   }
 
-  const authenticated = await isValidSession(request, configuredPassword);
+  const authenticated = await isValidSession(request, configuredPassword, kv);
   return jsonResponse({
     authenticated,
     passwordConfigured: true,

@@ -31,7 +31,7 @@ export default {
       return preflight;
     }
 
-    const middleware = await applyMiddleware(request, env);
+    const middleware = await applyMiddleware(request, env, env.SYNC_KV);
     if (middleware.response) {
       return isSyncPath(middleware.pathname) ? withCors(middleware.response, request) : middleware.response;
     }
@@ -39,13 +39,13 @@ export default {
     const { pathname } = middleware;
 
     if (pathname === '/api/login') {
-      return handleLogin(request, env);
+      return handleLogin(request, env, env.SYNC_KV);
     }
     if (pathname === '/api/session') {
-      return handleSession(request, env);
+      return handleSession(request, env, env.SYNC_KV);
     }
     if (pathname === '/api/logout') {
-      return handleLogout(request, env);
+      return handleLogout(request, env.SYNC_KV);
     }
     if (pathname === '/api/admin/datasource') {
       if (request.method === 'GET') {
@@ -68,7 +68,7 @@ export default {
       return withCors(response, request);
     }
     if (isCfApiPath(pathname)) {
-      return handleCfApi(request);
+      return handleCfApi(request, env.SYNC_KV);
     }
 
     return serveAsset(request, pathname, env);
