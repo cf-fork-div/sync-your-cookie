@@ -6,7 +6,7 @@
 ![](https://img.shields.io/badge/React-61DAFB?style=flat-square&logo=react&logoColor=black)
 ![](https://img.shields.io/badge/Typescript-3178C6?style=flat-square&logo=typescript&logoColor=white)
 ![](https://badges.aleen42.com/src/vitejs.svg)
-![Version](https://img.shields.io/badge/version-1.5.1-blue)
+![Version](https://img.shields.io/badge/version-1.5.7-blue)
 ![GitHub action badge](https://github.com/jackluson/sync-your-cookie/actions/workflows/build-zip.yml/badge.svg)
 
 </div>
@@ -32,7 +32,8 @@ Build from source: see [Setup](#setup) and [Store publishing](./STORE_PUBLISH.md
 - Sync **cookies** and **LocalStorage** to Cloudflare KV (protobuf-encoded payload)
 - **Cross-browser sync** — same backend works on Chrome, Edge, and other Chromium browsers
 - **Worker connection:** Server URL + access password → `/api/sync/*`
-- **Pull mirrors remote** — clears local cookies for the host before applying remote data
+- **Pull mirrors remote** — applies remote cookies first, then removes extras; full hostOnly/third-party restore (v1.5.3–1.5.5)
+- **Push gather aligned** — push uses the same cookie gathering as the editor, including hostOnly cookies (v1.5.2)
 - Per-site **Auto Push** and **Auto Pull** rules
 
 #### Multi-account & metadata
@@ -45,12 +46,12 @@ Build from source: see [Setup](#setup) and [Store publishing](./STORE_PUBLISH.md
 #### UI & management
 - **Bitwarden-style login gate** — profile name, server URL, and password in popup / side panel
 - **Auto refresh** before push, pull, and open manager (verifies server connection first)
-- **Popup cookie view/edit** — inspect, edit, remove, or clear all cookies for the active tab
+- **Popup cookie view/edit** — add/edit/delete, copy value/JSON/Cookie header, clear all, and refresh (v1.5.6–1.5.7)
 - **Side panel manager** — full cookie and LocalStorage detail view
 - **Web admin manager** — optional Cloudflare Worker deployment; UI aligned with side panel (search, folder/type filters)
 - **Multi-account profiles** — separate credentials and domain rules per profile
 - **i18n** — English and Simplified Chinese (`en`, `zh_CN`)
-- **Version display** — `v1.5.1` in popup footer and options page
+- **Version display** — `v1.5.7` in popup footer and options page
 
 #### Cloudflare Worker backend
 
@@ -66,7 +67,7 @@ Popup — Push/Pull sync for the current tab
 
 <img width="600" src="./screenshots/popup.png" alt="Popup sync"/>
 
-Popup — cookie list with view/edit mode
+Popup — cookie list, edit mode, and copy (Cookie header / JSON)
 
 <img width="600" src="./screenshots/popup-cookie-editor.png" alt="Popup cookie editor"/>
 
@@ -93,7 +94,7 @@ pnpm release:zip  # store-ready zip → dist/release/
 
 1. **Log in** — Worker URL + password.
 2. **Push** — upload current tab cookies to remote (conflict dialog when data differs).
-3. **Pull** — download remote cookies; local cookies for that host are cleared first (mirror sync).
+3. **Pull** — download remote cookies; remote data is applied first, then extras are removed (mirror sync).
 4. **Open manager** — side panel for full cookie/LocalStorage management.
 5. **Web admin** (optional) — open your Worker URL in a browser for the same manager UI.
 
@@ -103,6 +104,12 @@ Usage: [how-to-use.md](./how-to-use.md) · Worker deploy: [deploy/CLOUDFLARE.md]
 
 | Version | Highlights |
 |---------|------------|
+| **1.5.7** | Popup cookie toolbar: copy Cookie header and copy JSON |
+| **1.5.6** | Popup cookie editor: add/edit/delete, copy value/JSON |
+| **1.5.5** | Pull partial failure no longer drops cookies; sameSite fix |
+| **1.5.4** | Side panel pull no longer zeroes cookies; skip failures with warning |
+| **1.5.3** | Pull restores hostOnly and third-party cookies |
+| **1.5.2** | Push gathering aligned with editor; hostOnly cookies included |
 | **1.5.1** | Account folder/type in push dialog; entry meta UI shared across surfaces |
 | **1.5.0** | Worker sync backend, Bitwarden-style login, multi-account per domain, push conflict dialog, pull mirror sync, popup cookie editor, web admin alignment |
 
