@@ -57,7 +57,19 @@ pnpm build
 
 > 修改代码后需重新执行 `pnpm build`，并在扩展管理页点击 **重新加载**。
 
-打包为 zip（商店发布用）：见 [STORE_PUBLISH.md](./STORE_PUBLISH.md) 中的 `pnpm release:zip`。
+### 从 Release ZIP 加载
+
+适用于不想从源码构建、但需使用本 fork 发布包的用户。维护者在仓库中执行 `pnpm release:zip`，产物为 **`dist/release/sync-your-cookie-{version}.zip`**（详见 [STORE_PUBLISH.md](./STORE_PUBLISH.md)）。
+
+**安装步骤：**
+
+1. 下载对应版本的 ZIP 并解压到任意文件夹
+2. 打开 `chrome://extensions`（Edge 为 `edge://extensions`）
+3. 开启右上角 **开发者模式**
+4. 点击 **加载已解压的扩展程序**
+5. 选择解压后的文件夹（内含 `manifest.json`）
+
+> 不能将 ZIP 或 CRX 文件直接拖入扩展管理页加载；Chrome / Edge 会显示「开发者扩展」警告属正常现象。更新版本需重新下载 ZIP，解压后在扩展管理页点击 **重新加载**。
 
 ### 从浏览器商店安装（上游原版）
 
