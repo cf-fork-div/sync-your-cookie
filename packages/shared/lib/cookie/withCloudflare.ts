@@ -2,9 +2,7 @@ import { accountStorage, type AccountInfo } from '@sync-your-cookie/storage/lib/
 import { accountProfileStorage, getActiveProfileDomainConfig } from '@sync-your-cookie/storage/lib/accountProfileStorage';
 import { settingsStorage } from '@sync-your-cookie/storage/lib/settingsStorage';
 
-import { readCloudflareKV, writeCloudflareKV, WriteResponse } from '../cloudflare/api';
-import { isServerSyncConfigured } from '../auth/accountAuth';
-import { readSyncKV, SyncPullError, writeSyncKV } from '../sync/api';
+import { readSyncKV, SyncPullError, writeSyncKV, type WriteResponse } from '../sync/api';
 import { mergeEntryMetaOnWrite } from '../domain/entryMetaSync';
 
 import { MessageErrorCode } from '@lib/message';
@@ -30,9 +28,6 @@ const resolveAccountInfoForSync = (accountInfo?: AccountInfo): AccountInfo => {
   return {
     serverUrl: accountInfo.serverUrl ?? snapshot.serverUrl,
     authPassword: accountInfo.authPassword?.trim() || snapshot.authPassword,
-    accountId: accountInfo.accountId ?? snapshot.accountId,
-    namespaceId: accountInfo.namespaceId ?? snapshot.namespaceId,
-    token: accountInfo.token ?? snapshot.token,
   };
 };
 
@@ -40,46 +35,18 @@ export const check = (accountInfo?: AccountInfo): AccountInfo => {
   const info = resolveAccountInfoForSync(accountInfo);
   const serverUrl = info?.serverUrl?.trim();
   const authPassword = info?.authPassword?.trim();
-  if (serverUrl || isServerSyncConfigured(info)) {
-    if (!serverUrl) {
-      throw new SyncPullError(MessageErrorCode.AccountCheck, 'Server URL is empty');
-    }
-    if (!authPassword) {
-      throw new SyncPullError(MessageErrorCode.AccountCheck, 'Auth password is empty');
-    }
-    return { ...info, serverUrl, authPassword };
+  if (!serverUrl) {
+    throw new SyncPullError(MessageErrorCode.AccountCheck, 'Server URL is empty');
   }
-  const cloudflareAccountInfo = info;
-  if (!cloudflareAccountInfo?.accountId || !cloudflareAccountInfo.namespaceId || !cloudflareAccountInfo.token) {
-    let message = 'Account ID is empty';
-    if (!cloudflareAccountInfo?.namespaceId) {
-      message = 'NamespaceId ID is empty';
-    } else if (!cloudflareAccountInfo.token) {
-      message = 'Token is empty';
-    }
-
-    throw new SyncPullError(MessageErrorCode.AccountCheck, message);
+  if (!authPassword) {
+    throw new SyncPullError(MessageErrorCode.AccountCheck, 'Auth password is empty');
   }
-  return cloudflareAccountInfo;
-};
-
-const readRemoteKv = async (accountInfo: AccountInfo): Promise<string> => {
-  if (isServerSyncConfigured(accountInfo)) {
-    return readSyncKV(accountInfo.serverUrl!, accountInfo.authPassword!);
-  }
-  return readCloudflareKV(accountInfo.accountId!, accountInfo.namespaceId!, accountInfo.token!);
-};
-
-const writeRemoteKv = async (accountInfo: AccountInfo, value: string): Promise<WriteResponse> => {
-  if (isServerSyncConfigured(accountInfo)) {
-    return writeSyncKV(accountInfo.serverUrl!, accountInfo.authPassword!, value);
-  }
-  return writeCloudflareKV(value, accountInfo.accountId!, accountInfo.namespaceId!, accountInfo.token!);
+  return { ...info, serverUrl, authPassword };
 };
 
 export const readCookiesMap = async (accountInfo: AccountInfo): Promise<ICookiesMap> => {
   const resolved = check(accountInfo);
-  const content = await readRemoteKv(resolved);
+  const content = await readSyncKV(resolved.serverUrl!, resolved.authPassword!);
 
   if (content) {
     try {
@@ -159,7 +126,8 @@ export const writeCookiesMap = async (accountInfo: AccountInfo, cookiesMap: ICoo
     devLog('writeCookiesMap json payload');
   }
 
-  const res = await writeRemoteKv(accountInfo, encodingStr);
+  const resolved = check(accountInfo);
+  const res = await writeSyncKV(resolved.serverUrl!, resolved.authPassword!, encodingStr);
   return res;
 };
 
@@ -192,11 +160,11 @@ export const mergeAndWriteCookies = async (
 };
 
 export const mergeAndWriteMultipleDomainCookies = async (
-  cloudflareAccountInfo: AccountInfo,
+  accountInfo: AccountInfo,
   domainCookies: { domain: string; cookies: ICookie[]; localStorageItems: ILocalStorageItem[]; userAgent?: string }[],
   oldCookieMap: ICookiesMap = {},
 ): Promise<[WriteResponse, ICookiesMap]> => {
-  const resolved = check(cloudflareAccountInfo);
+  const resolved = check(accountInfo);
 
   const newDomainCookieMap = {
     ...(oldCookieMap.domainCookieMap || {}),
@@ -221,12 +189,12 @@ export const mergeAndWriteMultipleDomainCookies = async (
 };
 
 export const removeAndWriteCookies = async (
-  cloudflareAccountInfo: AccountInfo,
+  accountInfo: AccountInfo,
   domain: string,
   oldCookieMap: ICookiesMap = {},
   id?: string,
 ): Promise<[WriteResponse, ICookiesMap]> => {
-  const resolved = check(cloudflareAccountInfo);
+  const resolved = check(accountInfo);
   const cookiesMap: ICookiesMap = {
     updateTime: Date.now(),
     createTime: oldCookieMap?.createTime || Date.now(),
@@ -261,13 +229,13 @@ export const removeAndWriteCookies = async (
 };
 
 export const editAndWriteCookies = async (
-  cloudflareAccountInfo: AccountInfo,
+  accountInfo: AccountInfo,
   host: string,
   oldCookieMap: ICookiesMap = {},
   oldItem: ICookie,
   newItem: ICookie,
 ): Promise<[WriteResponse, ICookiesMap]> => {
-  const resolved = check(cloudflareAccountInfo);
+  const resolved = check(accountInfo);
   const cookiesMap: ICookiesMap = {
     updateTime: Date.now(),
     createTime: oldCookieMap?.createTime || Date.now(),

@@ -57,6 +57,8 @@
 
 弹窗或侧边栏填写 **服务器 URL**（Worker 地址，无尾斜杠）与 **访问密码**（同上）。登录后即可 Push / Pull。详见 [how-to-use.md](../how-to-use.md)。
 
+> **v1.7.0 起**：扩展不再支持在选项页填写 Cloudflare Account ID / Namespace / API Token 直连 KV。请部署 Worker 后仅使用 **服务器 URL + 访问密码**；KV 凭据仅在 Web 管理端 Connect 表单配置一次。
+
 ## 常见问题
 
 **无法登录 / 提示「未配置访问密码」？**  

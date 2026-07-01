@@ -1,4 +1,4 @@
-import { ErrorCode, WriteResponse } from '@lib/cloudflare';
+import { WriteResponse } from '@lib/sync/api';
 import { MessageErrorCode, SendResponse } from '@lib/message';
 import { settingsStorage } from '@sync-your-cookie/storage/lib/settingsStorage';
 
@@ -7,7 +7,7 @@ export function debounce<T = unknown>(func: (...args: T[]) => void, timeout = 30
   return (...args: T[]) => {
     timer && clearTimeout(timer);
     timer = setTimeout(() => {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       // @ts-ignore
       func.apply(this, args);
     }, timeout);
@@ -30,28 +30,27 @@ export function checkResponseAndCallback(
 ) {
   if ((res as WriteResponse)?.success) {
     callback({ isOk: true, msg: `${successSceneMap[scene]} success` });
-  } else {
-    const cloudFlareErrors = [ErrorCode.NotFoundRoute, ErrorCode.NamespaceIdError, ErrorCode.AuthenicationError];
-    const isAccountError = res?.errors?.length && cloudFlareErrors.includes(res.errors[0].code);
-    if (isAccountError) {
-      callback({
-        isOk: false,
-        msg:
-          res.errors[0].code === ErrorCode.NamespaceIdError
-            ? 'cloudflare namespace Id info is incorrect.'
-            : 'cloudflare account info is incorrect.',
-        code: MessageErrorCode.CloudflareNotFoundRoute,
-        result: res,
-      });
-    } else {
-      const errMsg = res?.msg || res?.message;
-      const defaultErrMsg =
-        errMsg?.toLowerCase?.().includes?.(scene) || (res?.code && errMsg)
-          ? errMsg
-          : `${scene} fail, please try again.`;
-      callback({ isOk: false, code: res?.code, msg: defaultErrMsg, result: res });
-    }
+    return;
   }
+
+  const authErrorCodes = new Set([401, 403]);
+  const firstError = (res as WriteResponse)?.errors?.[0];
+  if (firstError && authErrorCodes.has(firstError.code)) {
+    callback({
+      isOk: false,
+      msg: firstError.message || 'Sync authentication failed. Check server URL and access password.',
+      code: MessageErrorCode.CloudflareNotFoundRoute,
+      result: res,
+    });
+    return;
+  }
+
+  const errMsg = res?.msg || res?.message;
+  const defaultErrMsg =
+    errMsg?.toLowerCase?.().includes?.(scene) || (res?.code && errMsg)
+      ? errMsg
+      : `${scene} fail, please try again.`;
+  callback({ isOk: false, code: res?.code, msg: defaultErrMsg, result: res });
 }
 function addProtocol(uri: string) {
   return uri.startsWith('http') ? uri : `http://${uri}`;

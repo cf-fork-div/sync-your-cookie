@@ -35,9 +35,6 @@ export const useAccountAuth = () => {
         serverUrl,
         authPassword,
         defaultStorageKey: serverStorageKey,
-        accountId: undefined,
-        namespaceId: undefined,
-        token: undefined,
       });
       await applyServerStorageKey(serverStorageKey);
       await pullCookies();

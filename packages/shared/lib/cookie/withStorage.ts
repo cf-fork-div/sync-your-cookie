@@ -8,7 +8,7 @@ import { AccountInfo, accountStorage } from '@sync-your-cookie/storage/lib/accou
 import { trySetLocalStorageForHost } from '@lib/message';
 import { getHostFromStorageKey } from '../domain/entryKey';
 import { formatSyncVerifyErrorMessage } from '../sync/api';
-import { WriteResponse } from '../cloudflare';
+import { WriteResponse } from '../sync/api';
 import {
   editAndWriteCookies,
   mergeAndWriteCookies,
@@ -20,7 +20,7 @@ import { gatherRawBrowserCookies, pullCookieKey, removeBrowserCookie, resolveDom
 import { buildPullCookieSetDetails, setCookieInBrowser } from './setDetails';
 import { mergeEntryMetaIntoDomainConfig, mergeEntryMetaOnWrite } from '../domain/entryMetaSync';
 
-export const readCookiesMapWithStatus = async (cloudflareInfo: AccountInfo) => {
+export const readCookiesMapWithStatus = async (accountInfo: AccountInfo) => {
   let cookieMap: Cookie | null = null;
   const domainStatus = await domainStatusStorage.get();
   if (domainStatus.pushing) {
@@ -29,16 +29,12 @@ export const readCookiesMapWithStatus = async (cloudflareInfo: AccountInfo) => {
   if (cookieMap && Object.keys(cookieMap.domainCookieMap || {}).length > 0) {
     return cookieMap;
   }
-  return await readCookiesMap(cloudflareInfo);
+  return await readCookiesMap(accountInfo);
 };
 
 export const pullCookies = async (isInit = false): Promise<Cookie> => {
-  const cloudflareInfo = await accountStorage.get();
-  if (
-    isInit &&
-    !cloudflareInfo.serverUrl &&
-    (!cloudflareInfo.accountId || !cloudflareInfo.namespaceId || !cloudflareInfo.token)
-  ) {
+  const accountInfo = await accountStorage.get();
+  if (isInit && (!accountInfo.serverUrl?.trim() || !accountInfo.authPassword?.trim())) {
     return {};
   }
   try {
@@ -52,7 +48,7 @@ export const pullCookies = async (isInit = false): Promise<Cookie> => {
     await domainStatusStorage.update({
       pulling: true,
     });
-    const cookieMap = await readCookiesMapWithStatus(cloudflareInfo);
+    const cookieMap = await readCookiesMapWithStatus(accountInfo);
     const res = await cookieStorage.update(cookieMap, isInit);
     if (cookieMap.entryMetaMap && Object.keys(cookieMap.entryMetaMap).length > 0) {
       await accountProfileStorage.ensureMigrated();
@@ -294,10 +290,10 @@ export const editCookieItem = async (domain: string, name: string): Promise<Writ
 
 export class CookieOperator {
   static async prepare() {
-    const cloudflareInfo = await accountStorage.get();
+    const accountInfo = await accountStorage.get();
     const domainStatus = await domainStatusStorage.get();
     if (domainStatus.pushing) return Promise.reject('the cookie is pushing');
-    return { cloudflareInfo };
+    return { accountInfo };
   }
 
   static async setPushing(open: boolean) {
@@ -308,10 +304,10 @@ export class CookieOperator {
 
   static async editCookieItem(host: string, oldItem: ICookie, newItem: ICookie) {
     try {
-      const { cloudflareInfo } = await this.prepare();
+      const { accountInfo } = await this.prepare();
       await this.setPushing(true);
-      const oldCookie = await readCookiesMapWithStatus(cloudflareInfo);
-      const [res, cookieMap] = await editAndWriteCookies(cloudflareInfo, host, oldCookie, oldItem, newItem);
+      const oldCookie = await readCookiesMapWithStatus(accountInfo);
+      const [res, cookieMap] = await editAndWriteCookies(accountInfo, host, oldCookie, oldItem, newItem);
       await this.setPushing(false);
 
       await checkSuccessAndUpdate(res, cookieMap);

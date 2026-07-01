@@ -14,6 +14,14 @@ export interface SyncStatusResponse {
   storageKey?: string;
 }
 
+export interface WriteResponse {
+  success: boolean;
+  errors: {
+    code: number;
+    message: string;
+  }[];
+}
+
 export class SyncVerifyError extends Error {
   readonly status?: number;
   readonly detail?: string;
@@ -353,7 +361,7 @@ export async function writeSyncKV(
   password: string,
   value: string,
   storageKey?: string,
-): Promise<{ success: boolean; errors: { code: number; message: string }[] }> {
+): Promise<WriteResponse> {
   const base = normalizeServerUrl(serverUrl);
   const key = resolveSyncStorageKey(storageKey);
   assertAllowedStorageKey(key);

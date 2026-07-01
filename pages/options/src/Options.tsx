@@ -251,12 +251,6 @@ const Options = () => {
 
         authPassword: authPassword.trim(),
 
-        accountId: undefined,
-
-        namespaceId: undefined,
-
-        token: undefined,
-
       });
 
     } catch (err: unknown) {

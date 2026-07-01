@@ -4,30 +4,15 @@ import { accountProfileStorage, getActiveProfile } from './accountProfileStorage
 export interface AccountInfo {
   serverUrl?: string;
   authPassword?: string;
-  /** @deprecated Legacy direct Cloudflare KV credentials */
-  accountId?: string;
-  /** @deprecated Legacy direct Cloudflare KV credentials */
-  namespaceId?: string;
-  /** @deprecated Legacy direct Cloudflare KV credentials */
-  token?: string;
 }
 
 type AccountInfoStorage = BaseStorage<AccountInfo> & {
   update: (updateInfo: AccountInfo) => Promise<void>;
 };
 
-const toAccountInfo = (profile?: {
-  serverUrl?: string;
-  authPassword?: string;
-  accountId?: string;
-  namespaceId?: string;
-  token?: string;
-}): AccountInfo => ({
+const toAccountInfo = (profile?: { serverUrl?: string; authPassword?: string }): AccountInfo => ({
   serverUrl: profile?.serverUrl,
   authPassword: profile?.authPassword,
-  accountId: profile?.accountId,
-  namespaceId: profile?.namespaceId,
-  token: profile?.token,
 });
 
 const emitListeners: Array<() => void> = [];

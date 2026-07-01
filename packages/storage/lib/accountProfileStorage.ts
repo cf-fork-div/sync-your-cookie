@@ -14,12 +14,6 @@ export interface AccountProfile {
   name: string;
   serverUrl?: string;
   authPassword?: string;
-  /** @deprecated Legacy direct Cloudflare KV credentials */
-  accountId?: string;
-  /** @deprecated Legacy direct Cloudflare KV credentials */
-  namespaceId?: string;
-  /** @deprecated Legacy direct Cloudflare KV credentials */
-  token?: string;
   defaultStorageKey?: string;
   settings?: ISettings;
   domainConfig?: DomainConfig;
@@ -32,7 +26,6 @@ export interface AccountProfileState {
 }
 
 const PROFILE_STORAGE_KEY = 'account-profile-storage-key';
-const LEGACY_ACCOUNT_KEY = 'cloudflare-account-storage-key';
 const LEGACY_SETTINGS_KEY = 'settings-storage-key';
 const LEGACY_DOMAIN_CONFIG_KEY = 'domainConfig-storage-key';
 
@@ -221,22 +214,14 @@ const ensureMigrated = async (): Promise<void> => {
       return;
     }
 
-    const legacy = await chrome.storage.sync.get([LEGACY_ACCOUNT_KEY, LEGACY_SETTINGS_KEY]);
+    const legacy = await chrome.storage.sync.get([LEGACY_SETTINGS_KEY]);
     const legacyDomain = await chrome.storage.local.get(LEGACY_DOMAIN_CONFIG_KEY);
-    const legacyAccount = (legacy[LEGACY_ACCOUNT_KEY] || {}) as {
-      accountId?: string;
-      namespaceId?: string;
-      token?: string;
-    };
     const legacySettings = (legacy[LEGACY_SETTINGS_KEY] || defaultSettings) as ISettings;
     const legacyDomainConfig = legacyDomain[LEGACY_DOMAIN_CONFIG_KEY] as DomainConfig | undefined;
 
     if (state.accountProfileList.length === 0) {
       const profile = createDefaultProfile({
-        name: legacyAccount.accountId ? DEFAULT_PROFILE_NAME : DEFAULT_PROFILE_NUMBER_NAME,
-        accountId: legacyAccount.accountId,
-        namespaceId: legacyAccount.namespaceId,
-        token: legacyAccount.token,
+        name: DEFAULT_PROFILE_NUMBER_NAME,
         defaultStorageKey: legacySettings.storageKey || defaultKey,
         settings: {
           ...defaultSettings,
