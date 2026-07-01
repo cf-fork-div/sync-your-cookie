@@ -15,7 +15,7 @@ import {
   readCookiesMap,
   removeAndWriteCookies,
 } from './withCloudflare';
-import { clearAllBrowserCookies, resolveDomainUrl } from './browserCookies';
+import { gatherRawBrowserCookies, pullCookieKey, removeBrowserCookie, resolveDomainUrl, toBrowserCookieItem } from './browserCookies';
 import { buildPullCookieSetDetails, setCookieInBrowser } from './setDetails';
 import { mergeEntryMetaIntoDomainConfig, mergeEntryMetaOnWrite } from '../domain/entryMetaSync';
 
@@ -92,8 +92,7 @@ export const pullAndSetCookies = async (
   const tabUrl = await resolveDomainUrl(host, activeTabUrl);
   const warnings: string[] = [];
 
-  await clearAllBrowserCookies(host, tabUrl);
-
+  // Apply remote cookies first so failed sets leave existing browser cookies intact.
   const cookiesPromiseList = cookieDetails.map(cookie => {
     const cookieDetail = buildPullCookieSetDetails(cookie, tabUrl);
     return setCookieInBrowser(cookieDetail);
@@ -115,6 +114,15 @@ export const pullAndSetCookies = async (
   if (failedCookies.length > 0) {
     console.warn('some cookies skipped during pull', failedCookies);
     warnings.push(`Skipped ${failedCookies.length} cookie(s): ${failedCookies.join('; ')}`);
+  }
+
+  // Mirror sync: remove browser cookies not present in the remote payload.
+  const remoteKeys = new Set(cookieDetails.map(pullCookieKey));
+  const localCookies = await gatherRawBrowserCookies(host, tabUrl);
+  for (const [index, local] of localCookies.entries()) {
+    if (!remoteKeys.has(pullCookieKey(local))) {
+      await removeBrowserCookie(toBrowserCookieItem(local, index), tabUrl);
+    }
   }
 
   const localStorageResult = await trySetLocalStorageForHost(host, localStorageItems, true);

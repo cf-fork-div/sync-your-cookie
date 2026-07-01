@@ -39,6 +39,13 @@ export function normalizeCookieHost(host: string): string {
   return host.replace(/^\./, '').replace(/:\d+$/, '').toLowerCase();
 }
 
+/** Stable key for matching stored vs browser cookies during pull mirror cleanup. */
+export function pullCookieKey(cookie: { domain?: string | null; name?: string | null; path?: string | null }): string {
+  const domain = normalizeCookieHost(cookie.domain || '');
+  const path = cookie.path && cookie.path.length > 0 ? cookie.path : '/';
+  return `${domain}|${cookie.name ?? ''}|${path}`;
+}
+
 function hostMatchesUrl(normalizedHost: string, url: string): boolean {
   if (!url.startsWith('http')) {
     return false;

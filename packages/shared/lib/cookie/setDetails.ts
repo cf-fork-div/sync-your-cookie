@@ -1,7 +1,17 @@
 import { ICookie } from '@sync-your-cookie/protobuf';
 
-function normalizeCookieHost(host: string): string {
-  return host.replace(/^\./, '').replace(/:\d+$/, '').toLowerCase();
+import { normalizeCookieHost } from './browserCookies';
+
+const VALID_SAME_SITE: chrome.cookies.SameSiteStatus[] = ['unspecified', 'no_restriction', 'lax', 'strict'];
+
+function normalizeSameSite(sameSite?: string | null): chrome.cookies.SameSiteStatus | undefined {
+  if (!sameSite || sameSite === 'unspecified') {
+    return undefined;
+  }
+  if (VALID_SAME_SITE.includes(sameSite as chrome.cookies.SameSiteStatus)) {
+    return sameSite as chrome.cookies.SameSiteStatus;
+  }
+  return undefined;
 }
 
 /** Whether a browser cookie change is relevant when viewing a domain entry in the UI. */
@@ -36,7 +46,7 @@ export function buildPullCookieSetDetails(
 ): chrome.cookies.SetDetails {
   const isHostPrefixed = (cookie.name || '').startsWith('__Host-');
   const isSecurePrefixed = (cookie.name || '').startsWith('__Secure-');
-  const sameSite = (cookie.sameSite ?? undefined) as chrome.cookies.SameSiteStatus | undefined;
+  const sameSite = normalizeSameSite(cookie.sameSite);
   let secure = isHostPrefixed || isSecurePrefixed ? true : (cookie.secure ?? undefined);
   if (sameSite === 'no_restriction' && !secure) {
     secure = true;

@@ -2,6 +2,13 @@
 
 All notable changes to **Sync Your Cookie** are documented here.
 
+## [1.5.5] — 2026-07-01
+
+### Fixed
+- **Pull losing cookies on partial failure** — pull no longer clears all browser cookies before applying remote data. Remote cookies are set first; only extras not in the remote payload are removed afterward. Failed sets leave existing cookies intact so a partial pull cannot drop you from 8 to 6.
+- **Invalid sameSite on pull** — protobuf defaults and empty `sameSite` values are normalized before `chrome.cookies.set`, avoiding silent rejections.
+- **Pull failure toasts** — skipped cookies are reported as `name@domain: reason` in the warning toast (popup and side panel).
+
 ## [1.5.4] — 2026-07-01
 
 ### Fixed
