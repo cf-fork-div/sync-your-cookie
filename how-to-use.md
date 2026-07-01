@@ -30,13 +30,26 @@
 
 ## 获取与安装
 
-> **本 fork 尚未单独上架商店。** 请使用下方 [从源码加载](#从源码加载推荐) 或 [从 Release ZIP 加载](#从-release-zip-加载) 安装。
+> **本 fork 尚未单独上架商店。** 请从 [GitHub Releases](https://github.com/cf-fork-div/sync-your-cookie/releases) 下载 ZIP 手动加载；开发者可从源码构建，见 [从源码加载](#从源码加载可选)。
 
-### 从源码加载（推荐）
+打开 [Releases 页面](https://github.com/cf-fork-div/sync-your-cookie/releases)，选择最新版本（如 `v1.7.1`），下载 **`sync-your-cookie-{version}.zip`**（页面也可能提供 `extension-{version}-chrome.zip` 等别名，内容相同）。
 
-适用于本 fork 及需要最新功能的用户。
+![从 Release 下载 ZIP 并加载未打包扩展](deploy/images/install-from-release.png)
 
-**环境要求：** Node.js **20+**，包管理器 **pnpm**。
+| 步骤 | 操作 |
+|------|------|
+| **1** | 在 Release 页 **Assets** 中下载 `sync-your-cookie-1.7.1.zip` |
+| **2** | 保存到本地并 **解压** 到任意文件夹 |
+| **3** | 浏览器地址栏打开 `chrome://extensions`（Edge 为 `edge://extensions`） |
+| **4** | 开启右上角 **开发者模式** |
+| **5** | 点击 **加载已解压的扩展程序**，选择解压后的文件夹（内含 `manifest.json`） |
+| **6** | 扩展列表出现 **同步你的 Cookie**，安装成功 |
+
+> 不能将 ZIP 或 CRX 直接拖入扩展页加载；显示「开发者扩展」属正常。更新版本需重新下载 ZIP，在扩展页点击 **重新加载**。
+
+### 从源码加载（可选）
+
+需要最新未发布功能时使用。**环境：** Node.js **20+**、**pnpm**。
 
 ```bash
 git clone https://github.com/cf-fork-div/sync-your-cookie.git
@@ -45,61 +58,25 @@ pnpm install
 pnpm build
 ```
 
-构建产物在 **`dist/`** 目录。
-
-**Chrome / Edge 加载未打包扩展：**
-
-1. 打开 `chrome://extensions`（Edge 为 `edge://extensions`）
-2. 开启右上角 **开发者模式**
-3. 点击 **加载已解压的扩展程序**
-4. 选择项目根目录下的 **`dist`** 文件夹
-5. 确认工具栏出现扩展图标，弹窗底部版本号与构建一致（当前 **v1.7.1+**）
-
-> 修改代码后需重新执行 `pnpm build`，并在扩展管理页点击 **重新加载**。
-
-### 从 Release ZIP 加载
-
-适用于不想从源码构建、但需使用本 fork 发布包的用户。
-
-**下载地址：** [GitHub Releases](https://github.com/cf-fork-div/sync-your-cookie/releases) — 选择对应版本（如 `v1.7.1`），下载以下任一 ZIP（内容相同）：
-
-| 文件名 | 说明 |
-|--------|------|
-| `sync-your-cookie-{version}.zip` | 本 fork 稳定命名 |
-| `extension-{version}-chrome.zip` | 与 upstream 发布页命名一致（Chrome） |
-| `extension-{version}-edge.zip` | 与 upstream 发布页命名一致（Edge） |
-
-Release 说明中会附带各文件的 SHA256 校验和。维护者本地构建见 [STORE_PUBLISH.md](./STORE_PUBLISH.md)（`pnpm release:zip` → `dist/release/`）。
-
-**触发新 Release（维护者）：** 确保 `package.json` 版本已更新后，打 tag 并推送即可由 CI 自动上传：
-
-```bash
-git tag v1.7.1
-git push origin v1.7.1
-```
-
-**安装步骤：**
-
-1. 从 [Releases 页面](https://github.com/cf-fork-div/sync-your-cookie/releases) 下载对应版本的 ZIP 并解压到任意文件夹
-2. 打开 `chrome://extensions`（Edge 为 `edge://extensions`）
-3. 开启右上角 **开发者模式**
-4. 点击 **加载已解压的扩展程序**
-5. 选择解压后的文件夹（内含 `manifest.json`）
-
-> 不能将 ZIP 或 CRX 文件直接拖入扩展管理页加载；Chrome / Edge 会显示「开发者扩展」警告属正常现象。更新版本需重新下载 ZIP，解压后在扩展管理页点击 **重新加载**。
+构建产物在 **`dist/`**；加载步骤同上（第 3–6 步），选择 **`dist`** 文件夹。修改代码后重新 `pnpm build` 并 **重新加载** 扩展。
 
 ---
 
 ## 登录扩展
 
-1. 点击工具栏图标打开 **弹窗**，或打开 **侧边栏** / **选项页**。
-2. 填写：
-   - **配置名** — 可选显示名（多配置场景用，如「配置 1」）
-   - **服务器 URL** — Worker 根地址，如 `https://sync-your-cookie.your-account.workers.dev`（无尾斜杠；若使用自定义域名，填实际域名）
-   - **访问密码** — 与 `WEB_ACCESS_PASSWORD` 相同
-3. 点击 **保存** / 登录。成功后即可 Push / Pull；扩展请求 Worker 的 `/api/sync/*` 接口。
+Worker 部署完成后，在扩展中填写连接信息并登录。
 
-Web 管理端（浏览器打开同一 Worker URL）可在 Connect 表单查看底层 KV 数据源；若部署时设置了 `DEPLOY_SEED_DATASOURCE=1`，通常已自动配置，无需手动填写。
+![扩展登录：配置名称、服务器 URL、访问密码](deploy/images/extension-login.png)
+
+| 步骤 | 操作 |
+|------|------|
+| **1** | 点击工具栏 **Cookie 图标**，打开登录弹窗 |
+| **2** | **配置名称** — 自定义显示名，便于区分多套配置（如「工作机」「个人号」） |
+| **3** | **同步服务器 URL** — 填 [部署指南](./deploy/CLOUDFLARE.md) 中的 **Worker 地址**（Web 管理端打开的同一网址，无尾斜杠），如 `https://sync-your-cookie.xxx.workers.dev` 或自定义域名 |
+| **4** | **访问密码** — 填 Cloudflare Build 中的 **`WEB_ACCESS_PASSWORD`**（与 Web 管理端登录密码相同） |
+| **5** | 点击 **登录并同步**，成功后即可 Push / Pull |
+
+KV 凭据（Account ID、Namespace ID、API Token）只需在 **Web 管理端** Connect 表单配置一次；若部署时设置了 `DEPLOY_SEED_DATASOURCE=1`，通常已自动配置。
 
 ---
 
