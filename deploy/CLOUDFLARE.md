@@ -77,6 +77,14 @@
 
 Connect 中的 KV 为 **Cookie 存储**；`SYNC_KV` 存 datasource 等 Worker 元数据（可与 Cookie KV 为同一 Namespace）。
 
+### 自定义域名（可选）
+
+1. Worker → **Settings → Domains & Routes** → **Add Custom Domain**
+2. 例如 `sync-your-cookie.example.com`
+3. Web 管理端与扩展的 **服务器 URL** 填 `https://sync-your-cookie.example.com`（无尾斜杠）
+
+`workers.dev` 与自定义域名可并存；实际使用哪个地址，扩展与 Web 端填同一个即可。
+
 ---
 
 ## 下一步
