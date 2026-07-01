@@ -1,0 +1,62 @@
+name: Release Extension ZIP
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+
+      - name: Verify tag matches package.json version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          EXPECTED="v${PKG_VERSION}"
+          if [ "$TAG" != "$EXPECTED" ]; then
+            echo "::error::Tag $TAG does not match package.json version $PKG_VERSION (expected $EXPECTED)"
+            exit 1
+          fi
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm release:zip
+
+      - name: Write release notes with SHA256 checksums
+        run: |
+          {
+            echo '## 安装包'
+            echo
+            echo 'Chrome 与 Edge 使用同一 MV3 构建，以下三个 ZIP 内容相同，任选其一下载即可。'
+            echo
+            echo '| 文件 | SHA256 |'
+            echo '|------|--------|'
+            for f in dist/release/*.zip; do
+              name="$(basename "$f")"
+              hash="$(sha256sum "$f" | awk '{print $1}')"
+              echo "| \`$name\` | \`$hash\` |"
+            done
+            echo
+            echo '解压后在 \`chrome://extensions\` 或 \`edge://extensions\` 中加载已解压的扩展。安装步骤见 [使用指南](https://github.com/cf-fork-div/sync-your-cookie/blob/main/how-to-use.md#从-release-zip-加载)。'
+          } > release-notes.md
+          cat release-notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release-notes.md
+          files: dist/release/*.zip

@@ -32,9 +32,17 @@ const latest = zips[0].name;
 fs.mkdirSync(releaseDir, { recursive: true });
 
 const stableName = `sync-your-cookie-${version}.zip`;
+const chromeName = `extension-${version}-chrome.zip`;
+const edgeName = `extension-${version}-edge.zip`;
 const src = path.join(distZipDir, latest);
 const dest = path.join(releaseDir, stableName);
 
 fs.copyFileSync(src, dest);
-console.log(`Release package: ${path.relative(root, dest)}`);
+// Same MV3 build for Chrome and Edge; duplicate names match upstream release UX.
+fs.copyFileSync(dest, path.join(releaseDir, chromeName));
+fs.copyFileSync(dest, path.join(releaseDir, edgeName));
+
+for (const name of [stableName, chromeName, edgeName]) {
+  console.log(`Release package: ${path.relative(root, path.join(releaseDir, name))}`);
+}
 console.log(`  (from ${latest})`);
