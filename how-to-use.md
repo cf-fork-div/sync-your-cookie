@@ -4,7 +4,7 @@
 
 ## 登录扩展
 
-1. 按 [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md) 部署 Worker 并设置 `WEB_ACCESS_PASSWORD`。
+1. 按 [deploy/CLOUDFLARE.md](./deploy/CLOUDFLARE.md) 部署 Worker；参数准备见 [deploy/CLOUDFLARE-PARAMS.md](./deploy/CLOUDFLARE-PARAMS.md)。
 2. 打开扩展弹窗或侧边栏，填写：
    - **配置名** — 可选显示名
    - **服务器 URL** — 如 `https://sync-your-cookie.your-account.workers.dev`（无尾斜杠）
