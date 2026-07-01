@@ -13,6 +13,7 @@ import {
   useStorageSuspense,
   useTheme,
   useAccountAuth,
+  pullCookies,
   resolveSyncVerifyToast,
   withErrorBoundary,
   withSuspense,
@@ -50,6 +51,7 @@ const Popup = () => {
     activeStorageKey,
     activeEntry,
     entryOptions,
+    hasAccountEntries,
     hasMultipleAccounts,
     setSelectedStorageKey,
     requestPush,
@@ -112,6 +114,13 @@ const Popup = () => {
       }
     });
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+    void pullCookies().catch(() => undefined);
+  }, [isAuthenticated]);
 
   const isPushingOrPulling = domainItemStatus.pushing || domainItemStatus.pulling;
   const isBusy = isPushingOrPulling || pushing || refreshing;
@@ -206,7 +215,7 @@ const Popup = () => {
             </div>
           ) : null}
 
-          {hasMultipleAccounts ? (
+          {hasAccountEntries ? (
             <div className="mb-3 w-full">
               <Label htmlFor="popup-account-select" className="text-xs text-muted-foreground mb-1 block">
                 {t('selectAccount')}

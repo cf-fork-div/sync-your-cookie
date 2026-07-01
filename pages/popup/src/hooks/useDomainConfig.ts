@@ -7,7 +7,8 @@ export const useDomainConfig = () => {
   const { t } = useI18n();
   const [domain, setDomain] = useState('');
   const cookieMap = useStorageSuspense(cookieStorage);
-  const { entries, selectedStorageKey, setSelectedStorageKey, hasMultipleAccounts } = useHostEntrySelection(domain);
+  const { entries, selectedStorageKey, setSelectedStorageKey, hasAccountEntries, hasMultipleAccounts } =
+    useHostEntrySelection(domain);
   const activeStorageKey = selectedStorageKey || domain;
   const activeEntry = useMemo(
     () => entries.find(entry => entry.storageKey === activeStorageKey),
@@ -42,6 +43,7 @@ export const useDomainConfig = () => {
     activeStorageKey,
     activeEntry,
     entryOptions: entries,
+    hasAccountEntries,
     hasMultipleAccounts,
     setSelectedStorageKey,
     requestPush,
