@@ -28,14 +28,14 @@
 
 ## 前置参数获取
 
-进入 Worker 创建页之前，先准备好以下 **4 个 Build 变量** 所需的值：
+进入 Worker 创建页之前，先准备好以下 **4 个 Build 变量**：
 
-| 参数 | 填入位置 | 说明 |
-|------|----------|------|
-| **Namespace ID** | Variable `SYNC_KV_NAMESPACE_ID` | 见下方「创建 KV 命名空间」 |
-| **API Token**（`cfut_...`） | Secret `CLOUDFLARE_API_TOKEN` | 见下方「创建 API Token」 |
-| **Web 访问密码** | Secret `WEB_ACCESS_PASSWORD` | 自定强密码，Web / 扩展登录用 |
-| **`DEPLOY_SEED_DATASOURCE=1`** | Build Variable | 首次 Deploy 自动写入 Connect 配置（覆盖已有用 `force`） |
+| 参数名称 | 说明 | 是否加密 | 参数来源 |
+|----------|------|----------|----------|
+| `SYNC_KV_NAMESPACE_ID` | KV 命名空间 ID，绑定 Worker 元数据存储 | 否（Variable） | [创建 KV 命名空间](#创建-kv-命名空间) 后复制 |
+| `CLOUDFLARE_API_TOKEN` | Cloudflare API Token（`cfut_...`），用于部署与 Connect 自动配置 | 是（Secret） | [创建 API Token](#创建-api-token) |
+| `WEB_ACCESS_PASSWORD` | Web 管理端与扩展登录密码 | 是（Secret） | 自行设定强密码 |
+| `DEPLOY_SEED_DATASOURCE` | 填 `1`：首次 Deploy 自动写入 Connect 配置；覆盖已有填 `force` | 否（Variable） | 固定填 `1` |
 
 > 设置 `DEPLOY_SEED_DATASOURCE=1` 且配置了 `CLOUDFLARE_API_TOKEN` 后，Deploy 会**自动解析 Account ID** 并写入 Connect 表单，**无需**手动复制 Account ID。仅当未设置 `DEPLOY_SEED_DATASOURCE`、需部署后手动填 Connect 表单时，才要在 Dashboard 右侧边栏查找 Account ID。
 
@@ -49,7 +49,7 @@
 
 ### 创建 API Token
 
-此 Token 供 **Web 管理端 Connect 表单**读写 Cookie 存储 KV（需 **Workers KV Storage:Edit** 权限），同时填入 Build Secret **`CLOUDFLARE_API_TOKEN`**。
+Token 用于部署脚本与 Connect 自动配置，需含 **Workers KV Storage:Edit** 权限，填入 Secret **`CLOUDFLARE_API_TOKEN`**。
 
 1. Dashboard → **我的个人资料** → **API 令牌** → **创建令牌**
 2. 选择 **编辑 Cloudflare Workers** 模板 → **使用模板**
